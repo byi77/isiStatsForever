@@ -1,21 +1,37 @@
 # Changelog
 
-## Unreleased
+## 0.4.0 - 2026-11-17
 
-- Development: class matrix test - all 9 classes with typical gear (incl. wand, thrown weapon, hunter bow + melee weapon) are checked for their default values and visible sections.
-- Language follows the WoW Forever client: German on a German client, English on every other client language. The load test now runs for both.
-- Rounded window with a soft drop shadow and hairline ring (from isiLive's modern design); the opacity slider also fades shadow and ring.
-- Values fade in briefly when they change (buff, proc, gear); setting "Fade in values when they change", on by default.
-- Error log: isiStats' own Lua errors are kept (also with script errors off), `/isistats errors` shows them, `/isistats errors clear` empties the log.
-- A target of level ?? (not a world boss) shows "defense unknown" instead of a guessed level +10.
-- Fix: without any known weapon skill the target row was overwritten.
-- Development: project rules (CLAUDE.md, AGENTS.md, docs/RULES.md), pre-commit hook, locale check, load test with asserts.
-- Section headers are hidden by default; setting "Show section headers" brings them back (and with them collapsing).
-- Melee and ranged: the separate weapon skill rows (main hand, off hand, ranged) are gone; the skills are listed under weapon skills.
-- Combat: values the game hides from addons (secret values) are still shown live where they come straight from the game (attributes, health, crit, hit, dodge, parry, block, armor, resistances, spell values), the same way isiLive's stats box does it. Values that need calculating (attack power total, DPS, armor reduction, vs.-target modifiers) keep their last value from before the fight, greyed out with a tooltip note. `/isistats debug` lists which game functions were hidden.
-- Every weapon skill row shows its hit/crit modifier against the current target (defense = level x 5) right behind the skill; the row above the list names the target. Tooltip: hit, crit and glancing blows. Without a hostile target it compares against an enemy of your level, like the game's skill panel.
-- Window is slightly wider (270) so skill rows fit the extra value.
+### Weapon skills vs. your target
+
+- Every weapon skill row shows its hit/crit modifier against the current target (defense = level x 5, 0.04% per point, as in the game's skill panel); the row above the list names the target. Tooltip: hit, crit and glancing blows (melee only). Without a hostile target it compares against an enemy of your level.
+- A target of level ?? (not a world boss) shows "defense unknown" - nothing is guessed.
 - Miss chance vs. boss now uses the game panel's 0.04% per skill point.
+- Melee and ranged: the separate weapon skill rows (main hand, off hand, ranged) are gone; the skills are listed under weapon skills.
+
+### Combat
+
+- Values the game hides from addons in combat are still shown live where they come straight from the game (attributes, health, crit, hit, dodge, parry, block, armor, resistances, spell values). Values that need calculating (attack power total, DPS, armor reduction, vs.-target modifiers) keep their last value from before the fight, greyed out with a tooltip note. `/isistats debug` lists which game functions were hidden.
+
+### Window
+
+- Rounded window with a soft drop shadow and hairline ring; the opacity slider also fades shadow and ring.
+- Section headers are hidden by default; setting "Show section headers" brings them back (and with them collapsing).
+- Values fade in briefly when they change (buff, proc, gear); setting "Fade in values when they change", on by default.
+- Slightly wider (270) so skill rows fit the extra value.
+- Language follows the WoW Forever client: German on a German client, English on every other client.
+
+### Error log
+
+- isiStats' own Lua errors are kept (also with script errors switched off); `/isistats errors` shows them, `/isistats errors clear` empties the log.
+
+### Fixes
+
+- Without any known weapon skill the target row was overwritten.
+
+### Development
+
+- Project rules (CLAUDE.md, AGENTS.md, docs/RULES.md), pre-commit hook, locale check, load test with asserts for German and English clients, class matrix test for all 9 classes (incl. wand, thrown weapon, hunter bow + melee weapon).
 
 ## 0.3.1 - 2026-11-17
 

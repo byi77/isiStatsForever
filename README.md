@@ -7,10 +7,12 @@ Character stats for **WoW Forever** (client 1.60.x, interface 16001): attributes
 ## Features
 
 - **Weapon skills** of every learned weapon type as `current / max`; skills below the cap are yellow, equipped weapons are highlighted.
+- **Vs. your target**: behind every weapon skill its hit/crit modifier against your current target (defense = level x 5, 0.04% per point, as in the game's skill panel); the tooltip adds glancing blows for melee weapons. Without a hostile target it compares against an enemy of your level.
 - **Defense** with miss chance and crit reduction vs. an attacker of your level, armor reduction vs. your level and level +3.
-- **Melee**: attack power, damage, speed, DPS, crit, hit, main/off-hand skill and the miss chance vs. a boss (level +3, classic formula).
-- **Ranged** (only with a ranged weapon) and **spell** values (only for mana users).
-- **Settings page** (Options -> AddOns -> isiStats): every value on/off, saved per character. Class defaults show the main stat, the class's attack value, defense and the equipped weapon skills.
+- **Melee**: attack power, damage, speed, DPS, crit, hit and the miss chance vs. a boss (level +3).
+- **Ranged** (only with a ranged weapon; wands show damage only) and **spell** values (only for mana users).
+- **Settings page** (Options -> AddOns -> isiStats): every value on/off, saved per character. Class defaults: main stat, the class's attack value (melee AP, ranged AP or spell damage), defense, the equipped weapon skills and their value vs. your target.
+- English and German, following the client language.
 - Rounded window with a soft shadow (isiLive look), docks to the character frame or floats freely, resize grip in the bottom-right corner, adjustable background opacity, optional section headers.
 - Values that change (buff, proc, new gear) briefly fade in; switchable.
 - In combat, values the game hides from addons stay visible: live where possible, otherwise the last value greyed out.
