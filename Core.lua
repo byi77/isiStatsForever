@@ -1,0 +1,333 @@
+local addonName, ns = ...
+local L = ns.L
+
+local DEFAULTS = {
+  dock = true, -- follow the character frame
+  shown = false, -- free window open (only when not docked)
+  scale = 1,
+  alpha = 100, -- background opacity in percent
+  pos = nil, -- { point, relativePoint, x, y }
+  collapsed = {},
+}
+
+local db
+local charDB -- per character: rows[id] = true/false where the user chose
+local rowDefaults
+
+-- ---------------------------------------------------------------- row visibility
+
+function ns.IsRowEnabled(id)
+  local chosen = charDB and charDB.rows and charDB.rows[id]
+  if chosen ~= nil then
+    return chosen
+  end
+  rowDefaults = rowDefaults or ns.Data.GetDefaults()
+  return rowDefaults[id] == true
+end
+
+function ns.SetRowEnabled(id, value)
+  charDB.rows[id] = value and true or false
+  ns.Refresh()
+end
+
+function ns.SetAllRows(value)
+  for _, section in ipairs(ns.Data.GetCatalog()) do
+    for _, row in ipairs(section.rows) do
+      charDB.rows[row.id] = value and true or false
+    end
+  end
+  ns.Refresh()
+end
+
+function ns.ResetRows()
+  charDB.rows = {}
+  rowDefaults = nil
+  ns.Refresh()
+end
+
+function ns.GetAlpha()
+  return db and db.alpha or 100
+end
+
+function ns.SetAlpha(percent)
+  db.alpha = math.floor(math.max(0, math.min(100, percent)) + 0.5)
+  ns.UI.SetBackgroundAlpha(db.alpha / 100)
+  if ns.Options then
+    ns.Options.Sync()
+  end
+end
+
+function ns.IsDocked()
+  return db and db.dock and true or false
+end
+
+local function out(msg)
+  print("|cff1e90ffisiStats|r: " .. tostring(msg))
+end
+
+local function characterFrame()
+  return _G.CharacterFrame
+end
+
+local function isDockedNow()
+  local cf = characterFrame()
+  return db.dock and cf and cf:IsShown()
+end
+
+-- ---------------------------------------------------------------- position
+
+function ns.ApplyPosition()
+  local frame = ns.UI.GetFrame()
+  if not frame then
+    return
+  end
+  frame:SetScale(db.scale or 1)
+  ns.UI.SetBackgroundAlpha((db.alpha or 100) / 100)
+  frame:ClearAllPoints()
+  if isDockedNow() then
+    frame:SetPoint("TOPLEFT", characterFrame(), "TOPRIGHT", 2, 0)
+  elseif db.pos then
+    local p = db.pos
+    frame:SetPoint(p[1], UIParent, p[2], p[3], p[4])
+  else
+    frame:SetPoint("CENTER", UIParent, "CENTER", 300, 0)
+  end
+end
+
+function ns.IsAnchoredToCharacter()
+  return isDockedNow() and true or false
+end
+
+function ns.OnScaleChanged(scale, savePosition)
+  db.scale = math.floor(scale * 100 + 0.5) / 100
+  if savePosition then
+    ns.SavePosition()
+  end
+end
+
+function ns.SavePosition()
+  local frame = ns.UI.GetFrame()
+  local point, _, relativePoint, x, y = frame:GetPoint(1)
+  if point then
+    db.pos = { point, relativePoint, x, y }
+  end
+end
+
+function ns.OnDragStart()
+  if db.dock then
+    db.dock = false
+    db.shown = true
+  end
+end
+
+function ns.ToggleDock()
+  db.dock = not db.dock
+  if db.dock then
+    out(L.CMD_DOCKED)
+    local cf = characterFrame()
+    if cf and not cf:IsShown() then
+      ns.UI.GetFrame():Hide()
+    end
+  else
+    db.shown = true
+    out(L.CMD_FREE)
+  end
+  ns.ApplyPosition()
+  if ns.Options then
+    ns.Options.Sync()
+  end
+end
+
+-- ---------------------------------------------------------------- show / refresh
+
+local pending = false
+
+function ns.Refresh()
+  pending = false
+  local frame = ns.UI.GetFrame()
+  if not frame or not frame:IsShown() then
+    return
+  end
+  local level = UnitLevel("player")
+  local class = UnitClass("player")
+  if frame.subtitle then
+    frame.subtitle:SetText((class or "") .. (level and (" " .. level) or ""))
+  end
+  ns.UI.Render(ns.Data.Collect(), db.collapsed)
+end
+
+function ns.RequestRefresh()
+  local frame = ns.UI.GetFrame()
+  if pending or not frame or not frame:IsShown() then
+    return
+  end
+  pending = true
+  C_Timer.After(0.15, ns.Refresh)
+end
+
+function ns.ToggleSection(key)
+  db.collapsed[key] = not db.collapsed[key] or nil
+  ns.Refresh()
+end
+
+function ns.Show()
+  if not isDockedNow() then
+    db.shown = true
+  end
+  ns.ApplyPosition()
+  ns.UI.GetFrame():Show()
+end
+
+function ns.Hide()
+  db.shown = false
+  ns.UI.GetFrame():Hide()
+end
+
+function ns.Toggle()
+  if ns.UI.GetFrame():IsShown() then
+    ns.Hide()
+  else
+    ns.Show()
+  end
+end
+
+function IsiStats_OnAddonCompartmentClick()
+  ns.Toggle()
+end
+
+-- ---------------------------------------------------------------- character frame
+
+local function hookCharacterFrame()
+  local cf = characterFrame()
+  if not cf or cf.isiStatsHooked then
+    return
+  end
+  cf.isiStatsHooked = true
+  cf:HookScript("OnShow", function()
+    if db.dock then
+      ns.ApplyPosition()
+      ns.UI.GetFrame():Show()
+    end
+  end)
+  cf:HookScript("OnHide", function()
+    if db.dock then
+      ns.UI.GetFrame():Hide()
+    end
+  end)
+end
+
+-- ---------------------------------------------------------------- events
+
+local REFRESH_EVENTS = {
+  "PLAYER_EQUIPMENT_CHANGED",
+  "PLAYER_LEVEL_UP",
+  "SKILL_LINES_CHANGED",
+  "CHARACTER_POINTS_CHANGED",
+  "UPDATE_SHAPESHIFT_FORM",
+  "COMBAT_RATING_UPDATE",
+}
+local UNIT_EVENTS = {
+  "UNIT_STATS",
+  "UNIT_AURA",
+  "UNIT_ATTACK_POWER",
+  "UNIT_RANGED_ATTACK_POWER",
+  "UNIT_DAMAGE",
+  "UNIT_RANGEDDAMAGE",
+  "UNIT_ATTACK_SPEED",
+  "UNIT_RESISTANCES",
+  "UNIT_MAXHEALTH",
+  "UNIT_MAXPOWER",
+  "UNIT_DEFENSE",
+}
+
+local events = CreateFrame("Frame")
+events:RegisterEvent("ADDON_LOADED")
+events:RegisterEvent("PLAYER_LOGIN")
+events:SetScript("OnEvent", function(self, event, arg1)
+  if event == "ADDON_LOADED" then
+    if arg1 ~= addonName then
+      return
+    end
+    IsiStatsDB = IsiStatsDB or {}
+    db = IsiStatsDB
+    for k, v in pairs(DEFAULTS) do
+      if db[k] == nil then
+        db[k] = type(v) == "table" and {} or v
+      end
+    end
+    IsiStatsCharDB = IsiStatsCharDB or {}
+    charDB = IsiStatsCharDB
+    charDB.rows = charDB.rows or {}
+    self:UnregisterEvent("ADDON_LOADED")
+  elseif event == "PLAYER_LOGIN" then
+    ns.UI.Create()
+    ns.Options.Register()
+    hookCharacterFrame()
+    for _, e in ipairs(REFRESH_EVENTS) do
+      pcall(self.RegisterEvent, self, e)
+    end
+    for _, e in ipairs(UNIT_EVENTS) do
+      pcall(self.RegisterUnitEvent, self, e, "player")
+    end
+    if db.shown and not db.dock then
+      ns.Show()
+    end
+  else
+    ns.RequestRefresh()
+  end
+end)
+
+-- ---------------------------------------------------------------- slash
+
+SLASH_ISISTATS1 = "/isistats"
+SLASH_ISISTATS2 = "/istats"
+SlashCmdList.ISISTATS = function(msg)
+  local cmd, arg = strtrim(msg or ""):lower():match("^(%S*)%s*(.-)$")
+  if cmd == "" then
+    ns.Toggle()
+  elseif cmd == "show" then
+    ns.Show()
+  elseif cmd == "hide" then
+    ns.Hide()
+  elseif cmd == "config" or cmd == "options" or cmd == "settings" then
+    ns.Options.Open()
+  elseif cmd == "dock" then
+    if not db.dock then
+      ns.ToggleDock()
+    end
+  elseif cmd == "free" or cmd == "undock" then
+    if db.dock then
+      ns.ToggleDock()
+    end
+    ns.Show()
+  elseif cmd == "alpha" then
+    local v = tonumber(arg)
+    if v and v >= 0 and v <= 100 then
+      ns.SetAlpha(v)
+    end
+    out(string.format(L.CMD_ALPHA, db.alpha))
+  elseif cmd == "scale" then
+    local v = tonumber(arg)
+    if v and v >= 0.5 and v <= 2 then
+      db.scale = v
+      ns.ApplyPosition()
+    end
+    out(string.format(L.CMD_SCALE, db.scale))
+  elseif cmd == "reset" then
+    IsiStatsDB = {}
+    db = IsiStatsDB
+    for k, v in pairs(DEFAULTS) do
+      db[k] = type(v) == "table" and {} or v
+    end
+    ns.ApplyPosition()
+    ns.ResetRows()
+    ns.Options.Sync()
+    out(L.CMD_RESET)
+  elseif cmd == "debug" then
+    ns.Data.DebugDump(function(...)
+      print("|cff1e90ffisiStats|r", ...)
+    end)
+  else
+    out(L.CMD_HELP)
+  end
+end

@@ -1,0 +1,22 @@
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor / agents
+.vscode/
+.claude/
+.idea/
+*.code-workspace
+.luarc.json
+
+# Temp / backups
+*.bak
+*.tmp
+*.orig
+*.rej
+
+# Build artifacts
+*.zip
+dist/
+.release/

@@ -1,0 +1,63 @@
+-- .luacheckrc - every WoW API the addon touches is listed, so a global used
+-- before it exists (or a typo) is an error instead of passing silently.
+std = "lua51"
+max_line_length = 120
+exclude_files = { "tools/" }
+files["Locale.lua"] = { ignore = { "631" } } -- translation strings may be long
+
+globals = {
+  "IsiStatsDB",
+  "IsiStatsCharDB",
+  "IsiStats_OnAddonCompartmentClick",
+  "SLASH_ISISTATS1",
+  "SLASH_ISISTATS2",
+  SlashCmdList = { other_fields = true },
+}
+
+read_globals = {
+  "C_Item",
+  "C_SkillInfo",
+  "C_Timer",
+  "CreateFrame",
+  "DEFENSE",
+  "GameTooltip",
+  "GetBlockChance",
+  "GetCritChance",
+  "GetCursorPosition",
+  "GetDodgeChance",
+  "GetHitModifier",
+  "GetInventoryItemID",
+  "GetItemInfoInstant",
+  "GetLocale",
+  "GetManaRegen",
+  "GetNumSkillLines",
+  "GetParryChance",
+  "GetRangedCritChance",
+  "GetShieldBlock",
+  "GetSkillLineInfo",
+  "GetSpellBonusDamage",
+  "GetSpellBonusHealing",
+  "GetSpellCritChance",
+  "GetSpellHitModifier",
+  "InterfaceOptionsFrame_OpenToCategory",
+  "InterfaceOptions_AddCategory",
+  "Settings",
+  "UIParent",
+  "UnitArmor",
+  "UnitAttackBothHands",
+  "UnitAttackPower",
+  "UnitAttackSpeed",
+  "UnitClass",
+  "UnitDamage",
+  "UnitDefense",
+  "UnitHealthMax",
+  "UnitLevel",
+  "UnitPowerMax",
+  "UnitRangedAttack",
+  "UnitRangedAttackPower",
+  "UnitRangedDamage",
+  "UnitResistance",
+  "UnitStat",
+  "issecretvalue",
+  "strtrim",
+}
