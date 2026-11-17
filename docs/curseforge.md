@@ -21,7 +21,7 @@
 
 ### Your stats, your choice
 
-Options → AddOns → isiStats: switch every single value on or off, saved per character. Out of the box each class sees its main stat, its attack value (melee AP, ranged AP or spell damage), defense and the skills of the equipped weapons with their value against your target.
+Options → AddOns → isiStats: switch every single value on or off, saved per character. Out of the box each class sees its main stat, its attack value and damage (melee AP + weapon damage, ranged AP + ranged damage, or spell damage), defense and the skills of the equipped weapons with their value against your target.
 
 ### Window
 

@@ -11,7 +11,7 @@ Character stats for **WoW Forever** (client 1.60.x, interface 16001): attributes
 - **Defense** with miss chance and crit reduction vs. an attacker of your level, armor reduction vs. your level and level +3.
 - **Melee**: attack power, damage, speed, DPS, crit, hit and the miss chance vs. a boss (level +3).
 - **Ranged** (only with a ranged weapon; wands show damage only) and **spell** values (only for mana users).
-- **Settings page** (Options -> AddOns -> isiStats): every value on/off, saved per character. Class defaults: main stat, the class's attack value (melee AP, ranged AP or spell damage), defense, the equipped weapon skills and their value vs. your target.
+- **Settings page** (Options -> AddOns -> isiStats): every value on/off, saved per character. Class defaults: main stat, the class's attack value and damage (melee AP + weapon damage, ranged AP + ranged damage, or spell damage), defense, the equipped weapon skills and their value vs. your target.
 - English and German, following the client language.
 - Rounded window with a soft shadow (isiLive look), docks to the character frame or floats freely, resize grip in the bottom-right corner, adjustable background opacity, optional section headers.
 - Values that change (buff, proc, new gear) briefly fade in; switchable.

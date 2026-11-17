@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Weapon damage is on by default: melee damage for warrior, paladin and rogue, ranged damage for hunter (casters already had spell damage). Characters keep values they switched themselves.
+
 ## 0.4.1 - 2026-11-17
 
 - No change in the addon itself; isiStats needs no other addon (all values come straight from the game).

@@ -30,7 +30,7 @@ local function check(cond, msg)
 end
 
 -- Warrior class defaults: strength, melee AP, defense, equipped skills + vs. target.
-for _, id in ipairs({ "stat1", "m_ap", "d_def", "w_equipped", "w_vs" }) do
+for _, id in ipairs({ "stat1", "m_ap", "m_dmg", "d_def", "w_equipped", "w_vs" }) do
   check(ns.IsRowEnabled(id), "default on: " .. id)
 end
 for _, id in ipairs({ "stat4", "s_dmg", "r_ap", "w_other", "m_dps" }) do

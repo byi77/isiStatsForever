@@ -411,13 +411,13 @@ function Data.GetCatalog()
   }
 end
 
--- Class defaults: main stat, the class's attack value, defense and the
--- skills of the equipped weapons. Everything else starts off.
+-- Class defaults: main stat, the class's attack value and weapon damage
+-- (spell damage for casters), defense and the skills of the equipped weapons. Everything else starts off.
 local CLASS_DEFAULTS = {
-  WARRIOR = { "stat1", "m_ap" },
-  PALADIN = { "stat1", "m_ap" },
-  ROGUE = { "stat2", "m_ap" },
-  HUNTER = { "stat2", "r_ap" },
+  WARRIOR = { "stat1", "m_ap", "m_dmg" },
+  PALADIN = { "stat1", "m_ap", "m_dmg" },
+  ROGUE = { "stat2", "m_ap", "m_dmg" },
+  HUNTER = { "stat2", "r_ap", "r_dmg" },
   SHAMAN = { "stat4", "s_dmg" },
   DRUID = { "stat4", "s_dmg" },
   PRIEST = { "stat4", "s_dmg" },

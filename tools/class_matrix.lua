@@ -255,9 +255,11 @@ for _, token in ipairs(ORDER) do
   end
   if spec.attack == "melee" then
     check(by.melee and by.melee[L.ATTACK_POWER], token .. ": melee attack power")
+    check(by.melee and by.melee[L.DAMAGE], token .. ": melee weapon damage")
     check(not by.ranged, token .. ": no ranged rows by default")
   elseif spec.attack == "ranged" then
     check(by.ranged and by.ranged[L.ATTACK_POWER], token .. ": ranged attack power")
+    check(by.ranged and by.ranged[L.DAMAGE], token .. ": ranged weapon damage")
     check(not by.melee, token .. ": no melee rows by default")
   else
     check(by.spell and by.spell[L.SPELL_DAMAGE], token .. ": spell damage")
