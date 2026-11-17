@@ -46,6 +46,24 @@ local function isSecret(v)
   return type(issecretvalue) == "function" and issecretvalue(v) or false
 end
 
+-- Display text for a single API value. A secret value (in combat) cannot be
+-- compared or used in arithmetic, but string.format turns it into a secret
+-- string that a FontString can still show - the same way isiLive's stats box
+-- shows stats in restricted content. Returns nil for anything else.
+local function show(raw, fmt)
+  if raw == nil then
+    return nil
+  end
+  if isSecret(raw) then
+    local ok, text = pcall(string.format, fmt, raw)
+    return ok and text or nil
+  end
+  if type(raw) ~= "number" then
+    return nil
+  end
+  return string.format(fmt, raw)
+end
+
 local function num(v)
   if v == nil then
     return nil
@@ -57,6 +75,20 @@ local function num(v)
     return nil
   end
   return v
+end
+
+-- "Is there any?" for values whose row only shows when > 0 (mana, parry,
+-- block value). A hidden value cannot be compared, so the last plain answer
+-- from outside combat decides.
+local known = {}
+
+local function positive(key, raw)
+  local v = num(raw)
+  if v then
+    known[key] = v > 0
+    return known[key]
+  end
+  return isSecret(raw) and known[key] == true
 end
 
 local function str(v)
@@ -444,19 +476,21 @@ end
 local function baseSection()
   local rows = {}
   for i = 1, 5 do
-    local base, stat, pos, neg = call(UnitStat, "player", i)
-    stat, base, pos, neg = num(stat), num(base), num(pos) or 0, num(neg) or 0
+    local base, rawStat, pos, neg = call(UnitStat, "player", i)
+    local stat
+    stat, base, pos, neg = num(rawStat), num(base), num(pos) or 0, num(neg) or 0
+    local name = str(_G["SPELL_STAT" .. i .. "_NAME"]) or ("Stat " .. i)
     if stat then
-      local name = str(_G["SPELL_STAT" .. i .. "_NAME"]) or ("Stat " .. i)
       local tip = base and string.format(L.STAT_TIP, base, pos + neg) or nil
       addRow(rows, "stat" .. i, name, tostring(stat), buffColor(pos, neg), tip)
+    elseif isSecret(rawStat) then
+      addRow(rows, "stat" .. i, name, show(rawStat, "%d"))
     end
   end
-  local hp = num(call(UnitHealthMax, "player"))
-  addRow(rows, "health", L.HEALTH, hp and tostring(hp))
-  local mana = num(call(UnitPowerMax, "player", 0))
-  if mana and mana > 0 then
-    addRow(rows, "mana", L.MANA, tostring(mana))
+  addRow(rows, "health", L.HEALTH, show(call(UnitHealthMax, "player"), "%d"))
+  local rawMana = call(UnitPowerMax, "player", 0)
+  if positive("mana", rawMana) then
+    addRow(rows, "mana", L.MANA, show(rawMana, "%d"))
   end
   return { key = "base", title = L.BASE, rows = rows }
 end
@@ -497,9 +531,8 @@ local function meleeSection(level, skills, hit)
     end
   end
 
-  local crit = num(call(GetCritChance))
-  addRow(rows, "m_crit", L.CRIT, crit and pct(crit))
-  addRow(rows, "m_hit", L.HIT, hit and pct(hit))
+  addRow(rows, "m_crit", L.CRIT, show(call(GetCritChance), "%.2f%%"))
+  addRow(rows, "m_hit", L.HIT, hit and pct(hit) or show(call(GetHitModifier), "%.2f%%"))
 
   -- Weapon skill of the equipped weapons.
   local mainSkillID = skillForSlot(SLOT_MAIN) or (not itemTypeInSlot(SLOT_MAIN) and SKILL.UNARMED) or nil
@@ -570,9 +603,8 @@ local function rangedSection(skills, hit)
   end
 
   if not isWand then
-    local crit = num(call(GetRangedCritChance))
-    addRow(rows, "r_crit", L.CRIT, crit and pct(crit))
-    addRow(rows, "r_hit", L.HIT, hit and pct(hit))
+    addRow(rows, "r_crit", L.CRIT, show(call(GetRangedCritChance), "%.2f%%"))
+    addRow(rows, "r_hit", L.HIT, hit and pct(hit) or show(call(GetHitModifier), "%.2f%%"))
   end
 
   local s = skillID and skills[skillID]
@@ -593,8 +625,7 @@ end
 local SCHOOLS = { 2, 3, 4, 5, 6, 7 } -- holy, fire, nature, frost, shadow, arcane
 
 local function spellSection()
-  local mana = num(call(UnitPowerMax, "player", 0))
-  if not mana or mana <= 0 then
+  if not positive("mana", call(UnitPowerMax, "player", 0)) then
     return nil
   end
   local rows = {}
@@ -611,20 +642,22 @@ local function spellSection()
   local schoolTip = #tipLines > 0 and table.concat(tipLines, "\n") or nil
   addRow(rows, "s_dmg", L.SPELL_DAMAGE, best and tostring(best), nil, schoolTip)
 
-  local heal = num(call(GetSpellBonusHealing))
-  addRow(rows, "s_heal", L.HEALING, heal and tostring(heal))
+  addRow(rows, "s_heal", L.HEALING, show(call(GetSpellBonusHealing), "%d"))
 
-  local crit
+  -- Highest school crit; while hidden (no comparing) the first school's value.
+  local crit, secretCrit
   for _, school in ipairs(SCHOOLS) do
-    local v = num(call(GetSpellCritChance, school))
+    local raw = call(GetSpellCritChance, school)
+    local v = num(raw)
     if v then
       crit = math.max(crit or 0, v)
+    elseif secretCrit == nil and isSecret(raw) then
+      secretCrit = raw
     end
   end
-  addRow(rows, "s_crit", L.SPELL_CRIT, crit and pct(crit))
+  addRow(rows, "s_crit", L.SPELL_CRIT, crit and pct(crit) or show(secretCrit, "%.2f%%"))
 
-  local spellHit = num(call(GetSpellHitModifier))
-  addRow(rows, "s_hit", L.SPELL_HIT, spellHit and pct(spellHit))
+  addRow(rows, "s_hit", L.SPELL_HIT, show(call(GetSpellHitModifier), "%.2f%%"))
 
   local regenBase, regenCasting = call(GetManaRegen)
   regenBase, regenCasting = num(regenBase), num(regenCasting)
@@ -660,8 +693,11 @@ local function defenseSection(level, skills)
     end
   end
 
-  local _, armor = call(UnitArmor, "player")
-  armor = num(armor)
+  local _, rawArmor = call(UnitArmor, "player")
+  local armor = num(rawArmor)
+  if not armor and isSecret(rawArmor) then
+    addRow(rows, "d_armor", L.ARMOR, show(rawArmor, "%d"))
+  end
   if armor then
     addRow(rows, "d_armor", L.ARMOR, tostring(armor))
     if level then
@@ -672,18 +708,16 @@ local function defenseSection(level, skills)
     end
   end
 
-  local dodge = num(call(GetDodgeChance))
-  addRow(rows, "d_dodge", L.DODGE, dodge and pct(dodge))
-  local parry = num(call(GetParryChance))
-  if parry and parry > 0 then
-    addRow(rows, "d_parry", L.PARRY, pct(parry))
+  addRow(rows, "d_dodge", L.DODGE, show(call(GetDodgeChance), "%.2f%%"))
+  local rawParry = call(GetParryChance)
+  if positive("parry", rawParry) then
+    addRow(rows, "d_parry", L.PARRY, show(rawParry, "%.2f%%"))
   end
   if hasShield() then
-    local block = num(call(GetBlockChance))
-    addRow(rows, "d_block", L.BLOCK, block and pct(block))
-    local blockValue = num(call(GetShieldBlock))
-    if blockValue and blockValue > 0 then
-      addRow(rows, "d_blockval", L.BLOCK_VALUE, tostring(blockValue))
+    addRow(rows, "d_block", L.BLOCK, show(call(GetBlockChance), "%.2f%%"))
+    local rawBlockValue = call(GetShieldBlock)
+    if positive("blockValue", rawBlockValue) then
+      addRow(rows, "d_blockval", L.BLOCK_VALUE, show(rawBlockValue, "%d"))
     end
   end
 
@@ -912,11 +946,13 @@ end
 local function resistanceSection()
   local rows = {}
   for i = 2, 6 do
-    local _, total = call(UnitResistance, "player", i)
-    total = num(total)
+    local _, rawTotal = call(UnitResistance, "player", i)
+    local total = num(rawTotal)
+    local name = str(_G["RESISTANCE" .. i .. "_NAME"]) or ("Resist " .. i)
     if total then
-      local name = str(_G["RESISTANCE" .. i .. "_NAME"]) or ("Resist " .. i)
       addRow(rows, "res" .. i, name, tostring(total), total == 0 and "dim" or nil)
+    elseif isSecret(rawTotal) then
+      addRow(rows, "res" .. i, name, show(rawTotal, "%d"))
     end
   end
   return { key = "resist", title = L.RESISTANCES, rows = rows }
