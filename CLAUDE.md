@@ -1,7 +1,7 @@
 # Project Instructions
 
-isiStats is a character stats addon for **WoW Forever** only. The repo lives directly in the
-addon folder `C:\World of Warcraft\_forever_\Interface\AddOns\isiStats` (public: `byi77/isiStats`,
+isiStatsForever is a character stats addon for **WoW Forever** only. The repo lives directly in the
+addon folder `C:\World of Warcraft\_forever_\Interface\AddOns\isiStatsForever` (public: `byi77/isiStatsForever`,
 CurseForge project `1812815`). Rules adapted from isiLive; see also `AGENTS.md` and `docs/RULES.md`.
 
 ## Language
@@ -55,7 +55,7 @@ Forever has the Midnight-style addon restrictions: in combat some API returns ar
 ## Error log
 
 `ErrorLog.lua` joins WoW's error handler chain (the previous handler is always called), keeps
-isiStats' own errors (message or stack contains `isiStats`) de-duplicated in `IsiStatsDB.errors`
+isiStatsForever's own errors (message or stack contains `isiStatsForever`) de-duplicated in `IsiStatsDB.errors`
 (max 30) and survives `/isistats reset`. First stop for any "geht nicht" report: `/isistats errors`.
 
 ## Numbers: source of truth
@@ -94,6 +94,9 @@ event handler); new tests build on it instead of their own stubs.
   Do not re-implement addon logic in the test.
 
 ## Settings pattern
+
+The saved variables keep their names from before the rename (`IsiStatsDB`, `IsiStatsCharDB`), and so
+do the slash commands `/isistats` and `/istats` - do not rename them.
 
 - `IsiStatsDB` (account-wide): window settings, defaults in `DEFAULTS` in `Core.lua`
   (missing keys are filled on load; a new key needs a default there).

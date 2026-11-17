@@ -1,5 +1,5 @@
 -- Shared WoW stub environment for the tools: defines the WoW globals the
--- addon reads, loads every file listed in isiStats.toc and fires
+-- addon reads, loads every file listed in isiStatsForever.toc and fires
 -- ADDON_LOADED + PLAYER_LOGIN through the real event handler.
 -- Usage: local ns = assert(loadfile("tools/wow_stub.lua"))(dir, clientLocale, setup)
 -- `setup` (optional) runs after the default globals and before the addon
@@ -114,7 +114,7 @@ seterrorhandler = function(fn)
   errorHandler = fn
 end
 debugstack = function()
-  return "Interface/AddOns/isiStats/Data.lua:1: in function"
+  return "Interface/AddOns/isiStatsForever/Data.lua:1: in function"
 end
 time = os.time
 date = os.date
@@ -194,18 +194,18 @@ if setup then
 end
 local ns = {}
 local tocFiles = {}
-for line in io.lines(dir .. "/isiStats.toc") do
+for line in io.lines(dir .. "/isiStatsForever.toc") do
   line = line:gsub("\r", "")
   if line:match("%.lua$") then
     tocFiles[#tocFiles + 1] = line
   end
 end
-assert(#tocFiles > 0, "no files in isiStats.toc")
+assert(#tocFiles > 0, "no files in isiStatsForever.toc")
 for _, f in ipairs(tocFiles) do
-  assert(loadfile(dir .. "/" .. f))("isiStats", ns)
+  assert(loadfile(dir .. "/" .. f))("isiStatsForever", ns)
 end
 local ev = frames[1]
-ev.scripts.OnEvent(ev, "ADDON_LOADED", "isiStats")
+ev.scripts.OnEvent(ev, "ADDON_LOADED", "isiStatsForever")
 ev.scripts.OnEvent(ev, "PLAYER_LOGIN")
 ev.scripts.OnEvent(ev, "UNIT_STATS", "player")
 return ns

@@ -1,7 +1,7 @@
 local _, ns = ...
 local L = ns.L
 
--- Always-on capture of isiStats' own Lua errors (from isiLive's error log).
+-- Always-on capture of isiStatsForever's own Lua errors (from isiLive's error log).
 -- Joins WoW's error handler chain - the previous handler (Blizzard's script
 -- errors, BugSack, ...) is always called too - and keeps a bounded,
 -- de-duplicated list in IsiStatsDB.errors. Captured even when the player has
@@ -12,7 +12,7 @@ ns.ErrorLog = ErrorLog
 
 local MAX_ENTRIES = 30
 local MAX_STACK = 1500
-local FILTER_TOKEN = "isiStats"
+local FILTER_TOKEN = "isiStatsForever"
 
 local db
 local installed = false
@@ -27,7 +27,7 @@ local function addonVersion()
   if type(getMeta) ~= "function" then
     return "?"
   end
-  local ok, version = pcall(getMeta, "isiStats", "Version")
+  local ok, version = pcall(getMeta, "isiStatsForever", "Version")
   return ok and type(version) == "string" and version or "?"
 end
 
@@ -64,7 +64,7 @@ local function record(message)
   end
   if not notified then
     notified = true
-    print("|cff1e90ffisiStats|r: " .. L.ERR_NOTICE)
+    print("|cff1e90ffisiStatsForever|r: " .. L.ERR_NOTICE)
   end
 end
 

@@ -1,15 +1,15 @@
 # CurseForge project page
 
-**Name:** isiStats
+**Name:** isiStatsForever
 **Summary (max 250 chars):** Compact character stats for WoW Forever: weapon skills, defense, melee, ranged and spell values. Every value can be switched on or off; class defaults show what matters.
 **Category:** Character Advancement (or: Combat)
 **License:** All Rights Reserved
-**Source:** https://github.com/byi77/isiStats
+**Source:** https://github.com/byi77/isiStatsForever
 **Logo / avatar:** docs/logo.png (400x400)
 
 ## Description
 
-**isiStats** shows the numbers the character sheet hides, in one compact window next to your character frame.
+**isiStatsForever** shows the numbers the character sheet hides, in one compact window next to your character frame.
 
 - **Weapon skills** of every learned weapon type as *current / max*. Skills below the cap are yellow, equipped weapons are highlighted.
 - **Vs. your target**: behind every weapon skill its hit and crit modifier against the target you have selected - the same numbers as the game's skill panel. Hover a skill for glancing blows.
@@ -21,7 +21,7 @@
 
 ### Your stats, your choice
 
-Options → AddOns → isiStats: switch every single value on or off, saved per character. Out of the box each class sees its main stat, its attack value and damage (melee AP + weapon damage, ranged AP + ranged damage, or spell damage), defense and the skills of the equipped weapons with their value against your target.
+Options → AddOns → isiStatsForever: switch every single value on or off, saved per character. Out of the box each class sees its main stat, its attack value and damage (melee AP + weapon damage, ranged AP + ranged damage, or spell damage), defense and the skills of the equipped weapons with their value against your target.
 
 ### Window
 
@@ -35,4 +35,4 @@ Rounded, compact window that docks to the character frame or floats freely. Resi
 - `/isistats dock` / `free` / `reset`
 - `/isistats errors` - error log for bug reports
 
-Bug reports and ideas: https://github.com/byi77/isiStats/issues
+Bug reports and ideas: https://github.com/byi77/isiStatsForever/issues

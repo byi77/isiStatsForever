@@ -89,15 +89,15 @@ local target = findRow(ns.Data.Collect(), "Elite")
 check(target and target.value == ns.L.T_LEVEL_UNKNOWN, "level ?? target shows unknown defense")
 
 -- Error log: own errors are captured and de-duplicated, others are not
--- (debugstack is stubbed to point into isiStats, so the filter is the message
+-- (debugstack is stubbed to point into isiStatsForever, so the filter is the message
 -- for the foreign case).
 debugstack = function()
   return "Interface/AddOns/OtherAddon/x.lua:1"
 end
 geterrorhandler()("Interface/AddOns/OtherAddon/x.lua:1: boom")
 check(#IsiStatsDB.errors == 0, "foreign error not logged")
-geterrorhandler()("Interface/AddOns/isiStats/Data.lua:42: attempt to index nil")
-geterrorhandler()("Interface/AddOns/isiStats/Data.lua:42: attempt to index nil")
+geterrorhandler()("Interface/AddOns/isiStatsForever/Data.lua:42: attempt to index nil")
+geterrorhandler()("Interface/AddOns/isiStatsForever/Data.lua:42: attempt to index nil")
 check(#IsiStatsDB.errors == 1 and IsiStatsDB.errors[1].count == 2, "own error logged once, counted twice")
 SlashCmdList.ISISTATS("errors")
 SlashCmdList.ISISTATS("reset")

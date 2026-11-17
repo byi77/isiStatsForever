@@ -1,6 +1,6 @@
 # AGENTS
 
-Regeln fuer Agenten in isiStats (angepasst aus isiLive). Technische Details stehen in `CLAUDE.md`,
+Regeln fuer Agenten in isiStatsForever (angepasst aus isiLive). Technische Details stehen in `CLAUDE.md`,
 allgemeine Coding-Regeln in `docs/RULES.md`.
 
 ## No-Guess-Vertrag

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Renamed to **isiStatsForever** (addon folder, title, settings page, release zip, GitHub repo). The slash commands `/isistats` and `/istats` and the saved settings stay the same.
 - Skill rows in fixed columns (+/- vs. target, bonus, current / max), so the numbers line up exactly; a thin progress bar under each skill shows current / max like the game's skill panel.
 - Skill tooltips show the distance to the maximum ("20 to the maximum (300)") and, for equipped weapons below the cap, that the skill rises by fighting with them.
 - New setting "Show the target row without a target" (on by default).

@@ -515,7 +515,7 @@ function Data.Collect()
 
   if #sections == 0 then
     sections[1] =
-      { key = "empty", title = "isiStats", rows = { { label = L.ALL_HIDDEN, value = "", labelColor = "dim" } } }
+      { key = "empty", title = "isiStatsForever", rows = { { label = L.ALL_HIDDEN, value = "", labelColor = "dim" } } }
   end
   return Data.ApplyCombatCache(sections)
 end

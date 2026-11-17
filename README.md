@@ -1,6 +1,6 @@
-<p align="center"><img src="docs/logo.png" width="160" alt="isiStats logo"></p>
+<p align="center"><img src="docs/logo.png" width="160" alt="isiStatsForever logo"></p>
 
-# isiStats
+# isiStatsForever
 
 Character stats for **WoW Forever** (client 1.60.x, interface 16001): attributes, melee, ranged and spell values, defense, weapon skills and resistances in one compact window.
 
@@ -11,7 +11,7 @@ Character stats for **WoW Forever** (client 1.60.x, interface 16001): attributes
 - **Defense** with miss chance and crit reduction vs. an attacker of your level, armor reduction vs. your level and level +3.
 - **Melee**: attack power, damage, speed, DPS, crit, hit and the miss chance vs. a boss (level +3).
 - **Ranged** (only with a ranged weapon; wands show damage only) and **spell** values (only for mana users).
-- **Settings page** (Options -> AddOns -> isiStats): every value on/off, saved per character. Class defaults: main stat, the class's attack value and damage (melee AP + weapon damage, ranged AP + ranged damage, or spell damage), defense, the equipped weapon skills and their value vs. your target.
+- **Settings page** (Options -> AddOns -> isiStatsForever): every value on/off, saved per character. Class defaults: main stat, the class's attack value and damage (melee AP + weapon damage, ranged AP + ranged damage, or spell damage), defense, the equipped weapon skills and their value vs. your target.
 - English and German, following the client language.
 - Rounded window with a soft shadow (isiLive look), docks to the character frame or floats freely, resize grip in the bottom-right corner, adjustable background opacity, optional section headers.
 - Values that change (buff, proc, new gear) briefly fade in; switchable.
@@ -45,7 +45,7 @@ lua tools/class_matrix.lua . deDE     # every class: defaults, typical gear and 
 
 Project rules for contributors and agents: `CLAUDE.md`, `AGENTS.md`, `docs/RULES.md`.
 
-Releases: bump `## Version` in the TOC, add a `CHANGELOG.md` entry, tag `vX.Y.Z` and push the tag. The release workflow checks that the tag matches the TOC version, builds `isiStats-vX.Y.Z.zip` and publishes a GitHub release with the changelog entry as notes.
+Releases: bump `## Version` in the TOC, add a `CHANGELOG.md` entry, tag `vX.Y.Z` and push the tag. The release workflow checks that the tag matches the TOC version, builds `isiStatsForever-vX.Y.Z.zip` and publishes a GitHub release with the changelog entry as notes.
 
 ## License
 

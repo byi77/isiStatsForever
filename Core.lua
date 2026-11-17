@@ -99,7 +99,7 @@ function ns.IsDocked()
 end
 
 local function out(msg)
-  print("|cff1e90ffisiStats|r: " .. tostring(msg))
+  print("|cff1e90ffisiStatsForever|r: " .. tostring(msg))
 end
 
 local function characterFrame()
@@ -237,10 +237,10 @@ end
 
 local function hookCharacterFrame()
   local cf = characterFrame()
-  if not cf or cf.isiStatsHooked then
+  if not cf or cf.isiStatsForeverHooked then
     return
   end
-  cf.isiStatsHooked = true
+  cf.isiStatsForeverHooked = true
   cf:HookScript("OnShow", function()
     if db.dock then
       ns.ApplyPosition()
@@ -379,7 +379,7 @@ SlashCmdList.ISISTATS = function(msg)
     end
   elseif cmd == "debug" then
     ns.Data.DebugDump(function(...)
-      print("|cff1e90ffisiStats|r", ...)
+      print("|cff1e90ffisiStatsForever|r", ...)
     end)
   else
     out(L.CMD_HELP)

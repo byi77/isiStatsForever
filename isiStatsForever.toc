@@ -1,5 +1,5 @@
 ## Interface: 16001
-## Title: isi|cff1e90ffStats|r
+## Title: isi|cff1e90ffStats|r|cff8a96a8Forever|r
 ## Notes: Character stats, weapon skills and defense for WoW Forever
 ## Notes-deDE: Charakterwerte, Waffenfertigkeiten und Verteidigung für WoW Forever
 ## Author: mematiWoW
@@ -7,7 +7,7 @@
 ## Category: Character
 ## X-Curse-Project-ID: 1812815
 ## Category-deDE: Charakter
-## IconTexture: Interface\AddOns\isiStats\media\icon
+## IconTexture: Interface\AddOns\isiStatsForever\media\icon
 ## SavedVariables: IsiStatsDB
 ## SavedVariablesPerCharacter: IsiStatsCharDB
 ## AddonCompartmentFunc: IsiStats_OnAddonCompartmentClick

@@ -1,7 +1,7 @@
 local _, ns = ...
 local L = ns.L
 
--- Settings page (Game Menu -> Options -> AddOns -> isiStats): one checkbox
+-- Settings page (Game Menu -> Options -> AddOns -> isiStatsForever): one checkbox
 -- per value, grouped like the window. Canvas layout so it works without the
 -- typed RegisterAddOnSetting API, whose signature differs between clients.
 
@@ -144,12 +144,12 @@ end
 
 local function build()
   panel = CreateFrame("Frame")
-  panel.name = "isiStats"
+  panel.name = "isiStatsForever"
   panel:Hide()
 
   local title = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
   title:SetPoint("TOPLEFT", 16, -16)
-  title:SetText("isi|cff1e90ffStats|r")
+  title:SetText("isi|cff1e90ffStats|r|cff8a96a8Forever|r")
 
   local intro = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
   intro:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -6)
@@ -247,7 +247,7 @@ function Options.Register()
   end
   build()
   if type(Settings) == "table" and Settings.RegisterCanvasLayoutCategory then
-    category = Settings.RegisterCanvasLayoutCategory(panel, "isiStats")
+    category = Settings.RegisterCanvasLayoutCategory(panel, "isiStatsForever")
     Settings.RegisterAddOnCategory(category)
   elseif type(InterfaceOptions_AddCategory) == "function" then
     InterfaceOptions_AddCategory(panel)

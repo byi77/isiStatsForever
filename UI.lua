@@ -47,7 +47,7 @@ local MIN_SCALE, MAX_SCALE = 0.5, 2
 -- Rounded window (from isiLive's modern design): quarter-circle corner
 -- textures mirrored with SetTexCoord, plain rectangles in between, a hairline
 -- ring and a soft drop shadow that follows the rounding.
-local MEDIA = "Interface\\AddOns\\isiStats\\media\\"
+local MEDIA = "Interface\\AddOns\\isiStatsForever\\media\\"
 local CORNER_DISC = MEDIA .. "corner_disc"
 local CORNER_RING = MEDIA .. "corner_ring6"
 local CORNER_SHADOW = MEDIA .. "corner_shadow"
@@ -526,7 +526,7 @@ function UI.Create()
 
   local title = bar:CreateFontString(nil, "OVERLAY", "GameFontNormal")
   title:SetPoint("LEFT", 9, 0)
-  title:SetText("isi|cff1e90ffStats|r")
+  title:SetText("isi|cff1e90ffStats|r|cff8a96a8Forever|r")
   setColor(title, "heading")
 
   local level = bar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
@@ -549,7 +549,7 @@ function UI.Create()
   end)
   bar:SetScript("OnEnter", function(self)
     GameTooltip:SetOwner(self, "ANCHOR_TOP")
-    GameTooltip:AddLine("isiStats", 1, 1, 1)
+    GameTooltip:AddLine("isiStatsForever", 1, 1, 1)
     GameTooltip:AddLine(L.DRAG_HINT, C.label[1], C.label[2], C.label[3], true)
     GameTooltip:Show()
   end)
