@@ -102,6 +102,43 @@ local SUBCLASS_SKILL = {
   [THROWN] = 176,
   [WAND] = 228,
 }
+-- Every weapon type (item subclass) and its skill line.
+local ALL_SUBCLASS_SKILL = {
+  [0] = 44,
+  [1] = 172,
+  [2] = 45,
+  [3] = 46,
+  [4] = 54,
+  [5] = 160,
+  [6] = 229,
+  [7] = 43,
+  [8] = 55,
+  [10] = 136,
+  [13] = 473,
+  [15] = 173,
+  [16] = 176,
+  [18] = 226,
+  [19] = 228,
+}
+local RANGED_SUBCLASS = { [2] = true, [3] = true, [16] = true, [18] = true, [19] = true }
+
+-- Weapon types each class can use in WoW Forever. Source: the WhatsTraining
+-- addon's weapon skill table, which treats Forever as Classic Era
+-- ("Forever shares Era's weapon masters"). Wands are not trained at a weapon
+-- master and so are not in that table; they are the priest, mage and warlock
+-- ranged weapon.
+local USABLE = {
+  WARRIOR = { 0, 1, 4, 5, 6, 7, 8, 10, 2, 3, 15, 16, 18, 13 },
+  PALADIN = { 0, 1, 4, 5, 6, 7, 8 },
+  HUNTER = { 0, 1, 6, 7, 8, 10, 2, 3, 15, 16, 18, 13 },
+  ROGUE = { 4, 7, 2, 3, 15, 16, 18, 13 },
+  PRIEST = { 4, 10, 15, 19 },
+  SHAMAN = { 0, 4, 10, 15, 13 },
+  DRUID = { 4, 5, 6, 10, 15, 13 },
+  MAGE = { 7, 10, 15, 19 },
+  WARLOCK = { 7, 10, 15, 19 },
+}
+
 local RANGED_SKILL = { [45] = true, [46] = true, [176] = true, [226] = true, [228] = true }
 
 local failures = 0
@@ -112,7 +149,9 @@ local function check(cond, msg)
   end
 end
 
-local function setupFor(token, spec)
+local function setupFor(token, spec, gearOverride, skillsOverride)
+  local gear = gearOverride or spec.gear
+  local skillList = skillsOverride or spec.skills
   return function()
     UnitClass = function()
       return token, token
@@ -123,7 +162,7 @@ local function setupFor(token, spec)
       return spec.mana and 2500 or 0
     end
     local known = {}
-    for _, id in ipairs(spec.skills) do
+    for _, id in ipairs(skillList) do
       known[id] = true
     end
     C_SkillInfo = {
@@ -134,12 +173,12 @@ local function setupFor(token, spec)
       end,
     }
     GetInventoryItemID = function(_, slot)
-      local item = spec.gear[slot - 15] -- 16 main, 17 off, 18 ranged
+      local item = gear[slot - 15] -- 16 main, 17 off, 18 ranged
       return item and (slot * 100) or nil
     end
     C_Item = {
       GetItemInfoInstant = function(itemID)
-        local item = spec.gear[itemID / 100 - 15]
+        local item = gear[itemID / 100 - 15]
         if item == SHIELD then
           return itemID, nil, nil, nil, nil, 4, 6
         end
@@ -273,8 +312,44 @@ for _, token in ipairs(ORDER) do
   end
 end
 
+-- Every usable weapon type, one at a time: the slot content decides the
+-- shown skill (marked as equipped, with its vs.-target value; glancing in
+-- the tooltip only for melee weapons).
+for _, token in ipairs(ORDER) do
+  local spec = CLASSES[token]
+  local skills = { 95, 162 }
+  for _, sub in ipairs(USABLE[token]) do
+    skills[#skills + 1] = ALL_SUBCLASS_SKILL[sub]
+  end
+  local names = {}
+  for _, sub in ipairs(USABLE[token]) do
+    local skillID = ALL_SUBCLASS_SKILL[sub]
+    local ranged = RANGED_SUBCLASS[sub] == true
+    local gear = ranged and { nil, nil, sub } or { sub }
+    local ns = assert(loadfile(dir .. "/tools/wow_stub.lua"))(dir, clientLocale, setupFor(token, spec, gear, skills))
+    local L = ns.L
+    local by = index(ns.Data.Collect())
+    local name = SKILL_NAMES[skillID]
+    local row = by.skills and by.skills[name]
+    check(row ~= nil, ("%s with %s: skill row shown"):format(token, name))
+    if row then
+      check(row.tip and row.tip:find(L.EQUIPPED, 1, true), ("%s with %s: marked equipped"):format(token, name))
+      check(row.value:find("%%"), ("%s with %s: vs.-target value"):format(token, name))
+      local glance = row.tip and row.tip:find(L.T_GLANCE, 1, true) ~= nil
+      check(glance == not ranged, ("%s with %s: glancing only for melee"):format(token, name))
+    end
+    -- only equipped skills: this weapon, plus unarmed when the main hand is empty
+    for label in pairs(by.skills or {}) do
+      local expected = label == name or label == "Testgegner" or (ranged and label == "Unbewaffnet")
+      check(expected, ("%s with %s: unexpected skill row %s"):format(token, name, label))
+    end
+    names[#names + 1] = name
+  end
+  print(("%s weapons (%d): %s"):format(token, #names, table.concat(names, ", ")))
+end
+
 if failures > 0 then
   print(("class matrix: %d failure(s)"):format(failures))
   os.exit(1)
 end
-print("class matrix (" .. clientLocale .. "): all 9 classes passed")
+print("class matrix (" .. clientLocale .. "): all 9 classes and all usable weapon types passed")

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Development: the class matrix now equips every weapon type each class can use in WoW Forever (Classic Era weapon rules; 64 combinations) and checks the shown skill, its vs.-target value and glancing only for melee.
+
 ## 0.4.0 - 2026-11-17
 
 ### Weapon skills vs. your target
