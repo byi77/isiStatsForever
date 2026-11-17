@@ -17,4 +17,8 @@ echo "==> load test"
 lua tools/load_test.lua . deDE > /dev/null
 lua tools/load_test.lua . enUS > /dev/null
 
+echo "==> class matrix"
+lua tools/class_matrix.lua . deDE > /dev/null
+lua tools/class_matrix.lua . enUS > /dev/null
+
 echo "pre-commit: passed."

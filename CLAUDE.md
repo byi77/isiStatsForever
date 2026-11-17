@@ -74,7 +74,11 @@ luacheck *.lua
 lua tools/check_locale.lua
 lua tools/load_test.lua . deDE
 lua tools/load_test.lua . enUS
+lua tools/class_matrix.lua . deDE   # all 9 classes: defaults, gear, wand/thrown/bow
 ```
+
+`tools/wow_stub.lua` is the shared stub environment (loads the TOC files through the real
+event handler); new tests build on it instead of their own stubs.
 
 - `.luacheckrc` lists every WoW global the addon reads (strict). A new API must be added there;
   a use-before-define or a typo is then an error (this caught a real in-game breakage).
