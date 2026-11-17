@@ -2,7 +2,12 @@ local dir = arg[1]
 local function stub(name)
   local o = { __name = name, scripts = {}, shown = false, scale = 1 }
   return setmetatable(o, {
+    -- WoW widget methods are CamelCase; plain lowercase fields stay nil, as
+    -- on a real frame table.
     __index = function(t, k)
+      if type(k) == "string" and k:match("^%l") then
+        return nil
+      end
       return function(self, ...)
         return nil
       end
@@ -10,6 +15,7 @@ local function stub(name)
   })
 end
 local frames = {}
+flashPlays = 0
 function CreateFrame(kind, name, parent, template)
   local f = stub(kind)
   f.SetScript = function(self, k, fn)
@@ -43,7 +49,18 @@ function CreateFrame(kind, name, parent, template)
     return self.shown
   end
   f.CreateFontString = function()
-    return stub("fs")
+    local fs = stub("fs")
+    fs.CreateAnimationGroup = function()
+      local group = stub("anim")
+      group.CreateAnimation = function()
+        return stub("alpha")
+      end
+      group.Play = function()
+        flashPlays = flashPlays + 1
+      end
+      return group
+    end
+    return fs
   end
   f.CreateTexture = function()
     return stub("tex")
@@ -80,6 +97,21 @@ function CreateFrame(kind, name, parent, template)
     _G[name] = f
   end
   return f
+end
+local errorHandler = function() end
+geterrorhandler = function()
+  return errorHandler
+end
+seterrorhandler = function(fn)
+  errorHandler = fn
+end
+debugstack = function()
+  return "Interface/AddOns/isiStats/Data.lua:1: in function"
+end
+time = os.time
+date = os.date
+CreateColor = function(r, g, b, a)
+  return { r, g, b, a }
 end
 UIParent = CreateFrame("Frame")
 CharacterFrame = CreateFrame("Frame")
@@ -150,7 +182,15 @@ C_SkillInfo = {
   end,
 }
 local ns = {}
-for _, f in ipairs({ "Locale.lua", "Data.lua", "UI.lua", "Options.lua", "Core.lua" }) do
+local tocFiles = {}
+for line in io.lines(dir .. "/isiStats.toc") do
+  line = line:gsub("\r", "")
+  if line:match("%.lua$") then
+    tocFiles[#tocFiles + 1] = line
+  end
+end
+assert(#tocFiles > 0, "no files in isiStats.toc")
+for _, f in ipairs(tocFiles) do
   assert(loadfile(dir .. "/" .. f))("isiStats", ns)
 end
 local ev = frames[1]
@@ -236,6 +276,49 @@ UnitLevel = function(unit)
 end
 local target = findRow(ns.Data.Collect(), "Elite")
 check(target and target.value == ns.L.T_LEVEL_UNKNOWN, "level ?? target shows unknown defense")
+
+-- Error log: own errors are captured and de-duplicated, others are not
+-- (debugstack is stubbed to point into isiStats, so the filter is the message
+-- for the foreign case).
+debugstack = function()
+  return "Interface/AddOns/OtherAddon/x.lua:1"
+end
+errorHandler("Interface/AddOns/OtherAddon/x.lua:1: boom")
+check(#IsiStatsDB.errors == 0, "foreign error not logged")
+errorHandler("Interface/AddOns/isiStats/Data.lua:42: attempt to index nil")
+errorHandler("Interface/AddOns/isiStats/Data.lua:42: attempt to index nil")
+check(#IsiStatsDB.errors == 1 and IsiStatsDB.errors[1].count == 2, "own error logged once, counted twice")
+SlashCmdList.ISISTATS("errors")
+SlashCmdList.ISISTATS("reset")
+check(#IsiStatsDB.errors == 1, "error log survives reset")
+SlashCmdList.ISISTATS("errors clear")
+check(#IsiStatsDB.errors == 0, "error log cleared")
+
+-- Fade-in: a changed value plays the animation, an unchanged one does not.
+UnitLevel = function()
+  return 60
+end
+UnitExists = function()
+  return false
+end
+ns.Show()
+check(ns.UI.GetFrame():IsShown(), "window shown for the fade-in test")
+ns.Refresh()
+local before = flashPlays
+ns.Refresh()
+check(flashPlays == before, "no fade-in without a change")
+UnitAttackPower = function()
+  return 900, 250, 0
+end
+ns.Refresh()
+check(flashPlays > before, "fade-in when attack power changes")
+ns.SetFlashChanges(false)
+before = flashPlays
+UnitAttackPower = function()
+  return 900, 300, 0
+end
+ns.Refresh()
+check(flashPlays == before, "no fade-in when switched off")
 
 if failures > 0 then
   print(("load test: %d failure(s)"):format(failures))

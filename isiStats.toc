@@ -13,6 +13,7 @@
 ## AddonCompartmentFunc: IsiStats_OnAddonCompartmentClick
 
 Locale.lua
+ErrorLog.lua
 Data.lua
 UI.lua
 Options.lua

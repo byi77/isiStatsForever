@@ -21,7 +21,8 @@ CurseForge project `1812815`). Rules adapted from isiLive; see also `AGENTS.md` 
     see `SKILL` in `Data.lua`). The classic skill list stays only as a guarded fallback.
   - Settings page: `Settings.RegisterCanvasLayoutCategory` + `Settings.RegisterAddOnCategory`;
     `InterfaceOptions_AddCategory` only as fallback.
-  - Textures for the client (icons) must be `.tga` (or `.blp`), never `.png`.
+  - Textures for the client (icons) must be `.tga` (or `.blp`), never `.png`. `media/corner_*.tga`
+  are isiLive's own generated corner textures (rounded window, ring, shadow).
 - Every WoW API call goes through `call()` in `Data.lua` (type check + `pcall`). Never call a
   `C_*` member bare; a removed member reads as `nil` and must fail closed.
 - When a feature stops producing data without an error, check the API member first
@@ -43,6 +44,12 @@ Forever has the Midnight-style addon restrictions: in combat some API returns ar
 - Rows that only show when a value is > 0 (mana, parry, block value) decide in combat from the last
   plain value (`positive()`), never by comparing a secret.
 - `/isistats debug` lists the API functions that returned secrets.
+
+## Error log
+
+`ErrorLog.lua` joins WoW's error handler chain (the previous handler is always called), keeps
+isiStats' own errors (message or stack contains `isiStats`) de-duplicated in `IsiStatsDB.errors`
+(max 30) and survives `/isistats reset`. First stop for any "geht nicht" report: `/isistats errors`.
 
 ## Numbers: source of truth
 

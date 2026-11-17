@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Rounded window with a soft drop shadow and hairline ring (from isiLive's modern design); the opacity slider also fades shadow and ring.
+- Values fade in briefly when they change (buff, proc, gear); setting "Fade in values when they change", on by default.
+- Error log: isiStats' own Lua errors are kept (also with script errors off), `/isistats errors` shows them, `/isistats errors clear` empties the log.
 - A target of level ?? (not a world boss) shows "defense unknown" instead of a guessed level +10.
 - Fix: without any known weapon skill the target row was overwritten.
 - Development: project rules (CLAUDE.md, AGENTS.md, docs/RULES.md), pre-commit hook, locale check, load test with asserts.

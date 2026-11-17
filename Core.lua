@@ -7,6 +7,8 @@ local DEFAULTS = {
   scale = 1,
   alpha = 100, -- background opacity in percent
   showHeaders = false, -- section headers (hidden by default)
+  flashChanges = true, -- fade a value in when it changes
+  errors = {}, -- own Lua errors (ErrorLog.lua)
   pos = nil, -- { point, relativePoint, x, y }
   collapsed = {},
 }
@@ -56,6 +58,15 @@ function ns.SetAlpha(percent)
   if ns.Options then
     ns.Options.Sync()
   end
+end
+
+function ns.GetFlashChanges()
+  return db and db.flashChanges and true or false
+end
+
+function ns.SetFlashChanges(value)
+  db.flashChanges = value and true or false
+  ns.UI.SetFlashEnabled(db.flashChanges)
 end
 
 function ns.GetShowHeaders()
@@ -163,6 +174,7 @@ function ns.Refresh()
   if frame.subtitle then
     frame.subtitle:SetText((class or "") .. (level and (" " .. level) or ""))
   end
+  ns.UI.SetFlashEnabled(db.flashChanges)
   ns.UI.Render(ns.Data.Collect(), db.collapsed, db.showHeaders)
 end
 
@@ -269,6 +281,7 @@ events:SetScript("OnEvent", function(self, event, arg1)
         db[k] = type(v) == "table" and {} or v
       end
     end
+    ns.ErrorLog.Install(db)
     IsiStatsCharDB = IsiStatsCharDB or {}
     charDB = IsiStatsCharDB
     charDB.rows = charDB.rows or {}
@@ -328,15 +341,25 @@ SlashCmdList.ISISTATS = function(msg)
     end
     out(string.format(L.CMD_SCALE, db.scale))
   elseif cmd == "reset" then
+    local errors = db.errors -- the error log survives a settings reset
     IsiStatsDB = {}
     db = IsiStatsDB
     for k, v in pairs(DEFAULTS) do
       db[k] = type(v) == "table" and {} or v
     end
+    db.errors = errors
+    ns.ErrorLog.Install(db)
     ns.ApplyPosition()
     ns.ResetRows()
     ns.Options.Sync()
     out(L.CMD_RESET)
+  elseif cmd == "errors" then
+    if arg == "clear" then
+      ns.ErrorLog.Clear()
+      out(L.ERR_CLEARED)
+    else
+      ns.ErrorLog.Print(out)
+    end
   elseif cmd == "debug" then
     ns.Data.DebugDump(function(...)
       print("|cff1e90ffisiStats|r", ...)

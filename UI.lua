@@ -20,6 +20,7 @@ local C = {
   bad = { 1, 0.42, 0.38 },
   dim = { 0.44, 0.51, 0.62 },
   close = { 1, 0.35, 0.35 },
+  shadow = { 0, 0, 0 },
 }
 ns.Colors = C
 
@@ -34,20 +35,178 @@ local WHITE = "Interface\\Buttons\\WHITE8X8"
 local GRIP_SIZE = 14
 local MIN_SCALE, MAX_SCALE = 0.5, 2
 
+-- Rounded window (from isiLive's modern design): quarter-circle corner
+-- textures mirrored with SetTexCoord, plain rectangles in between, a hairline
+-- ring and a soft drop shadow that follows the rounding.
+local MEDIA = "Interface\\AddOns\\isiStats\\media\\"
+local CORNER_DISC = MEDIA .. "corner_disc"
+local CORNER_RING = MEDIA .. "corner_ring6"
+local CORNER_SHADOW = MEDIA .. "corner_shadow"
+local RADIUS = 6 -- corner_ring6 is drawn for this radius
+local SHADOW_SIZE = 7
+local SHADOW_ALPHA = 0.2
+local CORNER_COORDS = {
+  TOPLEFT = { 0, 1, 0, 1 },
+  TOPRIGHT = { 1, 0, 0, 1 },
+  BOTTOMLEFT = { 0, 1, 1, 0 },
+  BOTTOMRIGHT = { 1, 0, 1, 0 },
+}
+
+-- Value fade-in when a shown value changes (from isiLive's stats box).
+local FLASH_FROM_ALPHA = 0.15
+local FLASH_DURATION = 0.5
+
 local UI = {}
 ns.UI = UI
 
 local frame, rows, rowCount = nil, {}, 0
 local bgAlpha = 1 -- background opacity factor (0..1); text is never faded
+local surfaces = {} -- painted background pieces, repainted on opacity changes
+local flashEnabled = true
+local lastValues = {} -- last plain value text per row key
 
 local function rgba(c, a)
   return c[1], c[2], c[3], (c[4] or 1) * a
+end
+
+local function isSecret(v)
+  return type(issecretvalue) == "function" and issecretvalue(v) or false
 end
 
 local function setColor(fs, key, fallback)
   local c = C[key or fallback] or C[fallback]
   fs:SetTextColor(c[1], c[2], c[3])
 end
+
+-- ---------------------------------------------------------------- surfaces
+
+local function paint(surface)
+  local tex, kind = surface.texture, surface.kind
+  if kind == "corner" then
+    tex:SetVertexColor(rgba(surface.color, bgAlpha))
+  elseif kind == "rect" then
+    tex:SetColorTexture(rgba(surface.color, bgAlpha))
+  elseif kind == "gradient" then
+    local from, to = surface.from * bgAlpha, surface.to * bgAlpha
+    local c = surface.color
+    if type(CreateColor) == "function" and tex.SetGradient then
+      tex:SetTexture(WHITE)
+      tex:SetGradient(surface.orientation, CreateColor(c[1], c[2], c[3], from), CreateColor(c[1], c[2], c[3], to))
+    else
+      tex:SetColorTexture(c[1], c[2], c[3], math.max(from, to))
+    end
+  end
+end
+
+local function addSurface(texture, kind, color, extra)
+  local surface = extra or {}
+  surface.texture, surface.kind, surface.color = texture, kind, color
+  surfaces[#surfaces + 1] = surface
+  paint(surface)
+end
+
+local function newCorner(layer, sublevel, path, corner, size)
+  local texture = frame:CreateTexture(nil, layer, nil, sublevel)
+  texture:SetTexture(path)
+  local coords = CORNER_COORDS[corner]
+  texture:SetTexCoord(coords[1], coords[2], coords[3], coords[4])
+  texture:SetSize(size, size)
+  texture:SetPoint(corner, frame, corner, 0, 0)
+  return texture
+end
+
+local function newRect(layer, sublevel, point1, x1, y1, point2, x2, y2)
+  local texture = frame:CreateTexture(nil, layer, nil, sublevel)
+  texture:SetPoint(point1, frame, point1, x1, y1)
+  texture:SetPoint(point2, frame, point2, x2, y2)
+  return texture
+end
+
+-- Rounded fill; with `topHeight` only the top corners are rounded and the
+-- fill stops at that height (title band).
+local function roundedFill(layer, sublevel, color, topHeight)
+  local r = RADIUS
+  addSurface(newCorner(layer, sublevel, CORNER_DISC, "TOPLEFT", r), "corner", color)
+  addSurface(newCorner(layer, sublevel, CORNER_DISC, "TOPRIGHT", r), "corner", color)
+  local top = newRect(layer, sublevel, "TOPLEFT", r, 0, "TOPRIGHT", -r, 0)
+  top:SetHeight(r)
+  addSurface(top, "rect", color)
+  if topHeight then
+    local body = newRect(layer, sublevel, "TOPLEFT", 0, -r, "TOPRIGHT", 0, -r)
+    body:SetHeight(math.max(1, topHeight - r))
+    addSurface(body, "rect", color)
+    return
+  end
+  addSurface(newCorner(layer, sublevel, CORNER_DISC, "BOTTOMLEFT", r), "corner", color)
+  addSurface(newCorner(layer, sublevel, CORNER_DISC, "BOTTOMRIGHT", r), "corner", color)
+  local bottom = newRect(layer, sublevel, "BOTTOMLEFT", r, 0, "BOTTOMRIGHT", -r, 0)
+  bottom:SetHeight(r)
+  addSurface(bottom, "rect", color)
+  addSurface(newRect(layer, sublevel, "TOPLEFT", 0, -r, "BOTTOMRIGHT", 0, r), "rect", color)
+end
+
+-- One-unit rounded outline along the frame edge.
+local function roundedRing(layer, sublevel, color)
+  local r = RADIUS
+  for corner in pairs(CORNER_COORDS) do
+    addSurface(newCorner(layer, sublevel, CORNER_RING, corner, r), "corner", color)
+  end
+  local edges = {
+    { "TOPLEFT", r, 0, "TOPRIGHT", -r, 0, nil, 1 },
+    { "BOTTOMLEFT", r, 0, "BOTTOMRIGHT", -r, 0, nil, 1 },
+    { "TOPLEFT", 0, -r, "BOTTOMLEFT", 0, r, 1, nil },
+    { "TOPRIGHT", 0, -r, "BOTTOMRIGHT", 0, r, 1, nil },
+  }
+  for _, e in ipairs(edges) do
+    local line = newRect(layer, sublevel, e[1], e[2], e[3], e[4], e[5], e[6])
+    if e[7] then
+      line:SetWidth(e[7])
+    else
+      line:SetHeight(e[8])
+    end
+    addSurface(line, "rect", color)
+  end
+end
+
+-- Soft drop shadow: straight edges stop where the corner arcs begin; each
+-- corner gets a quarter shadow ring so the shadow follows the rounding.
+local function dropShadow()
+  local r, s = RADIUS, SHADOW_SIZE
+  local function edge(p1, rel1, x1, y1, p2, rel2, x2, y2, orientation, from, to, width, height)
+    local tex = frame:CreateTexture(nil, "BACKGROUND", nil, -8)
+    tex:SetPoint(p1, frame, rel1, x1, y1)
+    tex:SetPoint(p2, frame, rel2, x2, y2)
+    if width then
+      tex:SetWidth(width)
+    end
+    if height then
+      tex:SetHeight(height)
+    end
+    addSurface(tex, "gradient", C.shadow, { orientation = orientation, from = from, to = to })
+  end
+  edge("BOTTOMLEFT", "TOPLEFT", r, 0, "BOTTOMRIGHT", "TOPRIGHT", -r, 0, "VERTICAL", SHADOW_ALPHA, 0, nil, s)
+  edge("TOPLEFT", "BOTTOMLEFT", r, 0, "TOPRIGHT", "BOTTOMRIGHT", -r, 0, "VERTICAL", 0, SHADOW_ALPHA, nil, s)
+  edge("TOPRIGHT", "TOPLEFT", 0, -r, "BOTTOMRIGHT", "BOTTOMLEFT", 0, r, "HORIZONTAL", 0, SHADOW_ALPHA, s, nil)
+  edge("TOPLEFT", "TOPRIGHT", 0, -r, "BOTTOMLEFT", "BOTTOMRIGHT", 0, r, "HORIZONTAL", SHADOW_ALPHA, 0, s, nil)
+  local corners = {
+    { "TOPLEFT", "BOTTOMRIGHT", r, -r },
+    { "TOPRIGHT", "BOTTOMLEFT", -r, -r },
+    { "BOTTOMLEFT", "TOPRIGHT", r, r },
+    { "BOTTOMRIGHT", "TOPLEFT", -r, r },
+  }
+  local shadowColor = { 0, 0, 0, SHADOW_ALPHA }
+  for _, spec in ipairs(corners) do
+    local tex = frame:CreateTexture(nil, "BACKGROUND", nil, -8)
+    tex:SetTexture(CORNER_SHADOW)
+    local coords = CORNER_COORDS[spec[1]]
+    tex:SetTexCoord(coords[1], coords[2], coords[3], coords[4])
+    tex:SetSize(r + s, r + s)
+    tex:SetPoint(spec[2], frame, spec[1], spec[3], spec[4])
+    addSurface(tex, "corner", shadowColor)
+  end
+end
+
+-- ---------------------------------------------------------------- rows
 
 local function showTip(owner)
   local data = owner.data
@@ -58,6 +217,42 @@ local function showTip(owner)
   GameTooltip:AddLine(data.label or "", 1, 1, 1)
   GameTooltip:AddLine(data.tip, C.label[1], C.label[2], C.label[3], true)
   GameTooltip:Show()
+end
+
+local function flash(row)
+  if not row.fade then
+    local group = row.value.CreateAnimationGroup and row.value:CreateAnimationGroup()
+    if not group then
+      return
+    end
+    local alpha = group:CreateAnimation("Alpha")
+    alpha:SetFromAlpha(FLASH_FROM_ALPHA)
+    alpha:SetToAlpha(1)
+    alpha:SetDuration(FLASH_DURATION)
+    alpha:SetSmoothing("OUT")
+    row.fade = group
+  end
+  row.fade:Stop()
+  row.fade:Play()
+end
+
+-- Fades a value in when it differs from the last value shown under the same
+-- key. Secret values are never compared (that would raise and taint) and
+-- reset the memory; greyed-out stale values are not remembered.
+local function maybeFlash(row, data)
+  local key = data.key
+  if not key or data.stale then
+    return
+  end
+  if isSecret(data.value) then
+    lastValues[key] = nil
+    return
+  end
+  local previous = lastValues[key]
+  lastValues[key] = data.value
+  if flashEnabled and previous ~= nil and previous ~= data.value then
+    flash(row)
+  end
 end
 
 local function acquireRow(index)
@@ -133,6 +328,7 @@ local function layoutRow(row, data, alt, y)
   row.sectionKey = nil
   row.data = data
   row:Show()
+  maybeFlash(row, data)
 end
 
 -- showHeaders false: no section headers; then nothing can be collapsed, so
@@ -168,12 +364,18 @@ function UI.Render(sections, collapsedMap, showHeaders)
   frame:SetHeight(-y + GRIP_SIZE + 2)
 end
 
+function UI.SetFlashEnabled(enabled)
+  flashEnabled = enabled and true or false
+end
+
+-- ---------------------------------------------------------------- frame
+
 -- Bottom-right grip: dragging it scales the whole window (its height
 -- follows the content, so size means scale). The top-left corner stays put.
 local function createResizeGrip()
   local grip = CreateFrame("Button", nil, frame)
   grip:SetSize(GRIP_SIZE, GRIP_SIZE)
-  grip:SetPoint("BOTTOMRIGHT", -1, 1)
+  grip:SetPoint("BOTTOMRIGHT", -2, 2)
   grip:SetFrameLevel(frame:GetFrameLevel() + 10)
   grip:SetNormalTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Up")
   grip:SetPushedTexture("Interface\\ChatFrame\\UI-ChatIM-SizeGrabber-Down")
@@ -223,35 +425,33 @@ function UI.Create()
   if frame then
     return frame
   end
-  frame = CreateFrame("Frame", "IsiStatsFrame", UIParent, "BackdropTemplate")
+  frame = CreateFrame("Frame", "IsiStatsFrame", UIParent)
   frame:SetSize(WIDTH, 120)
   frame:SetFrameStrata("MEDIUM")
   frame:SetClampedToScreen(true)
   frame:SetMovable(true)
   frame:EnableMouse(true)
   frame:Hide()
-  if frame.SetBackdrop then
-    frame:SetBackdrop({ bgFile = WHITE, edgeFile = WHITE, edgeSize = 1 })
-  end
+
+  -- Background: shadow, rounded fill, rounded title band, hairline ring.
+  dropShadow()
+  roundedFill("BACKGROUND", -7, C.bg)
+  roundedFill("BACKGROUND", -6, C.title, TITLE_H)
+  roundedRing("BORDER", 0, C.border)
 
   -- Title bar: drag handle, right click docks/undocks.
   local bar = CreateFrame("Button", nil, frame)
-  bar:SetPoint("TOPLEFT", 1, -1)
-  bar:SetPoint("TOPRIGHT", -1, -1)
+  bar:SetPoint("TOPLEFT", 0, 0)
+  bar:SetPoint("TOPRIGHT", 0, 0)
   bar:SetHeight(TITLE_H)
-  local barBg = bar:CreateTexture(nil, "BACKGROUND")
-  barBg:SetAllPoints()
-  barBg:SetTexture(WHITE)
-  frame.barBg = barBg
   local line = bar:CreateTexture(nil, "BORDER")
-  line:SetPoint("BOTTOMLEFT")
-  line:SetPoint("BOTTOMRIGHT")
+  line:SetPoint("BOTTOMLEFT", 1, 0)
+  line:SetPoint("BOTTOMRIGHT", -1, 0)
   line:SetHeight(1)
-  line:SetTexture(WHITE)
-  frame.barLine = line
+  addSurface(line, "rect", C.border)
 
   local title = bar:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-  title:SetPoint("LEFT", 8, 0)
+  title:SetPoint("LEFT", 9, 0)
   title:SetText("isi|cff1e90ffStats|r")
   setColor(title, "heading")
 
@@ -285,7 +485,7 @@ function UI.Create()
 
   local close = CreateFrame("Button", nil, bar)
   close:SetSize(TITLE_H, TITLE_H)
-  close:SetPoint("RIGHT", 0, 0)
+  close:SetPoint("RIGHT", -2, 0)
   local x = close:CreateFontString(nil, "OVERLAY", "GameFontNormal")
   x:SetPoint("CENTER", 0, 1)
   x:SetText("x")
@@ -309,18 +509,15 @@ function UI.Create()
   return frame
 end
 
--- Background opacity 0..1: window, border, title bar and row tints.
+-- Background opacity 0..1: window, shadow, border, title bar and row tints.
 function UI.SetBackgroundAlpha(a)
   bgAlpha = math.max(0, math.min(1, a or 1))
   if not frame then
     return
   end
-  if frame.SetBackdropColor then
-    frame:SetBackdropColor(rgba(C.bg, bgAlpha))
-    frame:SetBackdropBorderColor(rgba(C.border, bgAlpha))
+  for _, surface in ipairs(surfaces) do
+    paint(surface)
   end
-  frame.barBg:SetVertexColor(rgba(C.title, bgAlpha))
-  frame.barLine:SetVertexColor(rgba(C.border, bgAlpha))
   for _, row in ipairs(rows) do
     if row:IsShown() then
       if row.sectionKey then

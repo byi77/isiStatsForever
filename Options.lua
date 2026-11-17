@@ -134,6 +134,9 @@ function Options.Sync()
   if panel.headers then
     panel.headers:SetChecked(ns.GetShowHeaders())
   end
+  if panel.flash then
+    panel.flash:SetChecked(ns.GetFlashChanges())
+  end
   if panel.alpha then
     panel.alpha:SetSliderValue(ns.GetAlpha())
   end
@@ -180,6 +183,9 @@ local function build()
 
   panel.headers = checkbox(content, 16, y, L.OPT_HEADERS, function(checked)
     ns.SetShowHeaders(checked)
+  end)
+  panel.flash = checkbox(content, 16 + COL_W, y, L.OPT_FLASH, function(checked)
+    ns.SetFlashChanges(checked)
   end)
   y = y - ROW_H - 4
 

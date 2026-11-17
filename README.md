@@ -11,7 +11,10 @@ Character stats for **WoW Forever** (client 1.60.x, interface 16001): attributes
 - **Melee**: attack power, damage, speed, DPS, crit, hit, main/off-hand skill and the miss chance vs. a boss (level +3, classic formula).
 - **Ranged** (only with a ranged weapon) and **spell** values (only for mana users).
 - **Settings page** (Options -> AddOns -> isiStats): every value on/off, saved per character. Class defaults show the main stat, the class's attack value, defense and the equipped weapon skills.
-- Window docks to the character frame or floats freely, resize grip in the bottom-right corner, adjustable background opacity.
+- Rounded window with a soft shadow (isiLive look), docks to the character frame or floats freely, resize grip in the bottom-right corner, adjustable background opacity, optional section headers.
+- Values that change (buff, proc, new gear) briefly fade in; switchable.
+- In combat, values the game hides from addons stay visible: live where possible, otherwise the last value greyed out.
+- Built-in error log: own Lua errors are kept even with script errors switched off (`/isistats errors`).
 
 ## Commands
 
@@ -23,6 +26,7 @@ Character stats for **WoW Forever** (client 1.60.x, interface 16001): attributes
 | `/isistats scale <0.5-2>` | Window size |
 | `/isistats alpha <0-100>` | Background opacity in percent |
 | `/isistats reset` | Reset position and settings |
+| `/isistats errors` / `errors clear` | Show / clear the error log |
 | `/isistats debug` | Print raw API info (for bug reports) |
 
 ## Development

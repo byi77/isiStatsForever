@@ -31,5 +31,6 @@ Docks to the character frame or floats freely. Resize grip in the bottom-right c
 - `/isistats config` - settings
 - `/isistats scale 0.5-2`, `/isistats alpha 0-100`
 - `/isistats dock` / `free` / `reset`
+- `/isistats errors` - error log for bug reports
 
 Bug reports and ideas: https://github.com/byi77/isiStats/issues

@@ -15,12 +15,17 @@ globals = {
 }
 
 read_globals = {
+  "C_AddOns",
   "C_Item",
   "C_SkillInfo",
   "C_Timer",
+  "CreateColor",
   "CreateFrame",
   "DEFENSE",
+  "date",
+  "debugstack",
   "GameTooltip",
+  "GetAddOnMetadata",
   "GetBlockChance",
   "GetCritChance",
   "GetCursorPosition",
@@ -62,6 +67,9 @@ read_globals = {
   "UnitRangedDamage",
   "UnitResistance",
   "UnitStat",
+  "geterrorhandler",
   "issecretvalue",
+  "seterrorhandler",
+  "time",
   "strtrim",
 }
