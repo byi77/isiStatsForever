@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Skill rows: current / max now sits at the right edge, the +/- values (vs.-target modifier, bonus) in front of it.
 - Defense moved below the weapon skills and is shown like them as current / max (yellow below the cap, bonus in green); the defense section keeps the values derived from it (missed by, crit reduction, armor, ...).
 - Without section headers there are no empty gaps between the sections any more; the rows form one continuous list.
 - Weapon damage is on by default: melee damage for warrior, paladin and rogue, ranged damage for hunter (casters already had spell damage). Characters keep values they switched themselves.

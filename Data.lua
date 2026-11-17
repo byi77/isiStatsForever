@@ -772,14 +772,15 @@ local function weaponSkillSection(skills, classicList, level)
     end
     local total = s.rank + s.mod
     local max = s.max and s.max > 0 and s.max or nil
+    -- current / max stays at the right edge; the +/- values go in front.
     local value = max and string.format("%d / %d", s.rank, max) or tostring(s.rank)
     if s.mod ~= 0 then
-      value = value .. " " .. signed(s.mod)
+      value = signed(s.mod) .. " " .. value
     end
     local color = (max and s.rank < max) and "warn" or nil
     local tip = isEquipped and L.EQUIPPED or nil
     if foe and not foe.unknownDefense then
-      value = value .. "  " .. signedPct((total - foe.defense) * SKILL_STEP)
+      value = signedPct((total - foe.defense) * SKILL_STEP) .. "  " .. value
       local vs = versusTip(foe, total, not RANGED_SKILLS[id], level)
       tip = tip and (tip .. "\n\n" .. vs) or vs
     end
@@ -822,7 +823,7 @@ local function weaponSkillSection(skills, classicList, level)
     local max = def.max and def.max > 0 and def.max or nil
     local value = max and string.format("%d / %d", def.rank, max) or tostring(def.rank)
     if def.mod ~= 0 then
-      value = value .. " " .. signed(def.mod)
+      value = signed(def.mod) .. " " .. value
     end
     rows[#rows + 1] = {
       key = "d_def",
