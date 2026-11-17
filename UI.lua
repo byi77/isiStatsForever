@@ -30,7 +30,6 @@ local TITLE_H = 22
 local HEADER_H = 18
 local ROW_H = 15
 local SECTION_GAP = 4
-local HEADERLESS_GAP = 8
 local WHITE = "Interface\\Buttons\\WHITE8X8"
 local GRIP_SIZE = 14
 local MIN_SCALE, MAX_SCALE = 0.5, 2
@@ -331,17 +330,19 @@ local function layoutRow(row, data, alt, y)
   maybeFlash(row, data)
 end
 
--- showHeaders false: no section headers; then nothing can be collapsed, so
--- every section shows its rows, separated by a small gap.
+-- showHeaders false: no section headers and no gaps; nothing can be
+-- collapsed, every section shows its rows and the row striping runs on
+-- across sections as one continuous list.
 function UI.Render(sections, collapsedMap, showHeaders)
   if not frame then
     return
   end
   rowCount = 0
   local y = -TITLE_H - 6
+  local stripe = 0
   for si, section in ipairs(sections) do
-    if si > 1 then
-      y = y - (showHeaders and SECTION_GAP or HEADERLESS_GAP)
+    if si > 1 and showHeaders then
+      y = y - SECTION_GAP
     end
     local collapsed = showHeaders and collapsedMap and collapsedMap[section.key]
     if showHeaders then
@@ -352,7 +353,8 @@ function UI.Render(sections, collapsedMap, showHeaders)
     if not collapsed then
       for ri, data in ipairs(section.rows) do
         rowCount = rowCount + 1
-        layoutRow(acquireRow(rowCount), data, ri % 2 == 0, y)
+        stripe = showHeaders and ri or (stripe + 1)
+        layoutRow(acquireRow(rowCount), data, stripe % 2 == 0, y)
         y = y - ROW_H
       end
     end
