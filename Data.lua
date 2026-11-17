@@ -297,7 +297,49 @@ local function currentTarget(playerLevel)
       return { name = name, levelText = tostring(level), level = level, defense = level * 5 }
     end
   end
-  return { name = L.SAME_LEVEL, levelText = tostring(playerLevel), level = playerLevel, defense = playerLevel * 5 }
+  return {
+    name = L.SAME_LEVEL,
+    levelText = tostring(playerLevel),
+    level = playerLevel,
+    defense = playerLevel * 5,
+    fallback = true,
+  }
+end
+
+-- A skill row in columns: +/- vs. target, bonus, current / max (right edge),
+-- with a progress bar and the distance to the cap in the tooltip.
+local function skillRow(key, label, s, opts)
+  local max = s.max and s.max > 0 and s.max or nil
+  local lines = {}
+  if opts.equipped then
+    lines[#lines + 1] = L.EQUIPPED
+  end
+  if max then
+    if s.rank < max then
+      lines[#lines + 1] = string.format(L.TO_CAP_FMT, max - s.rank, max)
+      if opts.equipped and opts.weapon then
+        lines[#lines + 1] = L.SKILL_RISES
+      end
+    else
+      lines[#lines + 1] = L.AT_CAP
+    end
+  end
+  if opts.extraTip then
+    lines[#lines + 1] = opts.extraTip
+  end
+  return {
+    key = key,
+    partial = opts.partial,
+    label = label,
+    labelColor = opts.equipped and "accent" or nil,
+    value = max and string.format("%d / %d", s.rank, max) or tostring(s.rank),
+    color = (max and s.rank < max) and "warn" or nil,
+    bonus = s.mod ~= 0 and signed(s.mod) or nil,
+    pct = opts.pct,
+    columns = true,
+    progress = max and math.min(1, s.rank / max) or nil,
+    tip = #lines > 0 and table.concat(lines, "\n") or nil,
+  }
 end
 
 local RANGED_SKILLS = {
@@ -335,7 +377,7 @@ local function weaponSkillSection(skills, classicList, level)
   if foeHidden then
     foe = nil
   end
-  if foe then
+  if foe and (not foe.fallback or enabled("w_vs_none")) then
     rows[1] = {
       key = "w_vs_target",
       label = foe.name,
@@ -361,28 +403,18 @@ local function weaponSkillSection(skills, classicList, level)
       return
     end
     local total = s.rank + s.mod
-    local max = s.max and s.max > 0 and s.max or nil
-    -- current / max stays at the right edge; the +/- values go in front.
-    local value = max and string.format("%d / %d", s.rank, max) or tostring(s.rank)
-    if s.mod ~= 0 then
-      value = signed(s.mod) .. " " .. value
-    end
-    local color = (max and s.rank < max) and "warn" or nil
-    local tip = isEquipped and L.EQUIPPED or nil
+    local pctText, vs
     if foe and not foe.unknownDefense then
-      value = signedPct((total - foe.defense) * SKILL_STEP) .. "  " .. value
-      local vs = versusTip(foe, total, not RANGED_SKILLS[id], level)
-      tip = tip and (tip .. "\n\n" .. vs) or vs
+      pctText = signedPct((total - foe.defense) * SKILL_STEP)
+      vs = "\n" .. versusTip(foe, total, not RANGED_SKILLS[id], level)
     end
-    rows[#rows + 1] = {
-      key = "w:" .. s.name,
+    rows[#rows + 1] = skillRow("w:" .. s.name, s.name, s, {
+      equipped = isEquipped,
+      weapon = true,
+      pct = pctText,
       partial = foeHidden or nil,
-      label = s.name,
-      value = value,
-      color = color,
-      tip = tip,
-      labelColor = isEquipped and "accent" or nil,
-    }
+      extraTip = vs,
+    })
   end
 
   local found = false
@@ -409,19 +441,9 @@ local function weaponSkillSection(skills, classicList, level)
 
   -- Defense below the weapons, as current / max like the game's skill panel.
   if showDefense then
-    local def = skills[SKILL.DEFENSE]
-    local max = def.max and def.max > 0 and def.max or nil
-    local value = max and string.format("%d / %d", def.rank, max) or tostring(def.rank)
-    if def.mod ~= 0 then
-      value = signed(def.mod) .. " " .. value
-    end
-    rows[#rows + 1] = {
-      key = "d_def",
-      label = L.DEFENSE,
-      value = value,
-      color = (max and def.rank < max) and "warn" or nil,
-      tip = level and string.format(L.DEFENSE_TIP, level * 5) or nil,
-    }
+    rows[#rows + 1] = skillRow("d_def", L.DEFENSE, skills[SKILL.DEFENSE], {
+      extraTip = level and ("\n" .. string.format(L.DEFENSE_TIP, level * 5)) or nil,
+    })
   end
   return { key = "skills", title = L.WEAPON_SKILLS, rows = rows }
 end

@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Skill rows in fixed columns (+/- vs. target, bonus, current / max), so the numbers line up exactly; a thin progress bar under each skill shows current / max like the game's skill panel.
+- Skill tooltips show the distance to the maximum ("20 to the maximum (300)") and, for equipped weapons below the cap, that the skill rises by fighting with them.
+- New setting "Show the target row without a target" (on by default).
 - Saved settings of removed rows (old "vs. target" section, main-hand/off-hand/ranged skill rows) are cleaned up on login.
 - Development: StyLua check in the GitHub CI.
 - Development: Data.lua split into Util, Skills, Catalog, Data and CombatCache.

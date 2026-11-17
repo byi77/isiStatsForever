@@ -337,7 +337,13 @@ for _, token in ipairs(ORDER) do
     check(row ~= nil, ("%s with %s: skill row shown"):format(token, name))
     if row then
       check(row.tip and row.tip:find(L.EQUIPPED, 1, true), ("%s with %s: marked equipped"):format(token, name))
-      check(row.value:find("%%"), ("%s with %s: vs.-target value"):format(token, name))
+      check(row.pct and row.pct:find("%%"), ("%s with %s: vs.-target value in its column"):format(token, name))
+      check(row.value:match("^%d+ / %d+$"), ("%s with %s: current / max alone in the right column"):format(token, name))
+      check(row.progress and row.progress > 0 and row.progress <= 1, ("%s with %s: progress bar"):format(token, name))
+      check(
+        row.tip and row.tip:find(string.format(L.TO_CAP_FMT, 20, 300), 1, true),
+        ("%s with %s: distance to cap"):format(token, name)
+      )
       local glance = row.tip and row.tip:find(L.T_GLANCE, 1, true) ~= nil
       check(glance == not ranged, ("%s with %s: glancing only for melee"):format(token, name))
     end

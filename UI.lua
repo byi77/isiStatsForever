@@ -20,6 +20,8 @@ local C = {
   bad = { 1, 0.42, 0.38 },
   dim = { 0.44, 0.51, 0.62 },
   close = { 1, 0.35, 0.35 },
+  bar = { 0.30, 0.62, 1.0, 0.65 },
+  barTrack = { 1, 1, 1, 0.05 },
   shadow = { 0, 0, 0 },
 }
 ns.Colors = C
@@ -32,6 +34,14 @@ local ROW_H = 15
 local SECTION_GAP = 4
 local WHITE = "Interface\\Buttons\\WHITE8X8"
 local GRIP_SIZE = 14
+
+-- Skill rows use fixed right-aligned columns so the numbers line up:
+-- [label ........ ] [+/- vs. target] [bonus] [current / max]
+local COL_VALUE = 64
+local COL_BONUS = 26
+local COL_PCT = 52
+local COL_GAP = 4
+local BAR_HEIGHT = 2
 local MIN_SCALE, MAX_SCALE = 0.5, 2
 
 -- Rounded window (from isiLive's modern design): quarter-circle corner
@@ -247,9 +257,10 @@ local function maybeFlash(row, data)
     lastValues[key] = nil
     return
   end
+  local shown = (data.pct or "") .. "|" .. (data.bonus or "") .. "|" .. data.value
   local previous = lastValues[key]
-  lastValues[key] = data.value
-  if flashEnabled and previous ~= nil and previous ~= data.value then
+  lastValues[key] = shown
+  if flashEnabled and previous ~= nil and previous ~= shown then
     flash(row)
   end
 end
@@ -275,7 +286,21 @@ local function acquireRow(index)
   row.value:SetPoint("RIGHT", -6, 0)
   row.value:SetJustifyH("RIGHT")
   row.value:SetWordWrap(false)
-  row.label:SetPoint("RIGHT", row.value, "LEFT", -6, 0)
+  row.bonus = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  row.bonus:SetJustifyH("RIGHT")
+  row.bonus:SetWordWrap(false)
+  row.pct = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  row.pct:SetJustifyH("RIGHT")
+  row.pct:SetWordWrap(false)
+  row.track = row:CreateTexture(nil, "ARTWORK")
+  row.track:SetPoint("BOTTOMLEFT", 6, 0)
+  row.track:SetPoint("BOTTOMRIGHT", -6, 0)
+  row.track:SetHeight(BAR_HEIGHT)
+  row.track:SetColorTexture(C.barTrack[1], C.barTrack[2], C.barTrack[3], C.barTrack[4])
+  row.bar = row:CreateTexture(nil, "ARTWORK", nil, 1)
+  row.bar:SetPoint("BOTTOMLEFT", 6, 0)
+  row.bar:SetHeight(BAR_HEIGHT)
+  row.bar:SetColorTexture(C.bar[1], C.bar[2], C.bar[3], C.bar[4])
   row:RegisterForClicks("LeftButtonUp")
   row:SetScript("OnEnter", showTip)
   row:SetScript("OnLeave", function()
@@ -290,6 +315,43 @@ local function acquireRow(index)
   return row
 end
 
+-- Places value (and for skill rows bonus and +/- columns) and the label.
+local function anchorColumns(row, columns)
+  row.value:ClearAllPoints()
+  row.label:ClearAllPoints()
+  row.label:SetPoint("LEFT", 6, 0)
+  row.value:SetPoint("RIGHT", -6, 0)
+  if columns then
+    row.value:SetWidth(COL_VALUE)
+    row.bonus:ClearAllPoints()
+    row.bonus:SetPoint("RIGHT", row.value, "LEFT", -COL_GAP, 0)
+    row.bonus:SetWidth(COL_BONUS)
+    row.pct:ClearAllPoints()
+    row.pct:SetPoint("RIGHT", row.bonus, "LEFT", -COL_GAP, 0)
+    row.pct:SetWidth(COL_PCT)
+    row.label:SetPoint("RIGHT", row.pct, "LEFT", -COL_GAP, 0)
+    row.bonus:Show()
+    row.pct:Show()
+  else
+    row.value:SetWidth(0)
+    row.label:SetPoint("RIGHT", row.value, "LEFT", -6, 0)
+    row.bonus:Hide()
+    row.pct:Hide()
+  end
+end
+
+local function layoutProgress(row, progress)
+  if not progress then
+    row.track:Hide()
+    row.bar:Hide()
+    return
+  end
+  local width = WIDTH - 2 * PAD - 12
+  row.track:Show()
+  row.bar:SetWidth(math.max(1, width * progress))
+  row.bar:Show()
+end
+
 local function layoutHeader(row, section, collapsed, y)
   row:SetHeight(HEADER_H)
   row:ClearAllPoints()
@@ -302,6 +364,8 @@ local function layoutHeader(row, section, collapsed, y)
   row.value:SetFontObject("GameFontNormalSmall")
   row.value:SetText(collapsed and "+" or "-")
   setColor(row.value, "dim")
+  anchorColumns(row, false)
+  layoutProgress(row, nil)
   row.sectionKey = section.key
   row.data = nil
   row:Show()
@@ -324,6 +388,14 @@ local function layoutRow(row, data, alt, y)
   row.value:SetFontObject("GameFontHighlightSmall")
   row.value:SetText(data.value or "")
   setColor(row.value, data.color, "value")
+  anchorColumns(row, data.columns)
+  if data.columns then
+    row.bonus:SetText(data.bonus or "")
+    setColor(row.bonus, data.stale and "dim" or nil, "value")
+    row.pct:SetText(data.pct or "")
+    setColor(row.pct, data.stale and "dim" or nil, "value")
+  end
+  layoutProgress(row, data.progress)
   row.sectionKey = nil
   row.data = data
   row:Show()

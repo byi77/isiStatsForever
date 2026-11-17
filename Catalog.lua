@@ -87,6 +87,7 @@ function Data.GetCatalog()
         { id = "w_equipped", label = L.SKILLS_EQUIPPED },
         { id = "w_other", label = L.SKILLS_OTHER },
         { id = "w_vs", label = L.OPT_W_VS },
+        { id = "w_vs_none", label = L.OPT_W_VS_NONE },
         { id = "d_def", label = L.DEFENSE },
       },
     },
@@ -117,7 +118,7 @@ local CLASS_DEFAULTS = {
   MAGE = { "stat4", "s_dmg" },
   WARLOCK = { "stat4", "s_dmg" },
 }
-local COMMON_DEFAULTS = { "d_def", "w_equipped", "w_vs" }
+local COMMON_DEFAULTS = { "d_def", "w_equipped", "w_vs", "w_vs_none" }
 
 function Data.GetDefaults()
   local defaults = {}
