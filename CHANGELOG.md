@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.1 - 2026-11-17
+
+- New addon icon in the in-game addon list.
+- First release on CurseForge.
+
 ## 0.3.0 - 2026-11-17
 
 - Background opacity: slider in the settings and `/isistats alpha <0-100>`; text stays fully readable.
