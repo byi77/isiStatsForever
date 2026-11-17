@@ -1,0 +1,19 @@
+#!/usr/bin/env sh
+# Fast gate for every commit (adapted from isiLive): formatting, strict lint,
+# locale parity and the load test. Bypass once with `git commit --no-verify`.
+set -e
+cd "$(git rev-parse --show-toplevel)"
+
+echo "==> stylua --check"
+stylua --check *.lua tools/*.lua || { echo "pre-commit: run 'stylua *.lua tools/*.lua'" >&2; exit 1; }
+
+echo "==> luacheck"
+luacheck -q *.lua
+
+echo "==> locale"
+lua tools/check_locale.lua
+
+echo "==> load test"
+lua tools/load_test.lua . > /dev/null
+
+echo "pre-commit: passed."

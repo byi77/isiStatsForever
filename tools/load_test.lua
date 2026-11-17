@@ -144,6 +144,8 @@ C_SkillInfo = {
   GetSkillLineInfoByID = function(id)
     if id == 95 then
       return { name = "Verteidigung", rank = 300, maxRank = 300, modifier = 5 }
+    elseif id == 162 then
+      return { name = "Unbewaffnet", rank = 290, maxRank = 300, modifier = 0 }
     end
   end,
 }
@@ -172,4 +174,71 @@ ns.ResetRows()
 ns.SetShowHeaders(true)
 ns.SetShowHeaders(false)
 ns.SetAlpha(55)
-print("ALL OK, scale", IsiStatsDB.scale, "alpha", IsiStatsDB.alpha)
+
+-- Asserts (exit 1 on the first failure).
+local failures = 0
+local function check(cond, msg)
+  if not cond then
+    failures = failures + 1
+    print("FAIL " .. msg)
+  end
+end
+
+-- Warrior class defaults: strength, melee AP, defense, equipped skills + vs. target.
+for _, id in ipairs({ "stat1", "m_ap", "d_def", "w_equipped", "w_vs" }) do
+  check(ns.IsRowEnabled(id), "default on: " .. id)
+end
+for _, id in ipairs({ "stat4", "s_dmg", "r_ap", "w_other", "m_dps" }) do
+  check(not ns.IsRowEnabled(id), "default off: " .. id)
+end
+check(IsiStatsDB.showHeaders == false, "headers hidden by default")
+check(IsiStatsDB.alpha == 55, "alpha saved")
+check(IsiStatsDB.scale == 1, "scale reset to 1")
+
+-- A user choice survives and wins over the class default.
+ns.SetRowEnabled("stat1", false)
+check(not ns.IsRowEnabled("stat1"), "user choice wins over default")
+ns.ResetRows()
+check(ns.IsRowEnabled("stat1"), "class default back after reset")
+
+-- Collected sections: values the defaults switch on are there.
+local function findRow(sections, label)
+  for _, s in ipairs(sections) do
+    for _, r in ipairs(s.rows) do
+      if r.label == label then
+        return r
+      end
+    end
+  end
+end
+local sections = ns.Data.Collect()
+check(
+  findRow(sections, ns.L.ATTACK_POWER) and findRow(sections, ns.L.ATTACK_POWER).value == "1100",
+  "attack power 1100"
+)
+check(findRow(sections, ns.L.DEFENSE) ~= nil, "defense row")
+
+-- No guessing: a hostile level ?? target (not a world boss) gets no defense.
+UnitExists = function()
+  return true
+end
+UnitCanAttack = function()
+  return true
+end
+UnitName = function()
+  return "Elite"
+end
+UnitClassification = function()
+  return "elite"
+end
+UnitLevel = function(unit)
+  return unit == "target" and -1 or 60
+end
+local target = findRow(ns.Data.Collect(), "Elite")
+check(target and target.value == ns.L.T_LEVEL_UNKNOWN, "level ?? target shows unknown defense")
+
+if failures > 0 then
+  print(("load test: %d failure(s)"):format(failures))
+  os.exit(1)
+end
+print("load test: all checks passed")

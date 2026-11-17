@@ -25,5 +25,8 @@ jobs:
       - name: luacheck
         run: luacheck *.lua
 
+      - name: Locale check
+        run: lua5.1 tools/check_locale.lua
+
       - name: Load test
         run: lua5.1 tools/load_test.lua .

@@ -28,10 +28,14 @@ Character stats for **WoW Forever** (client 1.60.x, interface 16001): attributes
 ## Development
 
 ```sh
-luacheck *.lua            # strict globals: every WoW API is listed in .luacheckrc
-stylua --check *.lua
-lua tools/load_test.lua . # loads the addon against stubbed WoW APIs
+git config core.hooksPath .githooks   # once: runs all checks below before every commit
+stylua --check *.lua tools/*.lua
+luacheck *.lua                        # strict globals: every WoW API is listed in .luacheckrc
+lua tools/check_locale.lua            # enUS and deDE: same keys, same placeholders
+lua tools/load_test.lua .             # loads the addon against stubbed WoW APIs, with asserts
 ```
+
+Project rules for contributors and agents: `CLAUDE.md`, `AGENTS.md`, `docs/RULES.md`.
 
 Releases: bump `## Version` in the TOC, add a `CHANGELOG.md` entry, tag `vX.Y.Z` and push the tag. The release workflow checks that the tag matches the TOC version, builds `isiStats-vX.Y.Z.zip` and publishes a GitHub release with the changelog entry as notes.
 

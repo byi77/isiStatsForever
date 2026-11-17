@@ -712,8 +712,9 @@ local function currentTarget(playerLevel)
       return { name = name, levelText = "??", level = RAID_BOSS_LEVEL, defense = RAID_BOSS_LEVEL * 5 }
     end
     if level == -1 then
-      local guess = playerLevel + 10
-      return { name = name, levelText = "??", level = guess, defense = guess * 5 }
+      -- Level ?? (not a world boss): its defense is unknown; nothing is
+      -- computed against it (no guessing).
+      return { name = name, levelText = "??", unknownDefense = true }
     end
     if level and level > 0 then
       return { name = name, levelText = tostring(level), level = level, defense = level * 5 }
@@ -760,7 +761,7 @@ local function weaponSkillSection(skills, classicList, level)
     rows[1] = {
       key = "w_vs_target",
       label = foe.name,
-      value = string.format(L.T_LEVEL_FMT, foe.levelText, foe.defense),
+      value = foe.unknownDefense and L.T_LEVEL_UNKNOWN or string.format(L.T_LEVEL_FMT, foe.levelText, foe.defense),
       labelColor = "heading",
       color = "dim",
       tip = L.W_VS_TIP,
@@ -789,7 +790,7 @@ local function weaponSkillSection(skills, classicList, level)
     end
     local color = (max and s.rank < max) and "warn" or nil
     local tip = isEquipped and L.EQUIPPED or nil
-    if foe then
+    if foe and not foe.unknownDefense then
       value = value .. "  " .. signedPct((total - foe.defense) * SKILL_STEP)
       local vs = versusTip(foe, total, not RANGED_SKILLS[id], level)
       tip = tip and (tip .. "\n\n" .. vs) or vs
@@ -824,7 +825,7 @@ local function weaponSkillSection(skills, classicList, level)
   end
 
   if not found then
-    rows[1] = { label = L.NONE_KNOWN, value = "", labelColor = "dim" }
+    rows[#rows + 1] = { label = L.NONE_KNOWN, value = "", labelColor = "dim" }
   end
   return { key = "skills", title = L.WEAPON_SKILLS, rows = rows }
 end

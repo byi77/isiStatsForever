@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- A target of level ?? (not a world boss) shows "defense unknown" instead of a guessed level +10.
+- Fix: without any known weapon skill the target row was overwritten.
+- Development: project rules (CLAUDE.md, AGENTS.md, docs/RULES.md), pre-commit hook, locale check, load test with asserts.
 - Section headers are hidden by default; setting "Show section headers" brings them back (and with them collapsing).
 - Melee and ranged: the separate weapon skill rows (main hand, off hand, ranged) are gone; the skills are listed under weapon skills.
 - Combat: values the game hides from addons (secret values) are still shown live where they come straight from the game (attributes, health, crit, hit, dodge, parry, block, armor, resistances, spell values), the same way isiLive's stats box does it. Values that need calculating (attack power total, DPS, armor reduction, vs.-target modifiers) keep their last value from before the fight, greyed out with a tooltip note. `/isistats debug` lists which game functions were hidden.
