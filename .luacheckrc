@@ -58,7 +58,6 @@ read_globals = {
   "UnitLevel",
   "UnitName",
   "UnitPowerMax",
-  "UnitRangedAttack",
   "UnitRangedAttackPower",
   "UnitRangedDamage",
   "UnitResistance",

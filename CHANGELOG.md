@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Melee: the main/off-hand weapon skill rows are gone; the skills are listed under weapon skills.
+- Melee and ranged: the separate weapon skill rows (main hand, off hand, ranged) are gone; the skills are listed under weapon skills.
 - Combat: values the game hides from addons (secret values) are still shown live where they come straight from the game (attributes, health, crit, hit, dodge, parry, block, armor, resistances, spell values), the same way isiLive's stats box does it. Values that need calculating (attack power total, DPS, armor reduction, vs.-target modifiers) keep their last value from before the fight, greyed out with a tooltip note. `/isistats debug` lists which game functions were hidden.
 - Every weapon skill row shows its hit/crit modifier against the current target (defense = level x 5) right behind the skill; the row above the list names the target. Tooltip: hit, crit and glancing blows. Without a hostile target it compares against an enemy of your level, like the game's skill panel.
 - Window is slightly wider (270) so skill rows fit the extra value.

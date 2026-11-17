@@ -360,7 +360,6 @@ function Data.GetCatalog()
         { id = "r_dps", label = L.DPS },
         { id = "r_crit", label = L.CRIT },
         { id = "r_hit", label = L.HIT },
-        { id = "r_skill", label = L.SKILL_RANGED },
       },
     },
     {
@@ -548,7 +547,7 @@ local function meleeSection(level, skills, hit)
   return { key = "melee", title = L.MELEE, rows = rows }
 end
 
-local function rangedSection(skills, hit)
+local function rangedSection(hit)
   if not itemTypeInSlot(SLOT_RANGED) then
     return nil
   end
@@ -579,18 +578,6 @@ local function rangedSection(skills, hit)
   if not isWand then
     addRow(rows, "r_crit", L.CRIT, show(call(GetRangedCritChance), "%.2f%%"))
     addRow(rows, "r_hit", L.HIT, hit and pct(hit) or show(call(GetHitModifier), "%.2f%%"))
-  end
-
-  local s = skillID and skills[skillID]
-  if not s then
-    local base, mod = call(UnitRangedAttack, "player")
-    base, mod = num(base), num(mod) or 0
-    if base and base > 0 then
-      s = { name = "", rank = base, mod = mod }
-    end
-  end
-  if s then
-    addRow(rows, "r_skill", L.SKILL_RANGED, skillValueText(s), "accent", s.name ~= "" and s.name or nil)
   end
 
   return { key = "ranged", title = L.RANGED, rows = rows }
@@ -892,7 +879,7 @@ function Data.Collect()
   end
   push(baseSection())
   push(meleeSection(level, skills, hit))
-  push(rangedSection(skills, hit))
+  push(rangedSection(hit))
   push(spellSection())
   push(defenseSection(level, skills))
   push(weaponSkillSection(skills, classicList, level))
