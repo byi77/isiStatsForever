@@ -6,7 +6,7 @@
 ## Version: 0.3.0
 ## Category: Character
 ## Category-deDE: Charakter
-## IconTexture: InterfaceAddOnsisiStatsmediaicon
+## IconTexture: Interface\AddOns\isiStats\media\icon
 ## SavedVariables: IsiStatsDB
 ## SavedVariablesPerCharacter: IsiStatsCharDB
 ## AddonCompartmentFunc: IsiStats_OnAddonCompartmentClick
