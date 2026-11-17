@@ -386,7 +386,7 @@ local CLASS_DEFAULTS = {
   MAGE = { "stat4", "s_dmg" },
   WARLOCK = { "stat4", "s_dmg" },
 }
-local COMMON_DEFAULTS = { "d_def", "w_equipped", "w_vs" }
+local COMMON_DEFAULTS = { "d_def", "w_equipped", "w_vs", "t_info", "t_hit", "t_crit", "t_glance" }
 
 function Data.GetDefaults()
   local defaults = {}

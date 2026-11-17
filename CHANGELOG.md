@@ -3,7 +3,7 @@
 ## Unreleased
 
 - Every weapon skill row shows its hit/crit modifier against the current target (defense = level x 5) right behind the skill; the row above the list names the target. Tooltip: hit, crit and glancing blows. Without a hostile target it compares against an enemy of your level, like the game's skill panel.
-- Optional section "Vs. Target" with the same values per equipped weapon, plus a raid boss comparison (defense 315); off by default.
+- Optional section "Vs. Target" with the same values per equipped weapon, on by default; raid boss comparison (defense 315) optional.
 - Window is slightly wider (270) so skill rows fit the extra value.
 - Miss chance vs. boss now uses the game panel's 0.04% per skill point.
 
