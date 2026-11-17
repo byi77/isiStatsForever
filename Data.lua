@@ -19,11 +19,31 @@ local function dropFirst(ok, ...)
   return ...
 end
 
+-- API functions that returned a secret value (in combat the client hides
+-- some values from addons); listed by /isistats debug.
+local secretFns = {}
+
+local function noteSecrets(fn, ...)
+  if type(issecretvalue) == "function" then
+    for i = 1, select("#", ...) do
+      if issecretvalue((select(i, ...))) then
+        secretFns[fn] = true
+        break
+      end
+    end
+  end
+  return ...
+end
+
 local function call(fn, ...)
   if type(fn) ~= "function" then
     return nil
   end
-  return dropFirst(pcall(fn, ...))
+  return noteSecrets(fn, dropFirst(pcall(fn, ...)))
+end
+
+local function isSecret(v)
+  return type(issecretvalue) == "function" and issecretvalue(v) or false
 end
 
 local function num(v)
@@ -410,7 +430,7 @@ local function addRow(rows, id, label, value, color, tip, labelColor)
   if value == nil or not enabled(id) then
     return
   end
-  rows[#rows + 1] = { label = label, value = value, color = color, tip = tip, labelColor = labelColor }
+  rows[#rows + 1] = { key = id, label = label, value = value, color = color, tip = tip, labelColor = labelColor }
 end
 
 local function skillValueText(s)
@@ -479,7 +499,7 @@ local function meleeSection(level, skills, hit)
 
   local crit = num(call(GetCritChance))
   addRow(rows, "m_crit", L.CRIT, crit and pct(crit))
-  addRow(rows, "m_hit", L.HIT, pct(hit))
+  addRow(rows, "m_hit", L.HIT, hit and pct(hit))
 
   -- Weapon skill of the equipped weapons.
   local mainSkillID = skillForSlot(SLOT_MAIN) or (not itemTypeInSlot(SLOT_MAIN) and SKILL.UNARMED) or nil
@@ -506,7 +526,7 @@ local function meleeSection(level, skills, hit)
     addRow(rows, "m_skill_oh", L.SKILL_OH, skillValueText(offSkill), "accent", tip)
   end
 
-  if mainSkill and level then
+  if mainSkill and level and hit then
     local targetLevel = level + 3
     local targetDefense = targetLevel * 5
     local miss, missDW = missChance(mainSkill.rank + mainSkill.mod, targetDefense, hit)
@@ -552,7 +572,7 @@ local function rangedSection(skills, hit)
   if not isWand then
     local crit = num(call(GetRangedCritChance))
     addRow(rows, "r_crit", L.CRIT, crit and pct(crit))
-    addRow(rows, "r_hit", L.HIT, pct(hit))
+    addRow(rows, "r_hit", L.HIT, hit and pct(hit))
   end
 
   local s = skillID and skills[skillID]
@@ -678,10 +698,20 @@ local RAID_BOSS_LEVEL = 63
 -- without one, an enemy of your own level (like the game's skill panel).
 local function currentTarget(playerLevel)
   local exists = call(UnitExists, "target")
+  if isSecret(exists) then
+    return { unknown = true }
+  end
   local hostile = exists and call(UnitCanAttack, "player", "target")
+  if isSecret(hostile) then
+    return { unknown = true }
+  end
   if exists == true and hostile == true then
     local name = str(call(UnitName, "target")) or L.TARGET
-    local level = num(call(UnitLevel, "target"))
+    local rawLevel = call(UnitLevel, "target")
+    if isSecret(rawLevel) then
+      return { unknown = true }
+    end
+    local level = num(rawLevel)
     local classification = str(call(UnitClassification, "target"))
     if classification == "worldboss" then
       return { name = name, levelText = "??", level = RAID_BOSS_LEVEL, defense = RAID_BOSS_LEVEL * 5 }
@@ -727,8 +757,13 @@ local function weaponSkillSection(skills, classicList, level)
   end
   local rows = {}
   local foe = level and enabled("w_vs") and currentTarget(level) or nil
+  local foeHidden = foe and foe.unknown
+  if foeHidden then
+    foe = nil
+  end
   if foe then
     rows[1] = {
+      key = "w_vs_target",
       label = foe.name,
       value = string.format(L.T_LEVEL_FMT, foe.levelText, foe.defense),
       labelColor = "heading",
@@ -765,6 +800,8 @@ local function weaponSkillSection(skills, classicList, level)
       tip = tip and (tip .. "\n\n" .. vs) or vs
     end
     rows[#rows + 1] = {
+      key = "w:" .. s.name,
+      partial = foeHidden or nil,
       label = s.name,
       value = value,
       color = color,
@@ -813,9 +850,14 @@ local function equippedWeapons(skills)
   return list
 end
 
-local function addVersus(rows, weapons, foe, playerLevel)
+local function addVersus(rows, weapons, foe, playerLevel, kind)
+  if foe.unknown then
+    return
+  end
+  local prefix = "t:" .. kind .. ":"
   if enabled("t_info") then
     rows[#rows + 1] = {
+      key = prefix .. "info",
       label = foe.name,
       value = string.format(L.T_LEVEL_FMT, foe.levelText, foe.defense),
       labelColor = "heading",
@@ -828,16 +870,19 @@ local function addVersus(rows, weapons, foe, playerLevel)
   end
   for _, w in ipairs(weapons) do
     local delta = (w.total - foe.defense) * SKILL_STEP
-    rows[#rows + 1] = { label = w.name, value = tostring(w.total), labelColor = "accent", color = "accent" }
+    local wk = prefix .. w.name .. ":"
+    rows[#rows + 1] =
+      { key = wk .. "skill", label = w.name, value = tostring(w.total), labelColor = "accent", color = "accent" }
     if showHit then
-      rows[#rows + 1] = { label = "   " .. L.T_HIT, value = signedPct(delta), tip = L.T_HIT_TIP }
+      rows[#rows + 1] = { key = wk .. "hit", label = "   " .. L.T_HIT, value = signedPct(delta), tip = L.T_HIT_TIP }
     end
     if showCrit then
-      rows[#rows + 1] = { label = "   " .. L.T_CRIT, value = signedPct(delta), tip = L.T_CRIT_TIP }
+      rows[#rows + 1] = { key = wk .. "crit", label = "   " .. L.T_CRIT, value = signedPct(delta), tip = L.T_CRIT_TIP }
     end
     if showGlance and w.melee and foe.level > playerLevel then
       local chance, reduction = glancing(w.total, foe.defense, playerLevel)
       rows[#rows + 1] = {
+        key = wk .. "glance",
         label = "   " .. L.T_GLANCE,
         value = string.format(L.T_GLANCE_FMT, chance, reduction),
         color = chance >= 40 and "warn" or nil,
@@ -856,10 +901,10 @@ local function targetSection(level, skills)
     return nil
   end
   local rows = {}
-  addVersus(rows, weapons, currentTarget(level), level)
+  addVersus(rows, weapons, currentTarget(level), level, "target")
   if enabled("t_boss") then
     local boss = { name = L.RAID_BOSS, levelText = "??", level = RAID_BOSS_LEVEL, defense = RAID_BOSS_LEVEL * 5 }
-    addVersus(rows, weapons, boss, level)
+    addVersus(rows, weapons, boss, level, "boss")
   end
   return { key = "target", title = L.TARGET_SECTION, rows = rows }
 end
@@ -881,7 +926,10 @@ end
 
 function Data.Collect()
   local level = num(call(UnitLevel, "player"))
-  local hit = num(call(GetHitModifier)) or 0
+  local hit = num(call(GetHitModifier))
+  if hit == nil and type(GetHitModifier) ~= "function" then
+    hit = 0
+  end
 
   local skills = {}
   for _, id in ipairs(WEAPON_SKILL_ORDER) do
@@ -920,7 +968,110 @@ function Data.Collect()
     sections[1] =
       { key = "empty", title = "isiStats", rows = { { label = L.ALL_HIDDEN, value = "", labelColor = "dim" } } }
   end
-  return sections
+  return Data.ApplyCombatCache(sections)
+end
+
+-- ---------------------------------------------------------------- combat cache
+
+-- In combat the client hides some values (secret values). Out of combat the
+-- full result is kept; in combat every row or section that is missing (or
+-- only partly known) is filled with its last value from before the fight,
+-- greyed out. Rows are matched by their key.
+local lastSnapshot
+
+local function stripColors(text)
+  return (tostring(text or ""):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""))
+end
+
+local function staleCopy(row)
+  return {
+    key = row.key,
+    label = row.label,
+    value = stripColors(row.value),
+    labelColor = "dim",
+    color = "dim",
+    tip = L.STALE_TIP .. (row.tip and ("\n\n" .. row.tip) or ""),
+    stale = true,
+  }
+end
+
+local function mergeRows(current, previous)
+  local byKey, prevKeys = {}, {}
+  for _, r in ipairs(previous) do
+    if r.key then
+      prevKeys[r.key] = true
+    end
+  end
+  for _, r in ipairs(current) do
+    if r.key and not r.partial then
+      byKey[r.key] = r
+    end
+  end
+  local out, used = {}, {}
+  for _, p in ipairs(previous) do
+    local c = p.key and byKey[p.key]
+    if c then
+      out[#out + 1] = c
+      used[c] = true
+    elseif p.key then
+      out[#out + 1] = staleCopy(p)
+    end
+  end
+  for _, r in ipairs(current) do
+    if not used[r] and not (r.partial and r.key and prevKeys[r.key]) and not (r.key == nil and #out > 0) then
+      out[#out + 1] = r
+    end
+  end
+  return out
+end
+
+function Data.ApplyCombatCache(sections)
+  local inCombat = type(InCombatLockdown) == "function" and InCombatLockdown()
+  if not inCombat then
+    lastSnapshot = sections
+    return sections
+  end
+  if not lastSnapshot then
+    return sections
+  end
+  local currentByKey = {}
+  for _, s in ipairs(sections) do
+    currentByKey[s.key] = s
+  end
+  local out, used = {}, {}
+  for _, prev in ipairs(lastSnapshot) do
+    local cur = currentByKey[prev.key]
+    if cur then
+      out[#out + 1] = { key = cur.key, title = cur.title, rows = mergeRows(cur.rows, prev.rows) }
+      used[prev.key] = true
+    elseif prev.key ~= "empty" then
+      out[#out + 1] = { key = prev.key, title = prev.title, rows = mergeRows({}, prev.rows) }
+    end
+  end
+  for _, s in ipairs(sections) do
+    if not used[s.key] and s.key ~= "empty" then
+      out[#out + 1] = s
+    end
+  end
+  return out
+end
+
+-- Names of the API functions that returned secret values so far.
+function Data.SecretApiNames()
+  local names = {}
+  for k, v in pairs(_G) do
+    if type(v) == "function" and secretFns[v] then
+      names[#names + 1] = k
+    elseif type(v) == "table" and type(k) == "string" and k:match("^C_") then
+      for k2, v2 in pairs(v) do
+        if type(v2) == "function" and secretFns[v2] then
+          names[#names + 1] = k .. "." .. tostring(k2)
+        end
+      end
+    end
+  end
+  table.sort(names)
+  return names
 end
 
 -- /isistats debug: raw skill info so field names can be checked in game.
@@ -943,6 +1094,8 @@ function Data.DebugDump(print)
     type(GetHitModifier)
   )
   print("Settings:", type(Settings), "InterfaceOptions_AddCategory:", type(InterfaceOptions_AddCategory))
+  local secret = Data.SecretApiNames()
+  print("secret in combat:", #secret > 0 and table.concat(secret, ", ") or "-")
   local api = hasSkillInfo and C_SkillInfo.GetSkillLineInfoByID
   for _, id in ipairs({ SKILL.DEFENSE, skillForSlot(SLOT_MAIN) or SKILL.UNARMED }) do
     local info = api and call(api, id)

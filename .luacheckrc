@@ -39,6 +39,7 @@ read_globals = {
   "GetSpellBonusHealing",
   "GetSpellCritChance",
   "GetSpellHitModifier",
+  "InCombatLockdown",
   "InterfaceOptionsFrame_OpenToCategory",
   "InterfaceOptions_AddCategory",
   "Settings",
