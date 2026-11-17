@@ -1,9 +1,12 @@
 # Changelog
 
-## Unreleased
+## 0.6.0 - 2026-11-17
 
-- Next to it: played time on this level and the estimated time to the next level (from your XP rate on this level; "-" until there is enough data). The game's played-time query at login no longer prints a chat line.
+### Leveling
+
 - New at the very top: XP still needed for the next level in thousands ("XP to level 42   12.4k") with a progress bar; tooltip with exact XP and rested XP. Hidden at the maximum level, on by default.
+- Below it: played time on this level and the estimated time to the next level (from your XP rate on this level; "-" until there is enough data). Both on by default and switchable in the settings.
+- The game's played-time query at login no longer prints a chat line.
 
 ## 0.5.0 - 2026-11-17
 
