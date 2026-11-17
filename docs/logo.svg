@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#171a22"/>
+      <stop offset="1" stop-color="#0b0c10"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.44" r="0.5">
+      <stop offset="0" stop-color="#1e90ff" stop-opacity="0.30"/>
+      <stop offset="1" stop-color="#1e90ff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="steel" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#eef3fb"/>
+      <stop offset="0.5" stop-color="#b9c4d6"/>
+      <stop offset="1" stop-color="#76839a"/>
+    </linearGradient>
+    <linearGradient id="shield" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1d222d"/>
+      <stop offset="1" stop-color="#10131a"/>
+    </linearGradient>
+    <linearGradient id="bar" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0" stop-color="#1468c8"/>
+      <stop offset="1" stop-color="#6fb6ff"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="4" y="4" width="392" height="392" rx="76" fill="url(#bg)"/>
+  <rect x="4" y="4" width="392" height="392" rx="76" fill="url(#glow)"/>
+  <rect x="4.5" y="4.5" width="391" height="391" rx="76" fill="none" stroke="#9eb8db" stroke-opacity="0.22" stroke-width="2"/>
+
+  <!-- sword (weapon skill), diagonal behind the shield -->
+  <g transform="rotate(45 200 182)">
+    <polygon points="200,30 213,56 213,285 187,285 187,56" fill="url(#steel)"/>
+    <line x1="200" y1="48" x2="200" y2="280" stroke="#5d6a80" stroke-width="2" stroke-opacity="0.6"/>
+    <rect x="150" y="284" width="100" height="16" rx="8" fill="#9aa7bd"/>
+    <rect x="192" y="300" width="16" height="40" rx="5" fill="#4a5468"/>
+    <circle cx="200" cy="350" r="13" fill="#9aa7bd"/>
+  </g>
+
+  <!-- shield (defense) -->
+  <path d="M122,104 H278 V176 C278,238 238,276 200,292 C162,276 122,238 122,176 Z"
+        fill="url(#shield)" stroke="#1e90ff" stroke-width="7" stroke-linejoin="round"/>
+
+  <!-- rising stat bars -->
+  <rect x="156" y="198" width="22" height="42" rx="4" fill="url(#bar)" opacity="0.75"/>
+  <rect x="189" y="172" width="22" height="68" rx="4" fill="url(#bar)" opacity="0.88"/>
+  <rect x="222" y="142" width="22" height="98" rx="4" fill="url(#bar)"/>
+
+  <!-- wordmark -->
+  <text x="200" y="358" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="54" font-weight="700" letter-spacing="0.5">
+    <tspan fill="#f4f7ff">isi</tspan><tspan fill="#1e90ff">Stats</tspan>
+  </text>
+</svg>

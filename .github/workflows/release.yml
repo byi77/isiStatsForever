@@ -31,7 +31,7 @@ jobs:
       - name: Build zip
         run: |
           mkdir -p dist/isiStats
-          cp isiStats.toc *.lua LICENSE dist/isiStats/
+          cp -r isiStats.toc *.lua LICENSE media dist/isiStats/
           cd dist && zip -r "isiStats-${GITHUB_REF_NAME}.zip" isiStats
 
       - name: Release notes from CHANGELOG

@@ -1,3 +1,5 @@
+<p align="center"><img src="docs/logo.png" width="160" alt="isiStats logo"></p>
+
 # isiStats
 
 Character stats for **WoW Forever** (client 1.60.x, interface 16001): attributes, melee, ranged and spell values, defense, weapon skills and resistances in one compact window.

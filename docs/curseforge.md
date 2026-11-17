@@ -5,6 +5,7 @@
 **Category:** Character Advancement (or: Combat)
 **License:** All Rights Reserved
 **Source:** https://github.com/byi77/isiStats
+**Logo / avatar:** docs/logo.png (400x400)
 
 ## Description
 
