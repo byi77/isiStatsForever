@@ -1,20 +1,30 @@
 # Changelog
 
-## Unreleased
+## 0.5.0 - 2026-11-17
 
-- `/isistats debug` lists the raw game values of every weapon skill and defense and keeps the output in the saved variables (`lastDebug`) for bug reports.
-- New settings: "Hide in combat" / "Show only in combat" (the window appears when a fight starts and goes away after it) and "Lock position and size" (also `/isistats lock` / `unlock`).
-- Renamed to **isiStatsForever** (addon folder, title, settings page, release zip, GitHub repo). The slash commands `/isistats` and `/istats` and the saved settings stay the same.
-- Skill rows in fixed columns (+/- vs. target, bonus, current / max), so the numbers line up exactly; a thin progress bar under each skill shows current / max like the game's skill panel.
-- Skill tooltips show the distance to the maximum ("20 to the maximum (300)") and, for equipped weapons below the cap, that the skill rises by fighting with them.
+### Renamed
+
+- The addon is now **isiStatsForever** (addon folder, title, settings page, release zip, GitHub repo). The slash commands `/isistats` and `/istats` stay; updating from isiStats needs the new folder (the old `isiStats` folder can be deleted).
+
+### Weapon skills and defense
+
+- Skill rows in fixed columns: +/- vs. target, bonus, current / max at the right edge - the numbers line up exactly.
+- A thin progress bar under each skill shows current / max like the game's skill panel.
+- Tooltips show the distance to the maximum and, for equipped weapons below the cap, that the skill rises by fighting with them.
+- Defense moved below the weapon skills and is shown like them as current / max; the defense section keeps the values derived from it.
 - New setting "Show the target row without a target" (on by default).
-- Saved settings of removed rows (old "vs. target" section, main-hand/off-hand/ranged skill rows) are cleaned up on login.
-- Development: StyLua check in the GitHub CI.
-- Development: Data.lua split into Util, Skills, Catalog, Data and CombatCache.
-- Skill rows: current / max now sits at the right edge, the +/- values (vs.-target modifier, bonus) in front of it.
-- Defense moved below the weapon skills and is shown like them as current / max (yellow below the cap, bonus in green); the defense section keeps the values derived from it (missed by, crit reduction, armor, ...).
-- Without section headers there are no empty gaps between the sections any more; the rows form one continuous list.
+
+### Defaults and window
+
 - Weapon damage is on by default: melee damage for warrior, paladin and rogue, ranged damage for hunter (casters already had spell damage). Characters keep values they switched themselves.
+- Without section headers there are no gaps between the sections; the rows form one continuous list.
+- New settings: "Hide in combat" / "Show only in combat" and "Lock position and size" (also `/isistats lock` / `unlock`).
+
+### Maintenance
+
+- Saved settings of removed rows are cleaned up on login.
+- `/isistats debug` lists the raw game values of every weapon skill and defense and keeps the output in the saved variables (`lastDebug`) for bug reports.
+- Development: Data.lua split into Util, Skills, Catalog, Data and CombatCache; StyLua check in the GitHub CI.
 
 ## 0.4.1 - 2026-11-17
 
