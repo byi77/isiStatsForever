@@ -74,7 +74,7 @@ luacheck *.lua
 lua tools/check_locale.lua
 lua tools/load_test.lua . deDE
 lua tools/load_test.lua . enUS
-lua tools/class_matrix.lua . deDE   # all 9 classes: defaults, gear, wand/thrown/bow
+lua tools/class_matrix.lua . deDE   # all 9 classes: defaults, gear, every usable weapon type
 ```
 
 `tools/wow_stub.lua` is the shared stub environment (loads the TOC files through the real

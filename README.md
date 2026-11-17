@@ -40,7 +40,7 @@ luacheck *.lua                        # strict globals: every WoW API is listed 
 lua tools/check_locale.lua            # enUS and deDE: same keys, same placeholders
 lua tools/load_test.lua . deDE        # loads the addon against stubbed WoW APIs, with asserts
 lua tools/load_test.lua . enUS        # same with an English client
-lua tools/class_matrix.lua . deDE     # every class: defaults and visible values with typical gear
+lua tools/class_matrix.lua . deDE     # every class: defaults, typical gear and every usable weapon type
 ```
 
 Project rules for contributors and agents: `CLAUDE.md`, `AGENTS.md`, `docs/RULES.md`.
