@@ -345,6 +345,7 @@ function Data.GetCatalog()
       rows = {
         { id = "w_equipped", label = L.SKILLS_EQUIPPED },
         { id = "w_other", label = L.SKILLS_OTHER },
+        { id = "w_vs", label = L.OPT_W_VS },
       },
     },
     {
@@ -385,7 +386,7 @@ local CLASS_DEFAULTS = {
   MAGE = { "stat4", "s_dmg" },
   WARLOCK = { "stat4", "s_dmg" },
 }
-local COMMON_DEFAULTS = { "d_def", "w_equipped", "t_info", "t_hit", "t_crit", "t_glance" }
+local COMMON_DEFAULTS = { "d_def", "w_equipped", "w_vs" }
 
 function Data.GetDefaults()
   local defaults = {}
@@ -669,66 +670,6 @@ local function defenseSection(level, skills)
   return { key = "defense", title = L.DEFENSE_SECTION, rows = rows }
 end
 
-local function weaponSkillSection(skills, classicList)
-  local showEquipped, showOther = enabled("w_equipped"), enabled("w_other")
-  if not showEquipped and not showOther then
-    return nil
-  end
-  local rows = {}
-  local equipped = {}
-  for _, slot in ipairs({ SLOT_MAIN, SLOT_OFF, SLOT_RANGED }) do
-    local id = skillForSlot(slot)
-    if id then
-      equipped[id] = true
-    end
-  end
-  if not itemTypeInSlot(SLOT_MAIN) then
-    equipped[SKILL.UNARMED] = true
-  end
-
-  local function add(s, isEquipped)
-    if (isEquipped and not showEquipped) or (not isEquipped and not showOther) then
-      return
-    end
-    local max = s.max and s.max > 0 and s.max or nil
-    local value = max and string.format("%d / %d", s.rank, max) or tostring(s.rank)
-    if s.mod ~= 0 then
-      value = value .. " " .. signed(s.mod)
-    end
-    local color = (max and s.rank < max) and "warn" or nil
-    rows[#rows + 1] = {
-      label = s.name,
-      value = value,
-      color = color,
-      tip = isEquipped and L.EQUIPPED or nil,
-      labelColor = isEquipped and "accent" or nil,
-    }
-  end
-
-  local found = false
-  for _, id in ipairs(WEAPON_SKILL_ORDER) do
-    local s = skills[id]
-    if s then
-      found = true
-      add(s, equipped[id])
-    end
-  end
-
-  if not found and classicList then
-    for _, s in ipairs(classicList) do
-      if s.name ~= DEFENSE and s.rank > 0 then
-        found = true
-        add(s, false)
-      end
-    end
-  end
-
-  if not found then
-    rows[1] = { label = L.NONE_KNOWN, value = "", labelColor = "dim" }
-  end
-  return { key = "skills", title = L.WEAPON_SKILLS, rows = rows }
-end
-
 -- ---------------------------------------------------------------- vs. target
 
 local RAID_BOSS_LEVEL = 63
@@ -754,6 +695,106 @@ local function currentTarget(playerLevel)
     end
   end
   return { name = L.SAME_LEVEL, levelText = tostring(playerLevel), level = playerLevel, defense = playerLevel * 5 }
+end
+
+local RANGED_SKILLS = {
+  [SKILL.BOWS] = true,
+  [SKILL.GUNS] = true,
+  [SKILL.CROSSBOWS] = true,
+  [SKILL.THROWN] = true,
+  [SKILL.WANDS] = true,
+}
+
+-- Tooltip for a weapon row: the full comparison against the target.
+local function versusTip(foe, total, melee, playerLevel)
+  local delta = (total - foe.defense) * SKILL_STEP
+  local lines = {
+    string.format("%s - " .. L.T_LEVEL_FMT, foe.name, foe.levelText, foe.defense),
+    L.T_HIT .. ": " .. signedPct(delta),
+    L.T_CRIT .. ": " .. signedPct(delta),
+  }
+  if melee and foe.level > playerLevel then
+    local chance, reduction = glancing(total, foe.defense, playerLevel)
+    lines[#lines + 1] = L.T_GLANCE .. ": " .. string.format(L.T_GLANCE_FMT, chance, reduction)
+  end
+  return table.concat(lines, "\n")
+end
+
+local function weaponSkillSection(skills, classicList, level)
+  local showEquipped, showOther = enabled("w_equipped"), enabled("w_other")
+  if not showEquipped and not showOther then
+    return nil
+  end
+  local rows = {}
+  local foe = level and enabled("w_vs") and currentTarget(level) or nil
+  if foe then
+    rows[1] = {
+      label = foe.name,
+      value = string.format(L.T_LEVEL_FMT, foe.levelText, foe.defense),
+      labelColor = "heading",
+      color = "dim",
+      tip = L.W_VS_TIP,
+    }
+  end
+  local equipped = {}
+  for _, slot in ipairs({ SLOT_MAIN, SLOT_OFF, SLOT_RANGED }) do
+    local id = skillForSlot(slot)
+    if id then
+      equipped[id] = true
+    end
+  end
+  if not itemTypeInSlot(SLOT_MAIN) then
+    equipped[SKILL.UNARMED] = true
+  end
+
+  local function add(s, isEquipped, id)
+    if (isEquipped and not showEquipped) or (not isEquipped and not showOther) then
+      return
+    end
+    local total = s.rank + s.mod
+    local max = s.max and s.max > 0 and s.max or nil
+    local value = max and string.format("%d / %d", s.rank, max) or tostring(s.rank)
+    if s.mod ~= 0 then
+      value = value .. " " .. signed(s.mod)
+    end
+    local color = (max and s.rank < max) and "warn" or nil
+    local tip = isEquipped and L.EQUIPPED or nil
+    if foe then
+      value = value .. "  " .. signedPct((total - foe.defense) * SKILL_STEP)
+      local vs = versusTip(foe, total, not RANGED_SKILLS[id], level)
+      tip = tip and (tip .. "\n\n" .. vs) or vs
+    end
+    rows[#rows + 1] = {
+      label = s.name,
+      value = value,
+      color = color,
+      tip = tip,
+      labelColor = isEquipped and "accent" or nil,
+    }
+  end
+
+  local found = false
+  for _, id in ipairs(WEAPON_SKILL_ORDER) do
+    local s = skills[id]
+    if s then
+      found = true
+      add(s, equipped[id], id)
+    end
+  end
+
+  if not found and classicList then
+    for _, s in ipairs(classicList) do
+      if s.name ~= DEFENSE and s.rank > 0 then
+        found = true
+        add(s, false)
+      end
+    end
+  end
+
+  if not found then
+    rows[1] = { label = L.NONE_KNOWN, value = "", labelColor = "dim" }
+  end
+  return { key = "skills", title = L.WEAPON_SKILLS, rows = rows }
 end
 
 -- Skills of the equipped weapons: { name, total, melee }, one per skill line.
@@ -871,7 +912,7 @@ function Data.Collect()
   push(rangedSection(skills, hit))
   push(spellSection())
   push(defenseSection(level, skills))
-  push(weaponSkillSection(skills, classicList))
+  push(weaponSkillSection(skills, classicList, level))
   push(targetSection(level, skills))
   push(resistanceSection())
 

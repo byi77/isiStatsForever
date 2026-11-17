@@ -78,6 +78,8 @@ local L = {
   T_GLANCE_TIP = "Share of your auto attacks that glance against a higher-level target, and how much less damage they deal.",
   OPT_T_INFO = "Target name, level, defense",
   OPT_T_BOSS = "Also vs. raid boss (defense 315)",
+  OPT_W_VS = "Hit/crit vs. target behind each skill",
+  W_VS_TIP = "Each weapon skill shows its hit and crit modifier against this target. Hover a skill for details. Without a hostile target: an enemy of your level.",
   OPT_ALPHA = "Background opacity",
   CMD_ALPHA = "Background opacity: %d%%",
 }
@@ -161,6 +163,8 @@ if GetLocale() == "deDE" then
     T_GLANCE_TIP = "Anteil deiner automatischen Angriffe, die gegen ein höherstufiges Ziel abgewehrt werden, und wie viel weniger Schaden sie verursachen.",
     OPT_T_INFO = "Ziel: Name, Stufe, Verteidigung",
     OPT_T_BOSS = "Zusätzlich gegen Schlachtzugsboss (Vert. 315)",
+    OPT_W_VS = "Treffer/Krit gegen Ziel hinter jeder Fertigkeit",
+    W_VS_TIP = "Jede Waffenfertigkeit zeigt ihren Treffer- und Krit-Modifikator gegen dieses Ziel. Für Details mit der Maus über eine Fertigkeit fahren. Ohne feindliches Ziel: ein Gegner deiner Stufe.",
     OPT_ALPHA = "Hintergrund-Deckkraft",
     CMD_ALPHA = "Hintergrund-Deckkraft: %d%%",
   }

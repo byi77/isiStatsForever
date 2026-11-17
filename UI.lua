@@ -23,7 +23,7 @@ local C = {
 }
 ns.Colors = C
 
-local WIDTH = 250
+local WIDTH = 270
 local PAD = 8
 local TITLE_H = 22
 local HEADER_H = 18
