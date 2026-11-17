@@ -14,6 +14,7 @@ echo "==> locale"
 lua tools/check_locale.lua
 
 echo "==> load test"
-lua tools/load_test.lua . > /dev/null
+lua tools/load_test.lua . deDE > /dev/null
+lua tools/load_test.lua . enUS > /dev/null
 
 echo "pre-commit: passed."

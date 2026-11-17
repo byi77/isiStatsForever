@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Language follows the WoW Forever client: German on a German client, English on every other client language. The load test now runs for both.
 - Rounded window with a soft drop shadow and hairline ring (from isiLive's modern design); the opacity slider also fades shadow and ring.
 - Values fade in briefly when they change (buff, proc, gear); setting "Fade in values when they change", on by default.
 - Error log: isiStats' own Lua errors are kept (also with script errors off), `/isistats errors` shows them, `/isistats errors clear` empties the log.

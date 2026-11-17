@@ -29,4 +29,6 @@ jobs:
         run: lua5.1 tools/check_locale.lua
 
       - name: Load test
-        run: lua5.1 tools/load_test.lua .
+        run: |
+          lua5.1 tools/load_test.lua . deDE
+          lua5.1 tools/load_test.lua . enUS

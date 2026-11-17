@@ -72,7 +72,8 @@ Run before every commit (the pre-commit hook does it, `git config core.hooksPath
 stylua --check *.lua tools/*.lua
 luacheck *.lua
 lua tools/check_locale.lua
-lua tools/load_test.lua .
+lua tools/load_test.lua . deDE
+lua tools/load_test.lua . enUS
 ```
 
 - `.luacheckrc` lists every WoW global the addon reads (strict). A new API must be added there;

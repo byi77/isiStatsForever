@@ -1,4 +1,6 @@
 local dir = arg[1]
+-- Client language to simulate (second argument): deDE (default) or enUS.
+local clientLocale = arg[2] or "deDE"
 local function stub(name)
   local o = { __name = name, scripts = {}, shown = false, scale = 1 }
   return setmetatable(o, {
@@ -117,7 +119,7 @@ UIParent = CreateFrame("Frame")
 CharacterFrame = CreateFrame("Frame")
 GameTooltip = stub("tt")
 GetLocale = function()
-  return "deDE"
+  return clientLocale
 end
 issecretvalue = function()
   return false
@@ -320,8 +322,24 @@ end
 ns.Refresh()
 check(flashPlays == before, "no fade-in when switched off")
 
+-- Language follows the client: German strings only on a deDE client.
+if clientLocale == "deDE" then
+  check(ns.L.MELEE == "Nahkampf", "deDE client shows German")
+else
+  check(ns.L.MELEE == "Melee", clientLocale .. " client shows English")
+  -- UTF-8 umlauts/eszett all start with byte 195 (0xC3); English text has none.
+  for key, value in pairs(ns.L) do
+    for i = 1, #value do
+      if value:byte(i) == 195 then
+        check(false, "non-ASCII (German) text in English locale: " .. key)
+        break
+      end
+    end
+  end
+end
+
 if failures > 0 then
   print(("load test: %d failure(s)"):format(failures))
   os.exit(1)
 end
-print("load test: all checks passed")
+print("load test (" .. clientLocale .. "): all checks passed")

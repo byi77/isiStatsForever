@@ -36,7 +36,8 @@ git config core.hooksPath .githooks   # once: runs all checks below before every
 stylua --check *.lua tools/*.lua
 luacheck *.lua                        # strict globals: every WoW API is listed in .luacheckrc
 lua tools/check_locale.lua            # enUS and deDE: same keys, same placeholders
-lua tools/load_test.lua .             # loads the addon against stubbed WoW APIs, with asserts
+lua tools/load_test.lua . deDE        # loads the addon against stubbed WoW APIs, with asserts
+lua tools/load_test.lua . enUS        # same with an English client
 ```
 
 Project rules for contributors and agents: `CLAUDE.md`, `AGENTS.md`, `docs/RULES.md`.
