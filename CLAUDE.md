@@ -11,6 +11,13 @@ CurseForge project `1812815`). Rules adapted from isiLive; see also `AGENTS.md` 
 - Code and code comments: always in English.
 - `README.md` and `CHANGELOG.md` stay English; all other maintained docs are German.
 
+## Files
+
+`Locale.lua` texts - `ErrorLog.lua` own error log - `Util.lua` guarded calls, secret values,
+formatting, formulas - `Skills.lua` skill lines and weapon slots - `Catalog.lua` value rows and
+class defaults - `Data.lua` collects the sections - `CombatCache.lua` last values in combat -
+`UI.lua` window - `Options.lua` settings page - `Core.lua` saved variables, events, slash commands.
+
 ## Target client
 
 - Only WoW Forever: client `1.60.x`, `## Interface: 16001`. No support code for retail, Classic Era
@@ -18,12 +25,12 @@ CurseForge project `1812815`). Rules adapted from isiLive; see also `AGENTS.md` 
 - Forever is a modern client (retail engine) with classic rules. Classic-era APIs may be missing:
   - No `GetNumSkillLines` / `GetSkillLineInfo` / `GetSpellInfo`. Skills come from
     `C_SkillInfo.GetSkillLineInfoByID(skillLineID)` (skill line IDs are locale independent,
-    see `SKILL` in `Data.lua`). The classic skill list stays only as a guarded fallback.
+    see `SKILL` in `Skills.lua`). The classic skill list stays only as a guarded fallback.
   - Settings page: `Settings.RegisterCanvasLayoutCategory` + `Settings.RegisterAddOnCategory`;
     `InterfaceOptions_AddCategory` only as fallback.
   - Textures for the client (icons) must be `.tga` (or `.blp`), never `.png`. `media/corner_*.tga`
   are isiLive's own generated corner textures (rounded window, ring, shadow).
-- Every WoW API call goes through `call()` in `Data.lua` (type check + `pcall`). Never call a
+- Every WoW API call goes through `call()` in `Util.lua` (type check + `pcall`). Never call a
   `C_*` member bare; a removed member reads as `nil` and must fail closed.
 - When a feature stops producing data without an error, check the API member first
   (`/isistats debug` prints what exists).
@@ -33,14 +40,14 @@ CurseForge project `1812815`). Rules adapted from isiLive; see also `AGENTS.md` 
 Forever has the Midnight-style addon restrictions: in combat some API returns are **secret values**.
 
 - Any arithmetic, comparison, `tostring`, `..` or `gsub` on a secret raises an error and taints the
-  addon. Check `issecretvalue` (via `isSecret()` / `num()` / `str()` in `Data.lua`) **before** any
+  addon. Check `issecretvalue` (via `isSecret()` / `num()` / `str()` in `Util.lua`) **before** any
   other operation.
 - Displaying is allowed: `string.format(fmt, secret)` returns a secret string that a FontString can
-  show (`show()` in `Data.lua`; same technique as isiLive's stats box). Plain single API values are
+  show (`show()` in `Util.lua`; same technique as isiLive's stats box). Plain single API values are
   shown live this way.
 - Computed values (sums, DPS, armor reduction, vs.-target modifiers) cannot be computed from secrets:
   they keep their last out-of-combat value, greyed out with a tooltip note
-  (`Data.ApplyCombatCache`, rows matched by `key`).
+  (`Data.ApplyCombatCache` in `CombatCache.lua`, rows matched by `key`).
 - Rows that only show when a value is > 0 (mana, parry, block value) decide in combat from the last
   plain value (`positive()`), never by comparing a secret.
 - `/isistats debug` lists the API functions that returned secrets.
@@ -91,9 +98,9 @@ event handler); new tests build on it instead of their own stubs.
 - `IsiStatsDB` (account-wide): window settings, defaults in `DEFAULTS` in `Core.lua`
   (missing keys are filled on load; a new key needs a default there).
 - `IsiStatsCharDB.rows` (per character): `rows[id] = true/false` only where the user chose; `nil`
-  means the class default from `Data.GetDefaults()`. Changing a default therefore changes it for
+  means the class default from `Data.GetDefaults()` (`Catalog.lua`). Changing a default therefore changes it for
   everyone who never touched that row - intended, mention it in the changelog.
-- A new value row needs: catalog entry in `Data.GetCatalog()`, an `addRow(rows, id, ...)` call,
+- A new value row needs: catalog entry in `Data.GetCatalog()` (`Catalog.lua`), an `addRow(rows, id, ...)` call in `Data.lua`,
   locale keys in enUS **and** deDE.
 
 ## UI style

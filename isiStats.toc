@@ -14,7 +14,11 @@
 
 Locale.lua
 ErrorLog.lua
+Util.lua
+Skills.lua
+Catalog.lua
 Data.lua
+CombatCache.lua
 UI.lua
 Options.lua
 Core.lua
