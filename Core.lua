@@ -78,6 +78,22 @@ function ns.SetShowHeaders(value)
   ns.Refresh()
 end
 
+-- Drops saved choices for rows that no longer exist (e.g. the removed
+-- "vs. target" section or the main-hand skill row).
+function ns.PruneRows()
+  local valid = {}
+  for _, section in ipairs(ns.Data.GetCatalog()) do
+    for _, row in ipairs(section.rows) do
+      valid[row.id] = true
+    end
+  end
+  for id in pairs(charDB.rows) do
+    if not valid[id] then
+      charDB.rows[id] = nil
+    end
+  end
+end
+
 function ns.IsDocked()
   return db and db.dock and true or false
 end
@@ -285,6 +301,7 @@ events:SetScript("OnEvent", function(self, event, arg1)
     IsiStatsCharDB = IsiStatsCharDB or {}
     charDB = IsiStatsCharDB
     charDB.rows = charDB.rows or {}
+    ns.PruneRows()
     self:UnregisterEvent("ADDON_LOADED")
   elseif event == "PLAYER_LOGIN" then
     ns.UI.Create()

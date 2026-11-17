@@ -16,6 +16,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Install StyLua (same version as local)
+        run: cargo install stylua --version 2.6.0 --locked
+
+      - name: StyLua (check)
+        run: stylua --check *.lua tools/*.lua
+
       - name: Install Lua and luacheck
         run: |
           sudo apt-get update

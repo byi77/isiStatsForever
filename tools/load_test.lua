@@ -40,6 +40,12 @@ check(IsiStatsDB.showHeaders == false, "headers hidden by default")
 check(IsiStatsDB.alpha == 55, "alpha saved")
 check(IsiStatsDB.scale == 1, "scale reset to 1")
 
+-- Saved choices for rows that no longer exist are dropped.
+IsiStatsCharDB.rows.t_info = true
+IsiStatsCharDB.rows.m_skill_mh = false
+ns.PruneRows()
+check(IsiStatsCharDB.rows.t_info == nil and IsiStatsCharDB.rows.m_skill_mh == nil, "stale row settings pruned")
+
 -- A user choice survives and wins over the class default.
 ns.SetRowEnabled("stat1", false)
 check(not ns.IsRowEnabled("stat1"), "user choice wins over default")
