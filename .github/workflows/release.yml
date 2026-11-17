@@ -44,3 +44,34 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release create "${GITHUB_REF_NAME}" "dist/isiStats-${GITHUB_REF_NAME}.zip" --title "isiStats ${GITHUB_REF_NAME}" --notes-file notes.md
+
+      - name: Upload to CurseForge
+        # Runs once the repo secret CF_API_KEY exists and the TOC carries
+        # "## X-Curse-Project-ID: <id>". The game version is derived from the
+        # TOC interface number (16001 -> 1.60.1) and looked up by name.
+        env:
+          CF_API_KEY: ${{ secrets.CF_API_KEY }}
+        run: |
+          set -euo pipefail
+          PROJECT_ID="$(sed -n 's/^## X-Curse-Project-ID: *//p' isiStats.toc | tr -d '\r')"
+          if [ -z "${CF_API_KEY}" ] || [ -z "${PROJECT_ID}" ]; then
+            echo "CurseForge upload skipped (CF_API_KEY secret or X-Curse-Project-ID missing)."
+            exit 0
+          fi
+          INTERFACE="$(sed -n 's/^## Interface: *//p' isiStats.toc | tr -d '\r' | cut -d, -f1)"
+          GAME_VERSION="$((INTERFACE / 10000)).$(((INTERFACE % 10000) / 100)).$((INTERFACE % 100))"
+          curl -sf -H "X-Api-Token: ${CF_API_KEY}" https://wow.curseforge.com/api/game/versions > versions.json
+          VERSION_ID="$(jq -r --arg v "${GAME_VERSION}" '[.[] | select(.name == $v)][0].id // empty' versions.json)"
+          if [ -z "${VERSION_ID}" ]; then
+            echo "No CurseForge game version named ${GAME_VERSION}. Candidates:"
+            jq -r '.[] | select(.name | startswith("1.")) | "\(.id) \(.name)"' versions.json | tail -20
+            exit 1
+          fi
+          jq -n --rawfile notes notes.md --arg name "isiStats ${GITHUB_REF_NAME}" --argjson gv "${VERSION_ID}" \
+            '{changelog: $notes, changelogType: "markdown", displayName: $name, gameVersions: [$gv], releaseType: "release"}' > metadata.json
+          curl -sf -H "X-Api-Token: ${CF_API_KEY}" \
+            -F "metadata=<metadata.json" \
+            -F "file=@dist/isiStats-${GITHUB_REF_NAME}.zip" \
+            "https://wow.curseforge.com/api/projects/${PROJECT_ID}/upload-file"
+          echo
+          echo "Uploaded to CurseForge project ${PROJECT_ID} (game version ${GAME_VERSION}, id ${VERSION_ID})."
