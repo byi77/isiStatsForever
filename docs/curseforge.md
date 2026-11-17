@@ -32,7 +32,7 @@ Rounded, compact window that docks to the character frame or floats freely. Resi
 - `/isistats` - show/hide
 - `/isistats config` - settings
 - `/isistats scale 0.5-2`, `/isistats alpha 0-100`
-- `/isistats dock` / `free` / `reset`
+- `/isistats dock` / `free` / `reset`, `/isistats lock` / `unlock`
 - `/isistats errors` - error log for bug reports
 
 Bug reports and ideas: https://github.com/byi77/isiStatsForever/issues

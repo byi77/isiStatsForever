@@ -8,6 +8,8 @@ local DEFAULTS = {
   alpha = 100, -- background opacity in percent
   showHeaders = false, -- section headers (hidden by default)
   flashChanges = true, -- fade a value in when it changes
+  combatMode = "always", -- "always" | "hide" (hidden in combat) | "only" (shown only in combat)
+  locked = false, -- no moving / resizing
   errors = {}, -- own Lua errors (ErrorLog.lua)
   pos = nil, -- { point, relativePoint, x, y }
   collapsed = {},
@@ -91,6 +93,66 @@ function ns.PruneRows()
     if not valid[id] then
       charDB.rows[id] = nil
     end
+  end
+end
+
+function ns.IsLocked()
+  return db and db.locked and true or false
+end
+
+function ns.SetLocked(value)
+  db.locked = value and true or false
+  if ns.Options then
+    ns.Options.Sync()
+  end
+end
+
+local function inCombat()
+  return type(InCombatLockdown) == "function" and InCombatLockdown() and true or false
+end
+
+-- Whether the window should be visible from dock state, open state and the
+-- combat mode. Explicit /isistats show/hide still works in every mode.
+local function wantedVisible()
+  local mode = db.combatMode
+  if mode == "only" then
+    return inCombat()
+  end
+  if mode == "hide" and inCombat() then
+    return false
+  end
+  local cf = _G.CharacterFrame
+  if db.dock then
+    return cf ~= nil and cf:IsShown()
+  end
+  return db.shown == true
+end
+
+function ns.ApplyCombatVisibility()
+  local frame = ns.UI.GetFrame()
+  if not frame then
+    return
+  end
+  if wantedVisible() then
+    ns.ApplyPosition()
+    frame:Show()
+  else
+    frame:Hide()
+  end
+end
+
+function ns.GetCombatMode()
+  return db and db.combatMode or "always"
+end
+
+function ns.SetCombatMode(mode)
+  if mode ~= "hide" and mode ~= "only" then
+    mode = "always"
+  end
+  db.combatMode = mode
+  ns.ApplyCombatVisibility()
+  if ns.Options then
+    ns.Options.Sync()
   end
 end
 
@@ -243,13 +305,12 @@ local function hookCharacterFrame()
   cf.isiStatsForeverHooked = true
   cf:HookScript("OnShow", function()
     if db.dock then
-      ns.ApplyPosition()
-      ns.UI.GetFrame():Show()
+      ns.ApplyCombatVisibility()
     end
   end)
   cf:HookScript("OnHide", function()
     if db.dock then
-      ns.UI.GetFrame():Hide()
+      ns.ApplyCombatVisibility()
     end
   end)
 end
@@ -313,10 +374,15 @@ events:SetScript("OnEvent", function(self, event, arg1)
     for _, e in ipairs(UNIT_EVENTS) do
       pcall(self.RegisterUnitEvent, self, e, "player")
     end
-    if db.shown and not db.dock then
+    if db.combatMode ~= "always" then
+      ns.ApplyCombatVisibility()
+    elseif db.shown and not db.dock then
       ns.Show()
     end
   else
+    if (event == "PLAYER_REGEN_DISABLED" or event == "PLAYER_REGEN_ENABLED") and db.combatMode ~= "always" then
+      ns.ApplyCombatVisibility()
+    end
     ns.RequestRefresh()
   end
 end)
@@ -370,6 +436,9 @@ SlashCmdList.ISISTATS = function(msg)
     ns.ResetRows()
     ns.Options.Sync()
     out(L.CMD_RESET)
+  elseif cmd == "lock" or cmd == "unlock" then
+    ns.SetLocked(cmd == "lock")
+    out(cmd == "lock" and L.CMD_LOCKED or L.CMD_UNLOCKED)
   elseif cmd == "errors" then
     if arg == "clear" then
       ns.ErrorLog.Clear()

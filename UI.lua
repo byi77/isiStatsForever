@@ -470,7 +470,7 @@ local function createResizeGrip()
   end
 
   grip:SetScript("OnMouseDown", function(self, mouseButton)
-    if mouseButton ~= "LeftButton" then
+    if mouseButton ~= "LeftButton" or ns.IsLocked() then
       return
     end
     local eff = frame:GetEffectiveScale()
@@ -537,10 +537,18 @@ function UI.Create()
   bar:RegisterForDrag("LeftButton")
   bar:RegisterForClicks("RightButtonUp")
   bar:SetScript("OnDragStart", function()
+    if ns.IsLocked() then
+      return
+    end
     ns.OnDragStart()
+    frame.isMoving = true
     frame:StartMoving()
   end)
   bar:SetScript("OnDragStop", function()
+    if not frame.isMoving then
+      return
+    end
+    frame.isMoving = nil
     frame:StopMovingOrSizing()
     ns.SavePosition()
   end)

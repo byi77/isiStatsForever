@@ -137,6 +137,13 @@ function Options.Sync()
   if panel.flash then
     panel.flash:SetChecked(ns.GetFlashChanges())
   end
+  if panel.lock then
+    panel.lock:SetChecked(ns.IsLocked())
+  end
+  if panel.combatHide then
+    panel.combatHide:SetChecked(ns.GetCombatMode() == "hide")
+    panel.combatOnly:SetChecked(ns.GetCombatMode() == "only")
+  end
   if panel.alpha then
     panel.alpha:SetSliderValue(ns.GetAlpha())
   end
@@ -186,6 +193,20 @@ local function build()
   end)
   panel.flash = checkbox(content, 16 + COL_W, y, L.OPT_FLASH, function(checked)
     ns.SetFlashChanges(checked)
+  end)
+  y = y - ROW_H - 4
+
+  panel.lock = checkbox(content, 16, y, L.OPT_LOCK, function(checked)
+    ns.SetLocked(checked)
+  end)
+  y = y - ROW_H - 4
+
+  -- Combat visibility: two boxes that exclude each other (none = always).
+  panel.combatHide = checkbox(content, 16, y, L.OPT_COMBAT_HIDE, function(checked)
+    ns.SetCombatMode(checked and "hide" or "always")
+  end)
+  panel.combatOnly = checkbox(content, 16 + COL_W, y, L.OPT_COMBAT_ONLY, function(checked)
+    ns.SetCombatMode(checked and "only" or "always")
   end)
   y = y - ROW_H - 4
 

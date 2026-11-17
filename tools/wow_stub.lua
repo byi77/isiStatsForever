@@ -23,6 +23,7 @@ local function stub(name)
   })
 end
 local frames = {}
+StubFrames = frames -- registered event frames, for tests that dispatch events
 flashPlays = 0
 function CreateFrame(kind, name, parent, template)
   local f = stub(kind)

@@ -6,7 +6,7 @@ Character stats for **WoW Forever** (client 1.60.x, interface 16001): attributes
 
 ## Features
 
-- **Weapon skills** of every learned weapon type as `current / max`; skills below the cap are yellow, equipped weapons are highlighted.
+- **Weapon skills** of every learned weapon type as `current / max` in fixed columns with a progress bar; skills below the cap are yellow, equipped weapons are highlighted, the tooltip shows the distance to the maximum. Defense is listed below the weapons the same way.
 - **Vs. your target**: behind every weapon skill its hit/crit modifier against your current target (defense = level x 5, 0.04% per point, as in the game's skill panel); the tooltip adds glancing blows for melee weapons. Without a hostile target it compares against an enemy of your level.
 - **Defense** with miss chance and crit reduction vs. an attacker of your level, armor reduction vs. your level and level +3.
 - **Melee**: attack power, damage, speed, DPS, crit, hit and the miss chance vs. a boss (level +3).
@@ -15,6 +15,7 @@ Character stats for **WoW Forever** (client 1.60.x, interface 16001): attributes
 - English and German, following the client language.
 - Rounded window with a soft shadow (isiLive look), docks to the character frame or floats freely, resize grip in the bottom-right corner, adjustable background opacity, optional section headers.
 - Values that change (buff, proc, new gear) briefly fade in; switchable.
+- Optional: hide the window in combat, or show it only in combat; lock position and size.
 - In combat, values the game hides from addons stay visible: live where possible, otherwise the last value greyed out.
 - Built-in error log: own Lua errors are kept even with script errors switched off (`/isistats errors`).
 
@@ -27,6 +28,7 @@ Character stats for **WoW Forever** (client 1.60.x, interface 16001): attributes
 | `/isistats dock` / `free` | Dock to the character frame / free window |
 | `/isistats scale <0.5-2>` | Window size |
 | `/isistats alpha <0-100>` | Background opacity in percent |
+| `/isistats lock` / `unlock` | Lock / unlock position and size |
 | `/isistats reset` | Reset position and settings |
 | `/isistats errors` / `errors clear` | Show / clear the error log |
 | `/isistats debug` | Print raw API info (for bug reports) |

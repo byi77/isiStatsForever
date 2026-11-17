@@ -147,6 +147,39 @@ else
   end
 end
 
+-- Combat visibility: fired through the real event handler.
+local ev = StubFrames[1]
+local frame = ns.UI.GetFrame()
+local combat = false
+InCombatLockdown = function()
+  return combat
+end
+SlashCmdList.ISISTATS("free")
+ns.Show()
+ns.SetCombatMode("hide")
+combat = true
+ev.scripts.OnEvent(ev, "PLAYER_REGEN_DISABLED")
+check(not frame:IsShown(), "hide in combat: hidden when combat starts")
+combat = false
+ev.scripts.OnEvent(ev, "PLAYER_REGEN_ENABLED")
+check(frame:IsShown(), "hide in combat: back after combat")
+ns.SetCombatMode("only")
+check(not frame:IsShown(), "only in combat: hidden out of combat")
+combat = true
+ev.scripts.OnEvent(ev, "PLAYER_REGEN_DISABLED")
+check(frame:IsShown(), "only in combat: shown when combat starts")
+combat = false
+ev.scripts.OnEvent(ev, "PLAYER_REGEN_ENABLED")
+check(not frame:IsShown(), "only in combat: hidden after combat")
+ns.SetCombatMode("always")
+check(IsiStatsDB.combatMode == "always", "combat mode back to always")
+
+-- Lock
+SlashCmdList.ISISTATS("lock")
+check(IsiStatsDB.locked == true and ns.IsLocked(), "lock")
+SlashCmdList.ISISTATS("unlock")
+check(IsiStatsDB.locked == false, "unlock")
+
 if failures > 0 then
   print(("load test: %d failure(s)"):format(failures))
   os.exit(1)
