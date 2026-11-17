@@ -347,8 +347,6 @@ function Data.GetCatalog()
         { id = "m_dps", label = L.DPS },
         { id = "m_crit", label = L.CRIT },
         { id = "m_hit", label = L.HIT },
-        { id = "m_skill_mh", label = L.SKILL_MH },
-        { id = "m_skill_oh", label = L.SKILL_OH },
         { id = "m_miss", label = L.MISS_VS_BOSS },
       },
     },
@@ -523,29 +521,16 @@ local function meleeSection(level, skills, hit)
   addRow(rows, "m_crit", L.CRIT, show(call(GetCritChance), "%.2f%%"))
   addRow(rows, "m_hit", L.HIT, hit and pct(hit) or show(call(GetHitModifier), "%.2f%%"))
 
-  -- Weapon skill of the equipped weapons.
+  -- Main-hand weapon skill for the miss chance (the skills themselves are
+  -- listed under weapon skills).
   local mainSkillID = skillForSlot(SLOT_MAIN) or (not itemTypeInSlot(SLOT_MAIN) and SKILL.UNARMED) or nil
-  local offSkillID = dualWield and skillForSlot(SLOT_OFF) or nil
   local mainSkill = mainSkillID and skills[mainSkillID]
-  local offSkill = offSkillID and skills[offSkillID]
 
   -- Classic API fallback: UnitAttackBothHands gives base and modifier.
-  local mhBase, mhMod, ohBase, ohMod = call(UnitAttackBothHands, "player")
-  mhBase, mhMod, ohBase, ohMod = num(mhBase), num(mhMod) or 0, num(ohBase), num(ohMod) or 0
+  local mhBase, mhMod = call(UnitAttackBothHands, "player")
+  mhBase, mhMod = num(mhBase), num(mhMod) or 0
   if not mainSkill and mhBase and mhBase > 0 then
     mainSkill = { name = "", rank = mhBase, mod = mhMod }
-  end
-  if dualWield and not offSkill and ohBase and ohBase > 0 then
-    offSkill = { name = "", rank = ohBase, mod = ohMod }
-  end
-
-  if mainSkill then
-    local tip = mainSkill.name ~= "" and mainSkill.name or nil
-    addRow(rows, "m_skill_mh", L.SKILL_MH, skillValueText(mainSkill), "accent", tip)
-  end
-  if offSkill then
-    local tip = offSkill.name ~= "" and offSkill.name or nil
-    addRow(rows, "m_skill_oh", L.SKILL_OH, skillValueText(offSkill), "accent", tip)
   end
 
   if mainSkill and level and hit then
