@@ -542,17 +542,27 @@ function Data.DebugDump(print)
   print("Settings:", type(Settings), "InterfaceOptions_AddCategory:", type(InterfaceOptions_AddCategory))
   local secret = Data.SecretApiNames()
   print("secret in combat:", #secret > 0 and table.concat(secret, ", ") or "-")
+  print("in combat:", tostring(type(InCombatLockdown) == "function" and InCombatLockdown()))
+  print("main hand skill line:", tostring(skillForSlot(SLOT_MAIN)), "off hand:", tostring(skillForSlot(SLOT_OFF)))
+  -- Raw skill tables: confirms the field names isiStatsForever reads
+  -- (rank / maxRank / modifier / tempPoints). Secret values print as <secret>.
   local api = hasSkillInfo and C_SkillInfo.GetSkillLineInfoByID
-  for _, id in ipairs({ SKILL.DEFENSE, skillForSlot(SLOT_MAIN) or SKILL.UNARMED }) do
+  local ids = { SKILL.DEFENSE }
+  for _, id in ipairs(WEAPON_SKILL_ORDER) do
+    ids[#ids + 1] = id
+  end
+  for _, id in ipairs(ids) do
     local info = api and call(api, id)
     if type(info) == "table" then
       local parts = {}
       for k, v in pairs(info) do
-        parts[#parts + 1] = tostring(k) .. "=" .. tostring(v)
+        local text = isSecret(v) and "<secret>" or tostring(v)
+        parts[#parts + 1] = tostring(k) .. "=" .. text
       end
+      table.sort(parts)
       print("skill " .. id .. ": " .. table.concat(parts, ", "))
-    else
-      print("skill " .. id .. ": " .. tostring(info))
+    elseif info ~= nil then
+      print("skill " .. id .. ": " .. (isSecret(info) and "<secret>" or tostring(info)))
     end
   end
 end

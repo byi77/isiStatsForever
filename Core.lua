@@ -447,9 +447,20 @@ SlashCmdList.ISISTATS = function(msg)
       ns.ErrorLog.Print(out)
     end
   elseif cmd == "debug" then
+    -- Printed and kept in IsiStatsDB.lastDebug, so it can be read from the
+    -- SavedVariables file after a /reload (no copying from the chat).
+    local lines = {}
     ns.Data.DebugDump(function(...)
-      print("|cff1e90ffisiStatsForever|r", ...)
+      local parts = {}
+      for i = 1, select("#", ...) do
+        parts[#parts + 1] = tostring((select(i, ...)))
+      end
+      local line = table.concat(parts, " ")
+      lines[#lines + 1] = line
+      print("|cff1e90ffisiStatsForever|r " .. line)
     end)
+    db.lastDebug = { time = type(date) == "function" and date("%Y-%m-%d %H:%M:%S") or "", lines = lines }
+    out(L.DEBUG_SAVED)
   else
     out(L.CMD_HELP)
   end

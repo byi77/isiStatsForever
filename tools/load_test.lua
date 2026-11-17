@@ -174,6 +174,10 @@ check(not frame:IsShown(), "only in combat: hidden after combat")
 ns.SetCombatMode("always")
 check(IsiStatsDB.combatMode == "always", "combat mode back to always")
 
+-- Debug output is kept for reading from the SavedVariables file.
+SlashCmdList.ISISTATS("debug")
+check(type(IsiStatsDB.lastDebug) == "table" and #IsiStatsDB.lastDebug.lines > 3, "debug dump saved")
+
 -- Lock
 SlashCmdList.ISISTATS("lock")
 check(IsiStatsDB.locked == true and ns.IsLocked(), "lock")
