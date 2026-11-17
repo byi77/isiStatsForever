@@ -377,7 +377,6 @@ function Data.GetCatalog()
       key = "defense",
       title = L.DEFENSE_SECTION,
       rows = {
-        { id = "d_def", label = L.DEFENSE },
         { id = "d_missed", label = L.MISSED_BY },
         { id = "d_critred", label = L.CRIT_REDUCTION },
         { id = "d_armor", label = L.ARMOR },
@@ -395,6 +394,7 @@ function Data.GetCatalog()
         { id = "w_equipped", label = L.SKILLS_EQUIPPED },
         { id = "w_other", label = L.SKILLS_OTHER },
         { id = "w_vs", label = L.OPT_W_VS },
+        { id = "d_def", label = L.DEFENSE },
       },
     },
     {
@@ -449,14 +449,6 @@ local function addRow(rows, id, label, value, color, tip, labelColor)
     return
   end
   rows[#rows + 1] = { key = id, label = label, value = value, color = color, tip = tip, labelColor = labelColor }
-end
-
-local function skillValueText(s)
-  local total = s.rank + s.mod
-  if s.mod ~= 0 then
-    return string.format("%d |cff8a96a8(%d%s)|r", total, s.rank, signed(s.mod))
-  end
-  return tostring(total)
 end
 
 local function baseSection()
@@ -633,18 +625,13 @@ end
 local function defenseSection(level, skills)
   local rows = {}
 
+  -- The defense skill itself is listed with the weapon skills (current / max);
+  -- here only the values derived from it.
   local def = skills[SKILL.DEFENSE]
-  local defBase, defMod = call(UnitDefense, "player")
-  defBase, defMod = num(defBase), num(defMod) or 0
-  if not def and defBase and defBase > 0 then
-    def = { name = DEFENSE or L.DEFENSE, rank = defBase, mod = defMod }
-  end
-
   local attackerSkill = level and level * 5
   if def then
     local total = def.rank + def.mod
     local tip = attackerSkill and string.format(L.DEFENSE_TIP, attackerSkill) or nil
-    addRow(rows, "d_def", L.DEFENSE, skillValueText(def), "accent", tip)
     if attackerSkill then
       local diff = total - attackerSkill
       addRow(rows, "d_missed", L.MISSED_BY, pct(math.max(0, 5 + diff * 0.04)), nil, tip)
@@ -748,7 +735,8 @@ end
 
 local function weaponSkillSection(skills, classicList, level)
   local showEquipped, showOther = enabled("w_equipped"), enabled("w_other")
-  if not showEquipped and not showOther then
+  local showDefense = enabled("d_def") and skills[SKILL.DEFENSE] ~= nil
+  if not showEquipped and not showOther and not showDefense then
     return nil
   end
   local rows = {}
@@ -824,8 +812,25 @@ local function weaponSkillSection(skills, classicList, level)
     end
   end
 
-  if not found then
+  if not found and (showEquipped or showOther) then
     rows[#rows + 1] = { label = L.NONE_KNOWN, value = "", labelColor = "dim" }
+  end
+
+  -- Defense below the weapons, as current / max like the game's skill panel.
+  if showDefense then
+    local def = skills[SKILL.DEFENSE]
+    local max = def.max and def.max > 0 and def.max or nil
+    local value = max and string.format("%d / %d", def.rank, max) or tostring(def.rank)
+    if def.mod ~= 0 then
+      value = value .. " " .. signed(def.mod)
+    end
+    rows[#rows + 1] = {
+      key = "d_def",
+      label = L.DEFENSE,
+      value = value,
+      color = (max and def.rank < max) and "warn" or nil,
+      tip = level and string.format(L.DEFENSE_TIP, level * 5) or nil,
+    }
   end
   return { key = "skills", title = L.WEAPON_SKILLS, rows = rows }
 end
@@ -869,6 +874,15 @@ function Data.Collect()
           skills[SKILL.DEFENSE] = s
         end
       end
+    end
+  end
+
+  -- Classic API fallback for the defense skill.
+  if not skills[SKILL.DEFENSE] then
+    local defBase, defMod = call(UnitDefense, "player")
+    defBase, defMod = num(defBase), num(defMod) or 0
+    if defBase and defBase > 0 then
+      skills[SKILL.DEFENSE] = { name = DEFENSE or L.DEFENSE, rank = defBase, mod = defMod }
     end
   end
 

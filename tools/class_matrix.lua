@@ -265,7 +265,8 @@ for _, token in ipairs(ORDER) do
     check(by.spell and by.spell[L.SPELL_DAMAGE], token .. ": spell damage")
     check(not by.melee and not by.ranged, token .. ": no melee/ranged rows by default")
   end
-  check(by.defense and by.defense[L.DEFENSE], token .. ": defense")
+  check(by.skills and by.skills[L.DEFENSE], token .. ": defense (current / max) below the weapon skills")
+  check(not (by.defense and by.defense[L.DEFENSE]), token .. ": defense not twice")
 
   -- equipped weapon skills (and only those), with the vs.-target tooltip
   local equipped = {}
@@ -342,7 +343,10 @@ for _, token in ipairs(ORDER) do
     end
     -- only equipped skills: this weapon, plus unarmed when the main hand is empty
     for label in pairs(by.skills or {}) do
-      local expected = label == name or label == "Testgegner" or (ranged and label == "Unbewaffnet")
+      local expected = label == name
+        or label == "Testgegner"
+        or label == L.DEFENSE
+        or (ranged and label == "Unbewaffnet")
       check(expected, ("%s with %s: unexpected skill row %s"):format(token, name, label))
     end
     names[#names + 1] = name
