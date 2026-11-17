@@ -222,18 +222,37 @@ end
 -- Miss chance of a special attack against a target with `defense`,
 -- classic rules: +0.1% per point of difference, +0.2% once the gap is
 -- larger than 10, and 1% of hit is lost against such targets.
+-- The WoW Forever skill panel rates every point between weapon skill and
+-- target defense at 0.04% (hit and crit), at any gap; that panel is the
+-- reference here.
+local SKILL_STEP = 0.04
+
 local function missChance(skill, defense, hit)
-  local diff = defense - skill
-  local miss
-  if diff > 10 then
-    miss = 5 + diff * 0.2
-    hit = math.max(0, hit - 1)
-  elseif diff > 0 then
-    miss = 5 + diff * 0.1
-  else
-    miss = 5 + diff * 0.04
-  end
+  local miss = 5 + (defense - skill) * SKILL_STEP
   return math.max(0, miss - hit), math.max(0, miss + 19 - hit)
+end
+
+-- Glancing blows (classic): chance from the defense gap to the capped skill,
+-- damage from the gap to the real skill. Matches the game panel
+-- (skill 203 vs. 315: 100% glancing, 89% less damage).
+local function glancing(skill, defense, playerLevel)
+  local cappedSkill = math.min(skill, playerLevel * 5)
+  local chance = math.max(0, math.min(100, 10 + (defense - cappedSkill) * 2))
+  local diff = defense - skill
+  local low = math.max(0.01, math.min(0.91, 1.3 - 0.05 * diff))
+  local high = math.max(0.2, math.min(0.99, 1.2 - 0.03 * diff))
+  local reduction = (1 - (low + high) / 2) * 100
+  return chance, math.floor(reduction)
+end
+
+local function signedPct(v)
+  local text = string.format("%+.2f%%", v)
+  if v < 0 then
+    return "|cffff6b61" .. text .. "|r"
+  elseif v > 0 then
+    return "|cff73d973" .. text .. "|r"
+  end
+  return text
 end
 
 local function armorReduction(armor, attackerLevel)
@@ -329,6 +348,17 @@ function Data.GetCatalog()
       },
     },
     {
+      key = "target",
+      title = L.TARGET_SECTION,
+      rows = {
+        { id = "t_info", label = L.OPT_T_INFO },
+        { id = "t_hit", label = L.T_HIT },
+        { id = "t_crit", label = L.T_CRIT },
+        { id = "t_glance", label = L.T_GLANCE },
+        { id = "t_boss", label = L.OPT_T_BOSS },
+      },
+    },
+    {
       key = "resist",
       title = L.RESISTANCES,
       rows = {
@@ -355,7 +385,7 @@ local CLASS_DEFAULTS = {
   MAGE = { "stat4", "s_dmg" },
   WARLOCK = { "stat4", "s_dmg" },
 }
-local COMMON_DEFAULTS = { "d_def", "w_equipped" }
+local COMMON_DEFAULTS = { "d_def", "w_equipped", "t_info", "t_hit", "t_crit", "t_glance" }
 
 function Data.GetDefaults()
   local defaults = {}
@@ -699,6 +729,100 @@ local function weaponSkillSection(skills, classicList)
   return { key = "skills", title = L.WEAPON_SKILLS, rows = rows }
 end
 
+-- ---------------------------------------------------------------- vs. target
+
+local RAID_BOSS_LEVEL = 63
+
+-- The current attackable target as { name, levelText, level, defense };
+-- without one, an enemy of your own level (like the game's skill panel).
+local function currentTarget(playerLevel)
+  local exists = call(UnitExists, "target")
+  local hostile = exists and call(UnitCanAttack, "player", "target")
+  if exists == true and hostile == true then
+    local name = str(call(UnitName, "target")) or L.TARGET
+    local level = num(call(UnitLevel, "target"))
+    local classification = str(call(UnitClassification, "target"))
+    if classification == "worldboss" then
+      return { name = name, levelText = "??", level = RAID_BOSS_LEVEL, defense = RAID_BOSS_LEVEL * 5 }
+    end
+    if level == -1 then
+      local guess = playerLevel + 10
+      return { name = name, levelText = "??", level = guess, defense = guess * 5 }
+    end
+    if level and level > 0 then
+      return { name = name, levelText = tostring(level), level = level, defense = level * 5 }
+    end
+  end
+  return { name = L.SAME_LEVEL, levelText = tostring(playerLevel), level = playerLevel, defense = playerLevel * 5 }
+end
+
+-- Skills of the equipped weapons: { name, total, melee }, one per skill line.
+local function equippedWeapons(skills)
+  local list, seen = {}, {}
+  local function add(id, melee)
+    local s = id and skills[id]
+    if s and not seen[id] then
+      seen[id] = true
+      list[#list + 1] = { name = s.name, total = s.rank + s.mod, melee = melee }
+    end
+  end
+  add(skillForSlot(SLOT_MAIN) or (not itemTypeInSlot(SLOT_MAIN) and SKILL.UNARMED) or nil, true)
+  add(skillForSlot(SLOT_OFF), true)
+  add(skillForSlot(SLOT_RANGED), false)
+  return list
+end
+
+local function addVersus(rows, weapons, foe, playerLevel)
+  if enabled("t_info") then
+    rows[#rows + 1] = {
+      label = foe.name,
+      value = string.format(L.T_LEVEL_FMT, foe.levelText, foe.defense),
+      labelColor = "heading",
+      color = "dim",
+    }
+  end
+  local showHit, showCrit, showGlance = enabled("t_hit"), enabled("t_crit"), enabled("t_glance")
+  if not (showHit or showCrit or showGlance) then
+    return
+  end
+  for _, w in ipairs(weapons) do
+    local delta = (w.total - foe.defense) * SKILL_STEP
+    rows[#rows + 1] = { label = w.name, value = tostring(w.total), labelColor = "accent", color = "accent" }
+    if showHit then
+      rows[#rows + 1] = { label = "   " .. L.T_HIT, value = signedPct(delta), tip = L.T_HIT_TIP }
+    end
+    if showCrit then
+      rows[#rows + 1] = { label = "   " .. L.T_CRIT, value = signedPct(delta), tip = L.T_CRIT_TIP }
+    end
+    if showGlance and w.melee and foe.level > playerLevel then
+      local chance, reduction = glancing(w.total, foe.defense, playerLevel)
+      rows[#rows + 1] = {
+        label = "   " .. L.T_GLANCE,
+        value = string.format(L.T_GLANCE_FMT, chance, reduction),
+        color = chance >= 40 and "warn" or nil,
+        tip = L.T_GLANCE_TIP,
+      }
+    end
+  end
+end
+
+local function targetSection(level, skills)
+  if not level then
+    return nil
+  end
+  local weapons = equippedWeapons(skills)
+  if #weapons == 0 then
+    return nil
+  end
+  local rows = {}
+  addVersus(rows, weapons, currentTarget(level), level)
+  if enabled("t_boss") then
+    local boss = { name = L.RAID_BOSS, levelText = "??", level = RAID_BOSS_LEVEL, defense = RAID_BOSS_LEVEL * 5 }
+    addVersus(rows, weapons, boss, level)
+  end
+  return { key = "target", title = L.TARGET_SECTION, rows = rows }
+end
+
 local function resistanceSection()
   local rows = {}
   for i = 2, 6 do
@@ -748,6 +872,7 @@ function Data.Collect()
   push(spellSection())
   push(defenseSection(level, skills))
   push(weaponSkillSection(skills, classicList))
+  push(targetSection(level, skills))
   push(resistanceSection())
 
   if #sections == 0 then
