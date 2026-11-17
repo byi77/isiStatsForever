@@ -18,6 +18,15 @@ function Data.GetCatalog()
   end
   return {
     {
+      key = "xp",
+      title = L.XP_SECTION,
+      rows = {
+        { id = "xp_next", label = L.XP_OPT },
+        { id = "xp_time", label = L.XP_TIME },
+        { id = "xp_eta", label = L.XP_ETA_OPT },
+      },
+    },
+    {
       key = "base",
       title = L.BASE,
       rows = {
@@ -118,7 +127,7 @@ local CLASS_DEFAULTS = {
   MAGE = { "stat4", "s_dmg" },
   WARLOCK = { "stat4", "s_dmg" },
 }
-local COMMON_DEFAULTS = { "d_def", "w_equipped", "w_vs", "w_vs_none" }
+local COMMON_DEFAULTS = { "xp_next", "xp_time", "xp_eta", "d_def", "w_equipped", "w_vs", "w_vs_none" }
 
 function Data.GetDefaults()
   local defaults = {}

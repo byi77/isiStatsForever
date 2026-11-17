@@ -325,6 +325,9 @@ local REFRESH_EVENTS = {
   "UPDATE_SHAPESHIFT_FORM",
   "COMBAT_RATING_UPDATE",
   "PLAYER_TARGET_CHANGED",
+  "PLAYER_XP_UPDATE",
+  "TIME_PLAYED_MSG",
+  "UPDATE_EXHAUSTION",
   "PLAYER_REGEN_DISABLED",
   "PLAYER_REGEN_ENABLED",
   "UNIT_LEVEL",
@@ -346,7 +349,7 @@ local UNIT_EVENTS = {
 local events = CreateFrame("Frame")
 events:RegisterEvent("ADDON_LOADED")
 events:RegisterEvent("PLAYER_LOGIN")
-events:SetScript("OnEvent", function(self, event, arg1)
+events:SetScript("OnEvent", function(self, event, arg1, arg2)
   if event == "ADDON_LOADED" then
     if arg1 ~= addonName then
       return
@@ -379,7 +382,17 @@ events:SetScript("OnEvent", function(self, event, arg1)
     elseif db.shown and not db.dock then
       ns.Show()
     end
+    -- Played time for "time on this level"; the shown time ticks on.
+    ns.LevelTime.Request()
+    if type(C_Timer) == "table" and C_Timer.NewTicker then
+      C_Timer.NewTicker(30, ns.RequestRefresh)
+    end
   else
+    if event == "TIME_PLAYED_MSG" then
+      ns.LevelTime.OnTimePlayed(arg1, arg2)
+    elseif event == "PLAYER_LEVEL_UP" then
+      ns.LevelTime.OnLevelUp()
+    end
     if (event == "PLAYER_REGEN_DISABLED" or event == "PLAYER_REGEN_ENABLED") and db.combatMode ~= "always" then
       ns.ApplyCombatVisibility()
     end

@@ -69,6 +69,83 @@ check(
 )
 check(findRow(sections, ns.L.DEFENSE) ~= nil, "defense row")
 
+-- XP to the next level, in thousands, at the very top; gone at max level.
+UnitXP = function()
+  return 5000
+end
+UnitXPMax = function()
+  return 17400
+end
+GetMaxPlayerLevel = function()
+  return 60
+end
+UnitLevel = function()
+  return 41
+end
+local xpSections = ns.Data.Collect()
+local xpRow = xpSections[1] and xpSections[1].rows[1]
+check(xpSections[1].key == "xp" and xpRow and xpRow.value == "12.4k", "XP row first, 12.4k to go")
+check(xpRow and xpRow.label == string.format(ns.L.XP_NEXT_FMT, 42), "XP row names the next level")
+-- The login query mutes the chat windows for TIME_PLAYED_MSG and lets them
+-- listen again once the answer is in (no global function replaced).
+local chatListens = true
+ChatFrame1 = {
+  IsEventRegistered = function(_, event)
+    return event == "TIME_PLAYED_MSG" and chatListens
+  end,
+  UnregisterEvent = function()
+    chatListens = false
+  end,
+  RegisterEvent = function()
+    chatListens = true
+  end,
+}
+local pendingTimers, asked = {}, false
+local realAfter = C_Timer.After
+C_Timer.After = function(_, fn)
+  pendingTimers[#pendingTimers + 1] = fn
+end
+RequestTimePlayed = function()
+  asked = true
+end
+ns.LevelTime.Request()
+check(asked and not chatListens, "played-time query sent with the chat muted")
+ns.LevelTime.OnTimePlayed(100000, 3600)
+for _, fn in ipairs(pendingTimers) do
+  fn()
+end
+check(chatListens, "chat listens again after the answer")
+C_Timer.After = realAfter
+ChatFrame1, RequestTimePlayed = nil, nil
+
+-- Time on this level from TIME_PLAYED_MSG (through the real event handler)
+-- and the estimate from the XP rate: 5000 XP in 1h, 12400 to go -> ~2h 28m.
+local clock = 1000
+GetTime = function()
+  return clock
+end
+local evFrame = StubFrames[1]
+evFrame.scripts.OnEvent(evFrame, "TIME_PLAYED_MSG", 100000, 3600)
+local function xpRowByKey(key)
+  for _, r in ipairs(ns.Data.Collect()[1].rows) do
+    if r.key == key then
+      return r
+    end
+  end
+end
+check(xpRowByKey("xp_time") and xpRowByKey("xp_time").value == "1h 0m", "time on this level 1h 0m")
+check(xpRowByKey("xp_eta") and xpRowByKey("xp_eta").value == "~2h 28m", "estimate ~2h 28m")
+clock = clock + 1800
+check(xpRowByKey("xp_time").value == "1h 30m", "time on this level keeps counting")
+evFrame.scripts.OnEvent(evFrame, "PLAYER_LEVEL_UP", 42)
+check(xpRowByKey("xp_time").value == "0m", "level up restarts the level time")
+check(xpRowByKey("xp_eta").value == "-", "no estimate without data")
+UnitLevel = function()
+  return 60
+end
+check(ns.Data.Collect()[1].key ~= "xp", "no XP row at max level")
+UnitXP, UnitXPMax, GetMaxPlayerLevel = nil, nil, nil
+
 -- No guessing: a hostile level ?? target (not a world boss) gets no defense.
 UnitExists = function()
   return true

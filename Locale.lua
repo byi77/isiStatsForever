@@ -1,6 +1,17 @@
 local _, ns = ...
 
 local L = {
+  XP_SECTION = "Experience",
+  XP_OPT = "XP to the next level",
+  XP_NEXT_FMT = "XP to level %d",
+  XP_TIP_FMT = "%d / %d XP (%.1f%%)",
+  XP_RESTED_FMT = "Rested: %d XP",
+  XP_TIME = "Time on this level",
+  XP_ETA_OPT = "Estimated time to the next level",
+  XP_ETA_FMT = "To level %d (estimated)",
+  XP_ETA_TIP = "Calculated from your XP rate on this level so far.",
+  XP_ETA_NONE = "Not enough data yet: needs at least one minute and some XP on this level.",
+  DUR_DAYS_FMT = "%dd %dh",
   BASE = "Attributes",
   MELEE = "Melee",
   RANGED = "Ranged",
@@ -94,6 +105,17 @@ local L = {
 
 if GetLocale() == "deDE" then
   local de = {
+    XP_SECTION = "Erfahrung",
+    XP_OPT = "EP bis zur nächsten Stufe",
+    XP_NEXT_FMT = "EP bis Stufe %d",
+    XP_TIP_FMT = "%d / %d EP (%.1f%%)",
+    XP_RESTED_FMT = "Erholt: %d EP",
+    XP_TIME = "Zeit auf dieser Stufe",
+    XP_ETA_OPT = "Geschätzte Zeit bis zur nächsten Stufe",
+    XP_ETA_FMT = "Bis Stufe %d (geschätzt)",
+    XP_ETA_TIP = "Errechnet aus deinem bisherigen EP-Tempo auf dieser Stufe.",
+    XP_ETA_NONE = "Noch zu wenig Daten: mindestens eine Minute und etwas EP auf dieser Stufe.",
+    DUR_DAYS_FMT = "%dT %dh",
     BASE = "Attribute",
     MELEE = "Nahkampf",
     RANGED = "Fernkampf",

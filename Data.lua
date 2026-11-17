@@ -41,6 +41,55 @@ local function addRow(rows, id, label, value, color, tip, labelColor)
   rows[#rows + 1] = { key = id, label = label, value = value, color = color, tip = tip, labelColor = labelColor }
 end
 
+-- XP still needed for the next level, in thousands ("12.4k"), with a
+-- progress bar for the current level. Hidden at the maximum level.
+local function xpSection(level)
+  local atMax = call(IsPlayerAtEffectiveMaxLevel) == true
+  local maxLevel = num(call(GetMaxPlayerLevel))
+  if atMax or (level and maxLevel and level >= maxLevel) then
+    return nil
+  end
+  local current, needed = num(call(UnitXP, "player")), num(call(UnitXPMax, "player"))
+  if not current or not needed or needed <= 0 then
+    return nil
+  end
+  local remaining = math.max(0, needed - current)
+  local tip = string.format(L.XP_TIP_FMT, current, needed, current / needed * 100)
+  local rested = num(call(GetXPExhaustion))
+  if rested and rested > 0 then
+    tip = tip .. "\n" .. string.format(L.XP_RESTED_FMT, rested)
+  end
+  local rows = {}
+  if enabled("xp_next") then
+    rows[1] = {
+      key = "xp_next",
+      label = level and string.format(L.XP_NEXT_FMT, level + 1) or L.XP_OPT,
+      value = string.format("%.1fk", remaining / 1000),
+      color = "accent",
+      progress = current / needed,
+      tip = tip,
+    }
+  end
+
+  -- Played time on this level and the estimate from the XP rate on it.
+  local LevelTime = ns.LevelTime
+  local seconds = LevelTime and LevelTime.Seconds()
+  if seconds and enabled("xp_time") then
+    rows[#rows + 1] = { key = "xp_time", label = L.XP_TIME, value = LevelTime.Format(seconds) }
+  end
+  if seconds and enabled("xp_eta") then
+    local eta = LevelTime.Estimate(current, remaining)
+    rows[#rows + 1] = {
+      key = "xp_eta",
+      label = level and string.format(L.XP_ETA_FMT, level + 1) or L.XP_ETA_OPT,
+      value = eta and ("~" .. LevelTime.Format(eta)) or "-",
+      color = eta and nil or "dim",
+      tip = eta and L.XP_ETA_TIP or L.XP_ETA_NONE,
+    }
+  end
+  return { key = "xp", title = L.XP_SECTION, rows = rows }
+end
+
 local function baseSection()
   local rows = {}
   for i = 1, 5 do
@@ -505,6 +554,7 @@ function Data.Collect()
       sections[#sections + 1] = section
     end
   end
+  push(xpSection(level))
   push(baseSection())
   push(meleeSection(level, skills, hit))
   push(rangedSection(hit))
