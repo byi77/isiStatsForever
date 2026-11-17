@@ -131,6 +131,9 @@ function Options.Sync()
   if panel.dock then
     panel.dock:SetChecked(ns.IsDocked())
   end
+  if panel.headers then
+    panel.headers:SetChecked(ns.GetShowHeaders())
+  end
   if panel.alpha then
     panel.alpha:SetSliderValue(ns.GetAlpha())
   end
@@ -172,6 +175,11 @@ local function build()
   open:SetPoint("TOPLEFT", 16 + COL_W, y - 1)
   open:SetScript("OnClick", function()
     ns.Show()
+  end)
+  y = y - ROW_H - 4
+
+  panel.headers = checkbox(content, 16, y, L.OPT_HEADERS, function(checked)
+    ns.SetShowHeaders(checked)
   end)
   y = y - ROW_H - 4
 

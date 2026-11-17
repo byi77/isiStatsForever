@@ -29,6 +29,7 @@ local TITLE_H = 22
 local HEADER_H = 18
 local ROW_H = 15
 local SECTION_GAP = 4
+local HEADERLESS_GAP = 8
 local WHITE = "Interface\\Buttons\\WHITE8X8"
 local GRIP_SIZE = 14
 local MIN_SCALE, MAX_SCALE = 0.5, 2
@@ -134,7 +135,9 @@ local function layoutRow(row, data, alt, y)
   row:Show()
 end
 
-function UI.Render(sections, collapsedMap)
+-- showHeaders false: no section headers; then nothing can be collapsed, so
+-- every section shows its rows, separated by a small gap.
+function UI.Render(sections, collapsedMap, showHeaders)
   if not frame then
     return
   end
@@ -142,12 +145,14 @@ function UI.Render(sections, collapsedMap)
   local y = -TITLE_H - 6
   for si, section in ipairs(sections) do
     if si > 1 then
-      y = y - SECTION_GAP
+      y = y - (showHeaders and SECTION_GAP or HEADERLESS_GAP)
     end
-    local collapsed = collapsedMap and collapsedMap[section.key]
-    rowCount = rowCount + 1
-    layoutHeader(acquireRow(rowCount), section, collapsed, y)
-    y = y - HEADER_H - 1
+    local collapsed = showHeaders and collapsedMap and collapsedMap[section.key]
+    if showHeaders then
+      rowCount = rowCount + 1
+      layoutHeader(acquireRow(rowCount), section, collapsed, y)
+      y = y - HEADER_H - 1
+    end
     if not collapsed then
       for ri, data in ipairs(section.rows) do
         rowCount = rowCount + 1

@@ -6,6 +6,7 @@ local DEFAULTS = {
   shown = false, -- free window open (only when not docked)
   scale = 1,
   alpha = 100, -- background opacity in percent
+  showHeaders = false, -- section headers (hidden by default)
   pos = nil, -- { point, relativePoint, x, y }
   collapsed = {},
 }
@@ -55,6 +56,15 @@ function ns.SetAlpha(percent)
   if ns.Options then
     ns.Options.Sync()
   end
+end
+
+function ns.GetShowHeaders()
+  return db and db.showHeaders and true or false
+end
+
+function ns.SetShowHeaders(value)
+  db.showHeaders = value and true or false
+  ns.Refresh()
 end
 
 function ns.IsDocked()
@@ -153,7 +163,7 @@ function ns.Refresh()
   if frame.subtitle then
     frame.subtitle:SetText((class or "") .. (level and (" " .. level) or ""))
   end
-  ns.UI.Render(ns.Data.Collect(), db.collapsed)
+  ns.UI.Render(ns.Data.Collect(), db.collapsed, db.showHeaders)
 end
 
 function ns.RequestRefresh()
