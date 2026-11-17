@@ -401,17 +401,6 @@ function Data.GetCatalog()
       },
     },
     {
-      key = "target",
-      title = L.TARGET_SECTION,
-      rows = {
-        { id = "t_info", label = L.OPT_T_INFO },
-        { id = "t_hit", label = L.T_HIT },
-        { id = "t_crit", label = L.T_CRIT },
-        { id = "t_glance", label = L.T_GLANCE },
-        { id = "t_boss", label = L.OPT_T_BOSS },
-      },
-    },
-    {
       key = "resist",
       title = L.RESISTANCES,
       rows = {
@@ -438,7 +427,7 @@ local CLASS_DEFAULTS = {
   MAGE = { "stat4", "s_dmg" },
   WARLOCK = { "stat4", "s_dmg" },
 }
-local COMMON_DEFAULTS = { "d_def", "w_equipped", "w_vs", "t_info", "t_hit", "t_crit", "t_glance" }
+local COMMON_DEFAULTS = { "d_def", "w_equipped", "w_vs" }
 
 function Data.GetDefaults()
   local defaults = {}
@@ -868,81 +857,6 @@ local function weaponSkillSection(skills, classicList, level)
   return { key = "skills", title = L.WEAPON_SKILLS, rows = rows }
 end
 
--- Skills of the equipped weapons: { name, total, melee }, one per skill line.
-local function equippedWeapons(skills)
-  local list, seen = {}, {}
-  local function add(id, melee)
-    local s = id and skills[id]
-    if s and not seen[id] then
-      seen[id] = true
-      list[#list + 1] = { name = s.name, total = s.rank + s.mod, melee = melee }
-    end
-  end
-  add(skillForSlot(SLOT_MAIN) or (not itemTypeInSlot(SLOT_MAIN) and SKILL.UNARMED) or nil, true)
-  add(skillForSlot(SLOT_OFF), true)
-  add(skillForSlot(SLOT_RANGED), false)
-  return list
-end
-
-local function addVersus(rows, weapons, foe, playerLevel, kind)
-  if foe.unknown then
-    return
-  end
-  local prefix = "t:" .. kind .. ":"
-  if enabled("t_info") then
-    rows[#rows + 1] = {
-      key = prefix .. "info",
-      label = foe.name,
-      value = string.format(L.T_LEVEL_FMT, foe.levelText, foe.defense),
-      labelColor = "heading",
-      color = "dim",
-    }
-  end
-  local showHit, showCrit, showGlance = enabled("t_hit"), enabled("t_crit"), enabled("t_glance")
-  if not (showHit or showCrit or showGlance) then
-    return
-  end
-  for _, w in ipairs(weapons) do
-    local delta = (w.total - foe.defense) * SKILL_STEP
-    local wk = prefix .. w.name .. ":"
-    rows[#rows + 1] =
-      { key = wk .. "skill", label = w.name, value = tostring(w.total), labelColor = "accent", color = "accent" }
-    if showHit then
-      rows[#rows + 1] = { key = wk .. "hit", label = "   " .. L.T_HIT, value = signedPct(delta), tip = L.T_HIT_TIP }
-    end
-    if showCrit then
-      rows[#rows + 1] = { key = wk .. "crit", label = "   " .. L.T_CRIT, value = signedPct(delta), tip = L.T_CRIT_TIP }
-    end
-    if showGlance and w.melee and foe.level > playerLevel then
-      local chance, reduction = glancing(w.total, foe.defense, playerLevel)
-      rows[#rows + 1] = {
-        key = wk .. "glance",
-        label = "   " .. L.T_GLANCE,
-        value = string.format(L.T_GLANCE_FMT, chance, reduction),
-        color = chance >= 40 and "warn" or nil,
-        tip = L.T_GLANCE_TIP,
-      }
-    end
-  end
-end
-
-local function targetSection(level, skills)
-  if not level then
-    return nil
-  end
-  local weapons = equippedWeapons(skills)
-  if #weapons == 0 then
-    return nil
-  end
-  local rows = {}
-  addVersus(rows, weapons, currentTarget(level), level, "target")
-  if enabled("t_boss") then
-    local boss = { name = L.RAID_BOSS, levelText = "??", level = RAID_BOSS_LEVEL, defense = RAID_BOSS_LEVEL * 5 }
-    addVersus(rows, weapons, boss, level, "boss")
-  end
-  return { key = "target", title = L.TARGET_SECTION, rows = rows }
-end
-
 local function resistanceSection()
   local rows = {}
   for i = 2, 6 do
@@ -997,7 +911,6 @@ function Data.Collect()
   push(spellSection())
   push(defenseSection(level, skills))
   push(weaponSkillSection(skills, classicList, level))
-  push(targetSection(level, skills))
   push(resistanceSection())
 
   if #sections == 0 then
