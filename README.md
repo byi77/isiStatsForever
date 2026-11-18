@@ -16,7 +16,7 @@ Character stats for **WoW Forever** (client 1.60.x, interface 16001): attributes
 - **Ranged** (only with a ranged weapon; wands show damage only) and **spell** values (only for mana users).
 - **Settings page** (Options -> AddOns -> isiStatsForever): every value on/off, saved per character. Class defaults: main stat, the class's attack value and damage (melee AP + weapon damage, ranged AP + ranged damage, or spell damage), defense, the equipped weapon skills and their value vs. your target.
 - English and German, following the client language.
-- Rounded window with a soft shadow (isiLive look), docks to the character frame or floats freely, resize grip in the bottom-right corner, adjustable background opacity, optional section headers.
+- Rounded window with a soft shadow (isiLive look), floats freely (open from the start) or docks to the character frame (your choice in the settings), resize grip in the bottom-right corner, adjustable background opacity, optional section headers.
 - Values that change (buff, proc, new gear) briefly fade in; switchable.
 - Optional: hide the window in combat, or show it only in combat; lock position and size.
 - In combat, values the game hides from addons stay visible: live where possible, otherwise the last value greyed out.

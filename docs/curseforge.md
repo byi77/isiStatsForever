@@ -9,7 +9,7 @@
 
 ## Description
 
-**isiStatsForever** shows the numbers the character sheet hides, in one compact window next to your character frame.
+**isiStatsForever** shows the numbers the character sheet hides, in one compact window, free or docked to your character frame.
 
 - **Fishing pole warning**: red row while a fishing pole is equipped, raid warning with sound when combat starts with it.
 - **Chat history**: Up / Down in the chat input step through your sent lines, also after a restart.
@@ -28,7 +28,7 @@ Options → AddOns → isiStatsForever: switch every single value on or off, sav
 
 ### Window
 
-Rounded, compact window that docks to the character frame or floats freely. Resize grip in the bottom-right corner, adjustable background opacity, optional section headers, values fade in when they change. English and German.
+Rounded, compact window that floats freely (open from the start) or docks to the character frame - your choice in the settings. Resize grip in the bottom-right corner, adjustable background opacity, optional section headers, values fade in when they change. English and German.
 
 ### Commands
 
