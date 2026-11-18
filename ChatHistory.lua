@@ -1,7 +1,7 @@
 local _, ns = ...
 
 -- Chat history: Up / Down in the chat input steps through the lines you sent
--- (the game's own edit box history, which normally needs Alt), and the lines
+-- (walked by the addon over the saved list, Alt mode of the box off), and the lines
 -- are kept in IsiStatsDB.chatHistory so they survive /reload and restarts.
 --
 -- Only the game's own edit box methods are used and hooked with
@@ -58,6 +58,45 @@ local function remember(_, line)
   end
 end
 
+-- Own walk through the saved list: the client may reset the edit box's
+-- arrow mode or not walk its history at all, so Up / Down set the text
+-- themselves. pos = index into db.chatHistory, nil = not walking (empty line).
+local pos = setmetatable({}, { __mode = "k" })
+local lastStep = setmetatable({}, { __mode = "k" })
+
+local function step(box, key)
+  if not db or not db.chatHistoryArrows or (key ~= "UP" and key ~= "DOWN") then
+    return
+  end
+  -- OnArrowPressed and OnKeyDown can both report the same key press.
+  local now = type(GetTime) == "function" and GetTime() or nil
+  if now and lastStep[box] == now then
+    return
+  end
+  lastStep[box] = now
+  local list = db.chatHistory
+  if #list == 0 then
+    return
+  end
+  local p = pos[box]
+  if key == "UP" then
+    p = math.max(1, (p or #list + 1) - 1)
+  elseif p then
+    p = p + 1
+    if p > #list then
+      p = nil
+    end
+  else
+    return
+  end
+  pos[box] = p
+  local text = p and list[p] or ""
+  pcall(box.SetText, box, text)
+  if box.SetCursorPosition then
+    pcall(box.SetCursorPosition, box, #text)
+  end
+end
+
 local function applyArrowMode(box)
   if box.SetAltArrowKeyMode then
     -- false: Up / Down without Alt walk the history, Left / Right move the cursor.
@@ -98,11 +137,18 @@ function ChatHistory.Setup(savedDB)
       end)
       box:HookScript("OnEditFocusGained", function(self)
         typed[self] = nil
+        pos[self] = nil
         addedByGame = false
+        applyArrowMode(self) -- the client may reset it when the box opens
       end)
+      box:HookScript("OnArrowPressed", step)
+      if box.HasScript and box:HasScript("OnKeyDown") then
+        box:HookScript("OnKeyDown", step)
+      end
       box:HookScript("OnEnterPressed", function(self)
         local text = typed[self]
         typed[self] = nil
+        pos[self] = nil
         if not addedByGame and text and db.chatHistoryArrows then
           pcall(self.AddHistoryLine, self, text)
         end

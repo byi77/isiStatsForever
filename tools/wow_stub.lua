@@ -214,6 +214,11 @@ ChatFrame1EditBox = {
       fn(self)
     end
   end,
+  FireKey = function(self, script, key)
+    for _, fn in ipairs(self.hooks[script] or {}) do
+      fn(self, key)
+    end
+  end,
   AddHistoryLine = function(self, line)
     self.history[#self.history + 1] = line
   end,

@@ -134,6 +134,31 @@ box:SetText("/console x", true)
 box:SetText("", true)
 box:Fire("OnEnterPressed")
 check(saved[#saved] ~= "/console x", "deleted text is not saved")
+-- Up / Down walk the saved list themselves (newest first), Down past the
+-- newest gives an empty line.
+box:Fire("OnEditFocusGained")
+local n = #IsiStatsDB.chatHistory
+local clock = 0
+GetTime = function()
+  clock = clock + 1
+  return clock
+end
+box:FireKey("OnArrowPressed", "UP")
+check(box.text == IsiStatsDB.chatHistory[n], "Up shows the newest line")
+box:FireKey("OnArrowPressed", "UP")
+check(box.text == IsiStatsDB.chatHistory[n - 1], "Up again shows the one before")
+box:FireKey("OnArrowPressed", "DOWN")
+check(box.text == IsiStatsDB.chatHistory[n], "Down goes back")
+box:FireKey("OnArrowPressed", "DOWN")
+check(box.text == "", "Down past the newest line empties the box")
+GetTime = function()
+  return 5
+end
+box:FireKey("OnArrowPressed", "UP")
+box:FireKey("OnArrowPressed", "UP")
+check(box.text == IsiStatsDB.chatHistory[n], "one key press reported twice steps once")
+GetTime = nil
+box:Fire("OnEditFocusGained")
 ns.ChatHistory.SetArrows(false)
 check(box.altArrow == true, "arrow keys switchable")
 local savedCount = #IsiStatsDB.chatHistory
