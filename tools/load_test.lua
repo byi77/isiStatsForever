@@ -2,6 +2,7 @@ local dir = arg[1]
 -- Client language to simulate (second argument): deDE (default) or enUS.
 local clientLocale = arg[2] or "deDE"
 local ns = assert(loadfile(dir .. "/tools/wow_stub.lua"))(dir, clientLocale)
+assert(ns.UI.GetFrame():IsShown(), "first start: window opens once, free")
 CharacterFrame:Show()
 CharacterFrame:Hide()
 SlashCmdList.ISISTATS("alpha 40")

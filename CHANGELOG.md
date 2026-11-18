@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- First start: on a fresh install the window opens once next to the screen centre (before, it only showed with the character frame open, so new players saw nothing). Afterwards it stays docked to the character frame; free window and the rest are in the settings.
 - Chat history: Up / Down in the chat input step through the lines you sent, slash commands like `/console` included (no Alt needed) to send them again or edit them first; the last 100 lines are kept across /reload and restarts. Switchable in the settings, `/isistats chat clear` empties it.
 - Fishing pole warning: while a fishing pole is equipped, a red "Fishing pole equipped" row sits at the very top of the window; when combat starts with it in hand there is a raid warning with sound (also with the window closed). Both on by default and switchable in the settings.
 

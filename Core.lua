@@ -18,6 +18,7 @@ local DEFAULTS = {
 }
 
 local db
+local firstRun = false -- no saved variables yet: open the window once, free
 local charDB -- per character: rows[id] = true/false where the user chose
 local rowDefaults
 
@@ -374,6 +375,7 @@ events:SetScript("OnEvent", function(self, event, arg1, arg2)
     if arg1 ~= addonName then
       return
     end
+    firstRun = IsiStatsDB == nil
     IsiStatsDB = IsiStatsDB or {}
     db = IsiStatsDB
     for k, v in pairs(DEFAULTS) do
@@ -400,7 +402,9 @@ events:SetScript("OnEvent", function(self, event, arg1, arg2)
     end
     if db.combatMode ~= "always" then
       ns.ApplyCombatVisibility()
-    elseif db.shown and not db.dock then
+    elseif (db.shown and not db.dock) or firstRun then
+      -- First start: the window opens once next to the screen centre, so a new
+      -- player sees it; it stays docked to the character frame after that.
       ns.Show()
     end
     -- Played time for "time on this level"; the shown time ticks on.
