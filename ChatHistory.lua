@@ -1,0 +1,103 @@
+local _, ns = ...
+
+-- Chat history: Up / Down in the chat input steps through the lines you sent
+-- (the game's own edit box history, which normally needs Alt), and the lines
+-- are kept in IsiStatsDB.chatHistory so they survive /reload and restarts.
+--
+-- Only the game's own edit box methods are used and hooked with
+-- hooksecurefunc, so nothing of the chat code is replaced or tainted.
+
+local ChatHistory = {}
+ns.ChatHistory = ChatHistory
+
+local MAX_LINES = 100
+
+local db
+local hooked = {}
+local restoring = false
+
+local function isSecret(v)
+  return type(issecretvalue) == "function" and issecretvalue(v)
+end
+
+local function editBoxes()
+  local boxes = {}
+  local count = type(NUM_CHAT_WINDOWS) == "number" and NUM_CHAT_WINDOWS or 10
+  for i = 1, count do
+    local box = _G["ChatFrame" .. i .. "EditBox"]
+    if type(box) == "table" and box.AddHistoryLine then
+      boxes[#boxes + 1] = box
+    end
+  end
+  return boxes
+end
+
+-- Every line the game adds to an edit box history (each sent line, also
+-- slash commands) goes to the saved list; a repeat moves to the end. With the
+-- setting off nothing is saved and the game's Alt mode is back.
+local function remember(_, line)
+  if restoring or not db or not db.chatHistoryArrows or isSecret(line) or type(line) ~= "string" then
+    return
+  end
+  line = strtrim(line)
+  if line == "" then
+    return
+  end
+  local list = db.chatHistory
+  for i = #list, 1, -1 do
+    if list[i] == line then
+      table.remove(list, i)
+    end
+  end
+  list[#list + 1] = line
+  while #list > MAX_LINES do
+    table.remove(list, 1)
+  end
+end
+
+local function applyArrowMode(box)
+  if box.SetAltArrowKeyMode then
+    -- false: Up / Down without Alt walk the history, Left / Right move the cursor.
+    pcall(box.SetAltArrowKeyMode, box, not db.chatHistoryArrows)
+  end
+end
+
+function ChatHistory.Setup(savedDB)
+  db = savedDB
+  if type(db.chatHistory) ~= "table" then
+    db.chatHistory = {}
+  end
+  for _, box in ipairs(editBoxes()) do
+    if not hooked[box] then
+      hooked[box] = true
+      if box.SetHistoryLines then
+        pcall(box.SetHistoryLines, box, MAX_LINES)
+      end
+      -- Saved lines first (oldest first), so Up starts with the newest one.
+      restoring = true
+      for _, line in ipairs(db.chatHistory) do
+        pcall(box.AddHistoryLine, box, line)
+      end
+      restoring = false
+      hooksecurefunc(box, "AddHistoryLine", remember)
+    end
+    applyArrowMode(box)
+  end
+end
+
+function ChatHistory.SetArrows(value)
+  db.chatHistoryArrows = value and true or false
+  for _, box in ipairs(editBoxes()) do
+    applyArrowMode(box)
+  end
+end
+
+function ChatHistory.GetArrows()
+  return db and db.chatHistoryArrows and true or false
+end
+
+function ChatHistory.Clear()
+  if db then
+    db.chatHistory = {}
+  end
+end

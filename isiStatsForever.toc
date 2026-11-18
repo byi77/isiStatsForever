@@ -16,6 +16,7 @@ Locale.lua
 ErrorLog.lua
 Util.lua
 LevelTime.lua
+ChatHistory.lua
 Skills.lua
 Catalog.lua
 Data.lua

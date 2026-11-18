@@ -140,6 +140,9 @@ function Options.Sync()
   if panel.lock then
     panel.lock:SetChecked(ns.IsLocked())
   end
+  if panel.chatHistory then
+    panel.chatHistory:SetChecked(ns.ChatHistory.GetArrows())
+  end
   if panel.combatHide then
     panel.combatHide:SetChecked(ns.GetCombatMode() == "hide")
     panel.combatOnly:SetChecked(ns.GetCombatMode() == "only")
@@ -198,6 +201,9 @@ local function build()
 
   panel.lock = checkbox(content, 16, y, L.OPT_LOCK, function(checked)
     ns.SetLocked(checked)
+  end)
+  panel.chatHistory = checkbox(content, 16 + COL_W, y, L.OPT_CHAT_HISTORY, function(checked)
+    ns.ChatHistory.SetArrows(checked)
   end)
   y = y - ROW_H - 4
 

@@ -82,6 +82,7 @@ read_globals = {
   "UnitXP",
   "UnitXPMax",
   "geterrorhandler",
+  "hooksecurefunc",
   "issecretvalue",
   "seterrorhandler",
   "time",

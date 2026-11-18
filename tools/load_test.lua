@@ -102,6 +102,24 @@ GetInventoryItemID, C_Item = nil, savedItemInfo
 check(ns.Data.Collect()[1].key ~= "warn", "no warning without a fishing pole")
 RaidWarningFrame, RaidNotice_AddMessage, SOUNDKIT, PlaySound = nil, nil, nil, nil
 
+-- Chat history: sent lines are saved, a repeat moves to the end, and the
+-- saved lines go back into the edit box history (oldest first) on login.
+check(IsiStatsDB.chatHistoryArrows == true, "chat history arrows on by default")
+local box = ChatFrame1EditBox
+box:AddHistoryLine("/w Freund hi")
+box:AddHistoryLine("hallo")
+box:AddHistoryLine("/w Freund hi")
+local saved = IsiStatsDB.chatHistory
+check(#saved == 2 and saved[1] == "hallo" and saved[2] == "/w Freund hi", "chat lines saved, repeat moved to the end")
+check(box.altArrow == false, "Up / Down walk the history without Alt")
+ns.ChatHistory.SetArrows(false)
+check(box.altArrow == true, "arrow keys switchable")
+box:AddHistoryLine("geheim")
+check(#IsiStatsDB.chatHistory == 2, "nothing saved with the setting off")
+ns.ChatHistory.SetArrows(true)
+SlashCmdList.ISISTATS("chat clear")
+check(#IsiStatsDB.chatHistory == 0, "chat history cleared")
+
 -- XP to the next level, in thousands, at the very top; gone at max level.
 UnitXP = function()
   return 5000

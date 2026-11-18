@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Chat history: Up / Down in the chat input step through the lines you sent (no Alt needed) to send them again or edit them first; the last 100 lines are kept across /reload and restarts. Switchable in the settings, `/isistats chat clear` empties it.
 - Fishing pole warning: while a fishing pole is equipped, a red "Fishing pole equipped" row sits at the very top of the window; when combat starts with it in hand there is a raid warning with sound (also with the window closed). Both on by default and switchable in the settings.
 
 ## 0.6.0 - 2026-11-17

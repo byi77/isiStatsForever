@@ -190,6 +190,26 @@ C_SkillInfo = {
     end
   end,
 }
+-- Chat input with the game's history methods (history line list + Alt mode).
+ChatFrame1EditBox = {
+  history = {},
+  AddHistoryLine = function(self, line)
+    self.history[#self.history + 1] = line
+  end,
+  SetHistoryLines = function() end,
+  SetAltArrowKeyMode = function(self, value)
+    self.altArrow = value
+  end,
+}
+hooksecurefunc = hooksecurefunc
+  or function(tbl, name, fn)
+    local orig = tbl[name]
+    tbl[name] = function(...)
+      local r = { orig(...) }
+      fn(...)
+      return (table.unpack or unpack)(r)
+    end
+  end
 if setup then
   setup()
 end

@@ -7,6 +7,7 @@ Character stats for **WoW Forever** (client 1.60.x, interface 16001): attributes
 ## Features
 
 - **Fishing pole warning**: a red row at the very top while a fishing pole is equipped, and a raid warning with sound when combat starts with it in hand (also with the window closed).
+- **Chat history**: Up / Down in the chat input step through the lines you sent, kept across /reload and restarts (last 100; `/isistats chat clear`).
 - **Leveling** at the very top: XP still needed for the next level in thousands (e.g. `12.4k`) with a progress bar, played time on this level and the estimated time to the next level (from your XP rate on this level). Hidden at the maximum level.
 - **Weapon skills** of every learned weapon type as `current / max` in fixed columns with a progress bar; skills below the cap are yellow, equipped weapons are highlighted, the tooltip shows the distance to the maximum. Defense is listed below the weapons the same way.
 - **Vs. your target**: behind every weapon skill its hit/crit modifier against your current target (defense = level x 5, 0.04% per point, as in the game's skill panel); the tooltip adds glancing blows for melee weapons. Without a hostile target it compares against an enemy of your level.
@@ -32,6 +33,7 @@ Character stats for **WoW Forever** (client 1.60.x, interface 16001): attributes
 | `/isistats alpha <0-100>` | Background opacity in percent |
 | `/isistats lock` / `unlock` | Lock / unlock position and size |
 | `/isistats reset` | Reset position and settings |
+| `/isistats chat clear` | Clear the saved chat history |
 | `/isistats errors` / `errors clear` | Show / clear the error log |
 | `/isistats debug` | Print raw API info (for bug reports) |
 

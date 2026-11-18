@@ -10,6 +10,8 @@ local DEFAULTS = {
   flashChanges = true, -- fade a value in when it changes
   combatMode = "always", -- "always" | "hide" (hidden in combat) | "only" (shown only in combat)
   locked = false, -- no moving / resizing
+  chatHistoryArrows = true, -- Up / Down in the chat input walk the sent lines
+  chatHistory = {}, -- sent chat lines, oldest first (ChatHistory.lua)
   errors = {}, -- own Lua errors (ErrorLog.lua)
   pos = nil, -- { point, relativePoint, x, y }
   collapsed = {},
@@ -389,6 +391,7 @@ events:SetScript("OnEvent", function(self, event, arg1, arg2)
     ns.UI.Create()
     ns.Options.Register()
     hookCharacterFrame()
+    ns.ChatHistory.Setup(db)
     for _, e in ipairs(REFRESH_EVENTS) do
       pcall(self.RegisterEvent, self, e)
     end
@@ -459,13 +462,16 @@ SlashCmdList.ISISTATS = function(msg)
     out(string.format(L.CMD_SCALE, db.scale))
   elseif cmd == "reset" then
     local errors = db.errors -- the error log survives a settings reset
+    local chatHistory = db.chatHistory -- so do the sent chat lines
     IsiStatsDB = {}
     db = IsiStatsDB
     for k, v in pairs(DEFAULTS) do
       db[k] = type(v) == "table" and {} or v
     end
     db.errors = errors
+    db.chatHistory = chatHistory
     ns.ErrorLog.Install(db)
+    ns.ChatHistory.Setup(db)
     ns.ApplyPosition()
     ns.ResetRows()
     ns.Options.Sync()
@@ -473,6 +479,9 @@ SlashCmdList.ISISTATS = function(msg)
   elseif cmd == "lock" or cmd == "unlock" then
     ns.SetLocked(cmd == "lock")
     out(cmd == "lock" and L.CMD_LOCKED or L.CMD_UNLOCKED)
+  elseif cmd == "chat" and arg == "clear" then
+    ns.ChatHistory.Clear()
+    out(L.CHAT_CLEARED)
   elseif cmd == "errors" then
     if arg == "clear" then
       ns.ErrorLog.Clear()

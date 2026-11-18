@@ -12,6 +12,7 @@
 **isiStatsForever** shows the numbers the character sheet hides, in one compact window next to your character frame.
 
 - **Fishing pole warning**: red row while a fishing pole is equipped, raid warning with sound when combat starts with it.
+- **Chat history**: Up / Down in the chat input step through your sent lines, also after a restart.
 - **Leveling**: XP to the next level in thousands, time on this level and the estimated time to the next level.
 - **Weapon skills** of every learned weapon type as *current / max*. Skills below the cap are yellow, equipped weapons are highlighted.
 - **Vs. your target**: behind every weapon skill its hit and crit modifier against the target you have selected - the same numbers as the game's skill panel. Hover a skill for glancing blows.
