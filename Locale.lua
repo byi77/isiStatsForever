@@ -1,6 +1,12 @@
 local _, ns = ...
 
 local L = {
+  WARN_SECTION = "Warnings",
+  WARN_FISHING_OPT = "Warn when a fishing pole is equipped",
+  WARN_FISHING_COMBAT_OPT = "Raid warning when combat starts with a fishing pole",
+  WARN_FISHING = "Fishing pole equipped",
+  WARN_FISHING_TIP = "Your main hand holds a fishing pole - equip your weapon before the next fight.",
+  WARN_FISHING_COMBAT = "Fishing pole equipped!",
   XP_SECTION = "Experience",
   XP_OPT = "XP to the next level",
   XP_NEXT_FMT = "XP to level %d",
@@ -105,6 +111,12 @@ local L = {
 
 if GetLocale() == "deDE" then
   local de = {
+    WARN_SECTION = "Warnungen",
+    WARN_FISHING_OPT = "Warnen, wenn eine Angel angelegt ist",
+    WARN_FISHING_COMBAT_OPT = "Raidwarnung bei Kampfbeginn mit Angel",
+    WARN_FISHING = "Angel angelegt",
+    WARN_FISHING_TIP = "In der Waffenhand ist eine Angel - leg vor dem nächsten Kampf deine Waffe an.",
+    WARN_FISHING_COMBAT = "Angel angelegt!",
     XP_SECTION = "Erfahrung",
     XP_OPT = "EP bis zur nächsten Stufe",
     XP_NEXT_FMT = "EP bis Stufe %d",

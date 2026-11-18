@@ -142,6 +142,14 @@ local function skillForSlot(slot)
   return SUBCLASS_SKILL[subclassID]
 end
 
+-- Fishing pole: weapon class 2, subclass 20, in the main hand.
+local FISHING_POLE_SUBCLASS_ID = 20
+
+local function hasFishingPole()
+  local classID, subclassID = itemTypeInSlot(SLOT_MAIN)
+  return classID == WEAPON_CLASS_ID and subclassID == FISHING_POLE_SUBCLASS_ID
+end
+
 local function hasShield()
   local classID, subclassID = itemTypeInSlot(SLOT_OFF)
   return classID == ARMOR_CLASS_ID and subclassID == SHIELD_SUBCLASS_ID
@@ -157,5 +165,6 @@ ns.Skills = {
   itemTypeInSlot = itemTypeInSlot,
   skillForSlot = skillForSlot,
   hasShield = hasShield,
+  hasFishingPole = hasFishingPole,
   scanClassicWeaponSkills = scanClassicWeaponSkills,
 }

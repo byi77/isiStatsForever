@@ -41,6 +41,22 @@ local function addRow(rows, id, label, value, color, tip, labelColor)
   rows[#rows + 1] = { key = id, label = label, value = value, color = color, tip = tip, labelColor = labelColor }
 end
 
+-- Warnings at the very top; only shown while something is wrong.
+local function warningSection()
+  local rows = {}
+  if enabled("warn_fishing") and ns.Skills.hasFishingPole() then
+    rows[1] = {
+      key = "warn_fishing",
+      label = L.WARN_FISHING,
+      value = "!",
+      labelColor = "bad",
+      color = "bad",
+      tip = L.WARN_FISHING_TIP,
+    }
+  end
+  return { key = "warn", title = L.WARN_SECTION, rows = rows }
+end
+
 -- XP still needed for the next level, in thousands ("12.4k"), with a
 -- progress bar for the current level. Hidden at the maximum level.
 local function xpSection(level)
@@ -554,6 +570,7 @@ function Data.Collect()
       sections[#sections + 1] = section
     end
   end
+  push(warningSection())
   push(xpSection(level))
   push(baseSection())
   push(meleeSection(level, skills, hit))

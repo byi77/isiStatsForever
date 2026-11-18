@@ -96,6 +96,24 @@ function ns.PruneRows()
   end
 end
 
+-- Combat starts with the fishing pole still in hand: raid warning and sound,
+-- also when the window is closed.
+function ns.WarnFishingPoleInCombat()
+  if not ns.IsRowEnabled("warn_fishing_combat") or not ns.Skills.hasFishingPole() then
+    return
+  end
+  local text = L.WARN_FISHING_COMBAT
+  if type(RaidNotice_AddMessage) == "function" and RaidWarningFrame then
+    local info = type(ChatTypeInfo) == "table" and ChatTypeInfo.RAID_WARNING or { r = 1, g = 0.3, b = 0.3 }
+    pcall(RaidNotice_AddMessage, RaidWarningFrame, text, info)
+  elseif UIErrorsFrame then
+    pcall(UIErrorsFrame.AddMessage, UIErrorsFrame, text, 1, 0.3, 0.3)
+  end
+  if type(PlaySound) == "function" and type(SOUNDKIT) == "table" and SOUNDKIT.RAID_WARNING then
+    pcall(PlaySound, SOUNDKIT.RAID_WARNING, "Master")
+  end
+end
+
 function ns.IsLocked()
   return db and db.locked and true or false
 end
@@ -392,6 +410,9 @@ events:SetScript("OnEvent", function(self, event, arg1, arg2)
       ns.LevelTime.OnTimePlayed(arg1, arg2)
     elseif event == "PLAYER_LEVEL_UP" then
       ns.LevelTime.OnLevelUp()
+    end
+    if event == "PLAYER_REGEN_DISABLED" then
+      ns.WarnFishingPoleInCombat()
     end
     if (event == "PLAYER_REGEN_DISABLED" or event == "PLAYER_REGEN_ENABLED") and db.combatMode ~= "always" then
       ns.ApplyCombatVisibility()

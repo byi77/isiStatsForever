@@ -69,6 +69,39 @@ check(
 )
 check(findRow(sections, ns.L.DEFENSE) ~= nil, "defense row")
 
+-- Fishing pole: red row at the very top, raid warning with sound at combat start.
+GetInventoryItemID = function(_, slot)
+  return slot == 16 and 6256 or nil
+end
+local savedItemInfo = C_Item
+C_Item = {
+  GetItemInfoInstant = function()
+    return 6256, "Angel", "", "", 0, 2, 20
+  end,
+}
+local fishSections = ns.Data.Collect()
+check(fishSections[1].key == "warn" and fishSections[1].rows[1].key == "warn_fishing", "fishing pole row at the top")
+local warned, played = nil, nil
+RaidWarningFrame = {}
+RaidNotice_AddMessage = function(_, text)
+  warned = text
+end
+SOUNDKIT = { RAID_WARNING = 8959 }
+PlaySound = function(id)
+  played = id
+end
+StubFrames[1].scripts.OnEvent(StubFrames[1], "PLAYER_REGEN_DISABLED")
+check(warned == ns.L.WARN_FISHING_COMBAT and played == 8959, "raid warning with sound when combat starts")
+ns.SetRowEnabled("warn_fishing", false)
+ns.SetRowEnabled("warn_fishing_combat", false)
+warned = nil
+StubFrames[1].scripts.OnEvent(StubFrames[1], "PLAYER_REGEN_DISABLED")
+check(warned == nil and ns.Data.Collect()[1].key ~= "warn", "fishing warnings switchable")
+ns.ResetRows()
+GetInventoryItemID, C_Item = nil, savedItemInfo
+check(ns.Data.Collect()[1].key ~= "warn", "no warning without a fishing pole")
+RaidWarningFrame, RaidNotice_AddMessage, SOUNDKIT, PlaySound = nil, nil, nil, nil
+
 -- XP to the next level, in thousands, at the very top; gone at max level.
 UnitXP = function()
   return 5000

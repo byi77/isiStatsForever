@@ -18,6 +18,14 @@ function Data.GetCatalog()
   end
   return {
     {
+      key = "warn",
+      title = L.WARN_SECTION,
+      rows = {
+        { id = "warn_fishing", label = L.WARN_FISHING_OPT },
+        { id = "warn_fishing_combat", label = L.WARN_FISHING_COMBAT_OPT },
+      },
+    },
+    {
       key = "xp",
       title = L.XP_SECTION,
       rows = {
@@ -127,7 +135,8 @@ local CLASS_DEFAULTS = {
   MAGE = { "stat4", "s_dmg" },
   WARLOCK = { "stat4", "s_dmg" },
 }
-local COMMON_DEFAULTS = { "xp_next", "xp_time", "xp_eta", "d_def", "w_equipped", "w_vs", "w_vs_none" }
+local COMMON_DEFAULTS =
+  { "warn_fishing", "warn_fishing_combat", "xp_next", "xp_time", "xp_eta", "d_def", "w_equipped", "w_vs", "w_vs_none" }
 
 function Data.GetDefaults()
   local defaults = {}
