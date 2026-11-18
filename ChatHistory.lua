@@ -15,6 +15,8 @@ local MAX_LINES = 100
 local db
 local hooked = {}
 local restoring = false
+local typed = setmetatable({}, { __mode = "k" }) -- last non-empty text per box
+local addedByGame = false
 
 local function isSecret(v)
   return type(issecretvalue) == "function" and issecretvalue(v)
@@ -43,6 +45,7 @@ local function remember(_, line)
   if line == "" then
     return
   end
+  addedByGame = true
   local list = db.chatHistory
   for i = #list, 1, -1 do
     if list[i] == line then
@@ -80,6 +83,31 @@ function ChatHistory.Setup(savedDB)
       end
       restoring = false
       hooksecurefunc(box, "AddHistoryLine", remember)
+      -- Slash commands the game does not put into the history itself
+      -- (e.g. /console) are taken from the text that was in the box when
+      -- Enter was pressed.
+      box:HookScript("OnTextChanged", function(self, userInput)
+        local text = self:GetText()
+        if isSecret(text) then
+          typed[self] = nil
+        elseif text ~= "" then
+          typed[self] = text
+        elseif userInput then
+          typed[self] = nil
+        end
+      end)
+      box:HookScript("OnEditFocusGained", function(self)
+        typed[self] = nil
+        addedByGame = false
+      end)
+      box:HookScript("OnEnterPressed", function(self)
+        local text = typed[self]
+        typed[self] = nil
+        if not addedByGame and text and db.chatHistoryArrows then
+          pcall(self.AddHistoryLine, self, text)
+        end
+        addedByGame = false
+      end)
     end
     applyArrowMode(box)
   end

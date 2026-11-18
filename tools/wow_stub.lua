@@ -193,6 +193,27 @@ C_SkillInfo = {
 -- Chat input with the game's history methods (history line list + Alt mode).
 ChatFrame1EditBox = {
   history = {},
+  text = "",
+  hooks = {},
+  GetText = function(self)
+    return self.text
+  end,
+  -- Sets the text like the game: OnTextChanged with userInput.
+  SetText = function(self, text, userInput)
+    self.text = text
+    for _, fn in ipairs(self.hooks.OnTextChanged or {}) do
+      fn(self, userInput and true or false)
+    end
+  end,
+  HookScript = function(self, script, fn)
+    self.hooks[script] = self.hooks[script] or {}
+    table.insert(self.hooks[script], fn)
+  end,
+  Fire = function(self, script)
+    for _, fn in ipairs(self.hooks[script] or {}) do
+      fn(self)
+    end
+  end,
   AddHistoryLine = function(self, line)
     self.history[#self.history + 1] = line
   end,

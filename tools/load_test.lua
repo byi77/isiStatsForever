@@ -112,10 +112,33 @@ box:AddHistoryLine("/w Freund hi")
 local saved = IsiStatsDB.chatHistory
 check(#saved == 2 and saved[1] == "hallo" and saved[2] == "/w Freund hi", "chat lines saved, repeat moved to the end")
 check(box.altArrow == false, "Up / Down walk the history without Alt")
+-- /console: the game sends it without a history line; the typed text counts.
+box:Fire("OnEditFocusGained")
+box:SetText("/console gxRestart", true)
+box:SetText("", false) -- the game clears the box while sending
+box:Fire("OnEnterPressed")
+check(
+  saved[#saved] == "/console gxRestart" and box.history[#box.history] == "/console gxRestart",
+  "/console saved from the typed text"
+)
+-- A line the game already added is not added twice.
+box:Fire("OnEditFocusGained")
+box:SetText("hallo", true)
+box:AddHistoryLine("hallo")
+local historyCount = #box.history
+box:Fire("OnEnterPressed")
+check(#box.history == historyCount, "no double line when the game added it")
+-- Text deleted by hand before Enter is not saved.
+box:Fire("OnEditFocusGained")
+box:SetText("/console x", true)
+box:SetText("", true)
+box:Fire("OnEnterPressed")
+check(saved[#saved] ~= "/console x", "deleted text is not saved")
 ns.ChatHistory.SetArrows(false)
 check(box.altArrow == true, "arrow keys switchable")
+local savedCount = #IsiStatsDB.chatHistory
 box:AddHistoryLine("geheim")
-check(#IsiStatsDB.chatHistory == 2, "nothing saved with the setting off")
+check(#IsiStatsDB.chatHistory == savedCount, "nothing saved with the setting off")
 ns.ChatHistory.SetArrows(true)
 SlashCmdList.ISISTATS("chat clear")
 check(#IsiStatsDB.chatHistory == 0, "chat history cleared")
