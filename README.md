@@ -6,7 +6,7 @@ Character stats for **WoW Forever** (client 1.60.x, interface 16001): attributes
 
 ## Features
 
-- **Fishing pole warning**: a red row at the very top while a fishing pole is equipped, and a raid warning with sound when combat starts with it in hand (also with the window closed).
+- **Fishing pole warning**: a red row at the very top while a fishing pole is equipped, and a raid warning with sound (5 times, 1 second apart) when combat starts with it in hand (also with the window closed).
 - **Chat history**: Up / Down in the chat input step through the lines you sent, kept across /reload and restarts (last 100; `/isistats chat clear`).
 - **Leveling** at the very top: XP still needed for the next level in thousands (e.g. `12.4k`) with a progress bar, played time on this level and the estimated time to the next level (from your XP rate on this level). Hidden at the maximum level.
 - **Weapon skills** of every learned weapon type as `current / max` in fixed columns with a progress bar; skills below the cap are yellow, equipped weapons are highlighted, the tooltip shows the distance to the maximum. Defense is listed below the weapons the same way.

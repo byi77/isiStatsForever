@@ -2,8 +2,11 @@
 
 ## Unreleased
 
+## 0.7.1 - 2026-11-19
+
 - Error log: errors of other addons (e.g. taint from another addon in Blizzard's status bars) are no longer logged as isiStatsForever errors; the log's own error handler in the stack made every error look like ours.
 - Fishing pole warning: the raid warning at combat start now comes 5 times, 1 second apart, so it stays on screen longer; it stops as soon as the pole is taken off.
+
 ## 0.7.0 - 2026-11-18
 
 ### Chat history, fishing pole warning, first start
