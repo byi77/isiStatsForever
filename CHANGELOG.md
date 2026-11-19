@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Fishing pole warning: the raid warning at combat start now comes 5 times, 1 second apart, so it stays on screen longer; it stops as soon as the pole is taken off.
 ## 0.7.0 - 2026-11-18
 
 ### Chat history, fishing pole warning, first start

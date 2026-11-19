@@ -100,8 +100,14 @@ end
 
 -- Combat starts with the fishing pole still in hand: raid warning and sound,
 -- also when the window is closed.
-function ns.WarnFishingPoleInCombat()
-  if not ns.IsRowEnabled("warn_fishing_combat") or not ns.Skills.hasFishingPole() then
+-- The raid warning comes FISHING_WARN_COUNT times, FISHING_WARN_GAP seconds
+-- apart, so it stays on screen; it stops early when the pole is taken off.
+local FISHING_WARN_COUNT = 5
+local FISHING_WARN_GAP = 1
+local fishingWarnRun = 0
+
+local function fishingWarning(run, left)
+  if run ~= fishingWarnRun or not ns.IsRowEnabled("warn_fishing_combat") or not ns.Skills.hasFishingPole() then
     return
   end
   local text = L.WARN_FISHING_COMBAT
@@ -114,6 +120,16 @@ function ns.WarnFishingPoleInCombat()
   if type(PlaySound) == "function" and type(SOUNDKIT) == "table" and SOUNDKIT.RAID_WARNING then
     pcall(PlaySound, SOUNDKIT.RAID_WARNING, "Master")
   end
+  if left > 1 and type(C_Timer) == "table" and C_Timer.After then
+    C_Timer.After(FISHING_WARN_GAP, function()
+      fishingWarning(run, left - 1)
+    end)
+  end
+end
+
+function ns.WarnFishingPoleInCombat()
+  fishingWarnRun = fishingWarnRun + 1 -- a new combat starts a new series
+  fishingWarning(fishingWarnRun, FISHING_WARN_COUNT)
 end
 
 function ns.IsLocked()

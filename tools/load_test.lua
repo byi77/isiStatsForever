@@ -82,10 +82,11 @@ C_Item = {
 }
 local fishSections = ns.Data.Collect()
 check(fishSections[1].key == "warn" and fishSections[1].rows[1].key == "warn_fishing", "fishing pole row at the top")
-local warned, played = nil, nil
+local warned, played, warnCount = nil, nil, 0
 RaidWarningFrame = {}
 RaidNotice_AddMessage = function(_, text)
   warned = text
+  warnCount = warnCount + 1
 end
 SOUNDKIT = { RAID_WARNING = 8959 }
 PlaySound = function(id)
@@ -93,6 +94,7 @@ PlaySound = function(id)
 end
 StubFrames[1].scripts.OnEvent(StubFrames[1], "PLAYER_REGEN_DISABLED")
 check(warned == ns.L.WARN_FISHING_COMBAT and played == 8959, "raid warning with sound when combat starts")
+check(warnCount == 5, "raid warning comes 5 times")
 ns.SetRowEnabled("warn_fishing", false)
 ns.SetRowEnabled("warn_fishing_combat", false)
 warned = nil
