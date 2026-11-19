@@ -40,6 +40,9 @@ local function record(message)
   end
   message = type(message) == "string" and message or tostring(message)
   local stack = type(debugstack) == "function" and debugstack(3) or ""
+  -- The stack also holds this error handler itself (ErrorLog.lua); without
+  -- dropping those lines every foreign error would look like our own.
+  stack = stack:gsub("[^\n]*ErrorLog%.lua[^\n]*\n?", "")
   if not message:find(FILTER_TOKEN, 1, true) and not stack:find(FILTER_TOKEN, 1, true) then
     return
   end

@@ -271,10 +271,15 @@ check(target and target.value == ns.L.T_LEVEL_UNKNOWN, "level ?? target shows un
 -- (debugstack is stubbed to point into isiStatsForever, so the filter is the message
 -- for the foreign case).
 debugstack = function()
-  return "Interface/AddOns/OtherAddon/x.lua:1"
+  return "[Interface/AddOns/isiStatsForever/ErrorLog.lua]:84: in function <...>\n"
+    .. "[Interface/AddOns/OtherAddon/x.lua]:1: in function <...>\n"
 end
 geterrorhandler()("Interface/AddOns/OtherAddon/x.lua:1: boom")
-check(#IsiStatsDB.errors == 0, "foreign error not logged")
+geterrorhandler()(
+  "...face/AddOns/Blizzard_TextStatusBar/TextStatusBar.lua:110: attempt to compare a secret number value "
+    .. "(execution tainted by 'ForeverLootSparkles_Coloring')"
+)
+check(#IsiStatsDB.errors == 0, "foreign error not logged, even with the error handler in the stack")
 geterrorhandler()("Interface/AddOns/isiStatsForever/Data.lua:42: attempt to index nil")
 geterrorhandler()("Interface/AddOns/isiStatsForever/Data.lua:42: attempt to index nil")
 check(#IsiStatsDB.errors == 1 and IsiStatsDB.errors[1].count == 2, "own error logged once, counted twice")
