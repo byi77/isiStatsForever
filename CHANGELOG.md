@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.7.2 - 2026-11-20
+
+- Internal audit.
+
 ## 0.7.1 - 2026-11-19
 
 - Error log: errors of other addons (e.g. taint from another addon in Blizzard's status bars) are no longer logged as isiStatsForever errors; the log's own error handler in the stack made every error look like ours.
