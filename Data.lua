@@ -87,20 +87,20 @@ local function xpSection(level)
     }
   end
 
-  -- Played time on this level and the estimate from the XP rate on it.
+  -- Played time on this level and the estimate from the recent XP rate.
   local LevelTime = ns.LevelTime
   local seconds = LevelTime and LevelTime.Seconds()
   if seconds and enabled("xp_time") then
     rows[#rows + 1] = { key = "xp_time", label = L.XP_TIME, value = LevelTime.Format(seconds) }
   end
   if seconds and enabled("xp_eta") then
-    local eta = LevelTime.Estimate(current, remaining)
+    local eta, source = LevelTime.Estimate(current, remaining)
     rows[#rows + 1] = {
       key = "xp_eta",
       label = level and string.format(L.XP_ETA_FMT, level + 1) or L.XP_ETA_OPT,
       value = eta and ("~" .. LevelTime.Format(eta)) or "-",
       color = eta and nil or "dim",
-      tip = eta and L.XP_ETA_TIP or L.XP_ETA_NONE,
+      tip = source == "window" and L.XP_ETA_TIP_ACTIVE or eta and L.XP_ETA_TIP or L.XP_ETA_NONE,
     }
   end
   return { key = "xp", title = L.XP_SECTION, rows = rows }

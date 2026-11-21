@@ -401,6 +401,7 @@ events:SetScript("OnEvent", function(self, event, arg1, arg2)
     IsiStatsCharDB = IsiStatsCharDB or {}
     charDB = IsiStatsCharDB
     charDB.rows = charDB.rows or {}
+    ns.LevelTime.Init(charDB)
     ns.PruneRows()
     self:UnregisterEvent("ADDON_LOADED")
   elseif event == "PLAYER_LOGIN" then
@@ -421,6 +422,7 @@ events:SetScript("OnEvent", function(self, event, arg1, arg2)
     end
     -- Played time for "time on this level"; the shown time ticks on.
     ns.LevelTime.Request()
+    ns.LevelTime.Start()
     if type(C_Timer) == "table" and C_Timer.NewTicker then
       C_Timer.NewTicker(30, ns.RequestRefresh)
     end
@@ -429,6 +431,8 @@ events:SetScript("OnEvent", function(self, event, arg1, arg2)
       ns.LevelTime.OnTimePlayed(arg1, arg2)
     elseif event == "PLAYER_LEVEL_UP" then
       ns.LevelTime.OnLevelUp()
+    elseif event == "PLAYER_XP_UPDATE" then
+      ns.LevelTime.OnXPUpdate()
     end
     if event == "PLAYER_REGEN_DISABLED" then
       ns.WarnFishingPoleInCombat()

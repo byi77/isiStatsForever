@@ -242,6 +242,42 @@ check(xpRowByKey("xp_time").value == "1h 30m", "time on this level keeps countin
 evFrame.scripts.OnEvent(evFrame, "PLAYER_LEVEL_UP", 42)
 check(xpRowByKey("xp_time").value == "0m", "level up restarts the level time")
 check(xpRowByKey("xp_eta").value == "-", "no estimate without data")
+
+-- Rate from active play: 3h idle, then 10 kills of 500 XP a minute apart.
+-- The idle gap counts as 5 min only: 5000 XP in 300 + 9 * 60 = 840 s,
+-- 11400 to go -> 1915 s ~ 31m (the level average would say hours).
+local xpNow = 1000
+UnitXP = function()
+  return xpNow
+end
+evFrame.scripts.OnEvent(evFrame, "PLAYER_XP_UPDATE", "player")
+clock = clock + 3 * 3600
+for i = 1, 10 do
+  xpNow = xpNow + 500
+  evFrame.scripts.OnEvent(evFrame, "PLAYER_XP_UPDATE", "player")
+  if i < 10 then
+    clock = clock + 60
+  end
+end
+check(xpRowByKey("xp_eta").value == "~31m", "estimate from active play ignores the idle hours")
+check(xpRowByKey("xp_eta").tip == ns.L.XP_ETA_TIP_ACTIVE, "tooltip names the active-play window")
+check(#IsiStatsCharDB.xpRate.gains == 10, "gains saved per character")
+clock = clock + 2 * 3600
+check(xpRowByKey("xp_eta").value == "~31m", "rate stays frozen while idle")
+-- Crossing a level: 17000 -> 400 of the next level is a gain of 800.
+xpNow = 17000
+evFrame.scripts.OnEvent(evFrame, "PLAYER_XP_UPDATE", "player")
+xpNow = 400
+evFrame.scripts.OnEvent(evFrame, "PLAYER_XP_UPDATE", "player")
+local gains = IsiStatsCharDB.xpRate.gains
+check(gains[#gains][3] == 800 and gains[#gains][2] == 0, "level-up gain counted across the level border")
+-- Gains older than 30 min of active play leave the window.
+for _ = 1, 8 do
+  clock = clock + 300
+  xpNow = xpNow + 100
+  evFrame.scripts.OnEvent(evFrame, "PLAYER_XP_UPDATE", "player")
+end
+check(#IsiStatsCharDB.xpRate.gains <= 7, "old gains leave the window")
 UnitLevel = function()
   return 60
 end

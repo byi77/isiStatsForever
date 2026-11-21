@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Estimated time to the next level: now calculated from your XP rate in the last 30 minutes of active play instead of the average over the whole level. Breaks without XP count as 5 minutes at most, so after a few idle hours the estimate matches your pace a few kills into farming. While you gain no XP, the last rate stays. The rate is kept per character across level-ups and relogs; until there is enough data (3 XP gains, 5 minutes of active play) the level average is used as before. The tooltip says which one is shown.
+
 ## 0.7.2 - 2026-11-20
 
 - Internal audit.
