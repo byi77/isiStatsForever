@@ -729,6 +729,7 @@ function Data.Collect()
       sections[#sections + 1] = section
     end
   end
+  push(ns.Buffs.Section())
   push(warningSection())
   push(xpSection(level))
   push(baseSection())
@@ -775,6 +776,10 @@ function Data.DebugDump(print)
   )
   print("GetExpertise:", type(GetExpertise))
   print("gathering tracking:", ns.Tracking.State())
+  local buffs = ns.Buffs.Section()
+  for _, row in ipairs(buffs and buffs.rows or {}) do
+    print("buff " .. row.key .. ":", row.value, row.stale and "(last readable)" or "")
+  end
   print("Settings:", type(Settings), "InterfaceOptions_AddCategory:", type(InterfaceOptions_AddCategory))
   local secret = Data.SecretApiNames()
   print("secret in combat:", #secret > 0 and table.concat(secret, ", ") or "-")

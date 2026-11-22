@@ -843,6 +843,176 @@ do
   C_Minimap, SOUNDKIT, PlaySound = nil, nil, nil
 end
 
+-- Buff reminder, through the real event handler.
+do
+  local backup = {
+    InCombatLockdown = InCombatLockdown,
+    issecretvalue = issecretvalue,
+    GetTime = GetTime,
+    UnitLevel = UnitLevel,
+  }
+  local now, combat, restricted, faction, level = 1000, false, false, "Alliance", 46
+  UnitLevel = function()
+    return level
+  end
+  local auras, hidden = {}, {}
+  GetTime = function()
+    return now
+  end
+  InCombatLockdown = function()
+    return combat
+  end
+  issecretvalue = function(v)
+    return v == hidden
+  end
+  UnitFactionGroup = function()
+    return faction
+  end
+  local names = { [429959] = "Gut erholt", [460939] = "Macht von Stormwind", [12345] = "Dritter Buff" }
+  C_Spell = {
+    GetSpellName = function(id)
+      return names[id]
+    end,
+  }
+  C_Secrets = {
+    ShouldSpellAuraBeSecret = function()
+      return restricted
+    end,
+  }
+  C_UnitAuras = {
+    -- Like the client: a hidden aura is simply nil.
+    GetPlayerAuraBySpellID = function(id)
+      if not restricted then
+        return auras[id]
+      end
+    end,
+  }
+  ns.ResetRows()
+
+  local function buff(key)
+    for _, s in ipairs(ns.Data.Collect()) do
+      for _, r in ipairs(s.rows) do
+        if r.key == "buff_" .. key then
+          return r
+        end
+      end
+    end
+  end
+  local function fire(event)
+    StubFrames[1].scripts.OnEvent(StubFrames[1], event, "player")
+  end
+  local function expect(message, key, value, color)
+    local r = buff(key)
+    check(r and r.value == value and r.color == color, message .. (" (got %s)"):format(r and r.value or "no row"))
+  end
+  local missing = ns.L.BUFF_MISSING
+
+  check(ns.IsRowEnabled("buff_well_rested") and ns.IsRowEnabled("buff_might_stormwind"), "both buffs on by default")
+  local top = ns.Data.Collect()[1]
+  check(top.key == "buffs" and #top.rows == 2, "buffs at the very top")
+  check(top.rows[1].label == "Gut erholt" and top.rows[2].label == "Macht von Stormwind", "names from the game")
+  expect("well rested missing", "well_rested", missing, "bad")
+  expect("stormwind missing", "might_stormwind", missing, "bad")
+
+  auras[429959] = { applications = 3, expirationTime = now + 7200 }
+  expect("3 stacks, full time", "well_rested", "3/3  2h 0m", "good")
+  auras[429959] = { applications = 2, expirationTime = now + 6120 }
+  expect("2 stacks", "well_rested", "2/3  1h 42m", "warn")
+  auras[429959] = { applications = 0, expirationTime = now + 6120 }
+  expect("no count means one stack", "well_rested", "1/3  1h 42m", "warn")
+  auras[429959] = { applications = 3, expirationTime = now + 300 }
+  expect("last 5 minutes", "well_rested", "3/3  5m", "warn")
+  auras[429959] = { applications = 3, expirationTime = now + 20 }
+  expect("last minute is not 0m", "well_rested", "3/3  1m", "warn")
+
+  for _, id in ipairs({ 460939, 460940, 1304678 }) do
+    auras[id] = { applications = 0, expirationTime = now + 3600 }
+    expect("stormwind version " .. id, "might_stormwind", "1h 0m", "good")
+    auras[id] = nil
+  end
+  auras[460939] = { applications = 0, expirationTime = 0 }
+  expect("no time limit", "might_stormwind", ns.L.BUFF_ACTIVE, "good")
+
+  -- Combat: hidden must not read as missing.
+  auras[429959] = { applications = 3, expirationTime = now + 600 }
+  auras[460939] = nil
+  fire("UNIT_AURA") -- read without drawing the window
+  combat, restricted = true, true
+  now = now + 120
+  expect("hidden: last state, time counts on", "well_rested", "3/3  8m", "dim")
+  check(buff("well_rested").stale, "hidden: marked as last readable")
+  expect("hidden and missing before", "might_stormwind", missing, "dim")
+  now = now + 600
+  expect("run out while hidden", "well_rested", missing, "bad")
+  combat, restricted = false, false
+  auras[429959] = nil
+  fire("PLAYER_REGEN_ENABLED")
+  expect("readable again", "well_rested", missing, "bad")
+
+  -- Readable in combat: live.
+  combat = true
+  auras[460939] = { applications = 0, expirationTime = now + 3600 }
+  expect("readable in combat: live", "might_stormwind", "1h 0m", "good")
+  combat = false
+  auras[460939] = nil
+
+  -- No C_Secrets: nothing is called missing during combat.
+  local secrets = C_Secrets
+  C_Secrets = nil
+  auras[429959] = { applications = 3, expirationTime = now + 3600 }
+  fire("UNIT_AURA")
+  combat = true
+  auras[429959] = nil
+  expect("no secrecy API in combat: last state", "well_rested", "3/3  1h 0m", "dim")
+  combat = false
+  C_Secrets = secrets
+
+  -- Switches, faction and a further buff.
+  ns.SetRowEnabled("buff_well_rested", false)
+  check(buff("well_rested") == nil and buff("might_stormwind") ~= nil, "each buff switchable")
+  ns.SetRowEnabled("buff_might_stormwind", false)
+  check(ns.Data.Collect()[1].key ~= "buffs", "both off: no section")
+  ns.ResetRows()
+  faction = "Horde"
+  check(buff("might_stormwind") == nil and buff("well_rested") ~= nil, "stormwind only for the Alliance")
+  faction = "Alliance"
+
+  level = 59
+  check(buff("well_rested") ~= nil, "well rested still shown at 59")
+  level = 60
+  check(buff("well_rested") == nil, "well rested gone at 60")
+  check(buff("might_stormwind") ~= nil, "world buff stays at 60")
+  check(ns.IsRowEnabled("buff_well_rested"), "level 60 does not change the saved switch")
+  level = 46
+
+  local list = ns.Buffs.LIST
+  list[#list + 1] = { key = "third", spells = { 12345 } }
+  ns.ResetRows()
+  local option
+  for _, row in ipairs(ns.Data.GetCatalog()[1].rows) do
+    if row.id == "buff_third" then
+      option = row
+    end
+  end
+  check(option and option.label == "Dritter Buff", "new entry: option by itself")
+  check(ns.IsRowEnabled("buff_third"), "new entry: on by default")
+  expect("new entry: row by itself", "third", missing, "bad")
+  table.remove(list)
+  list[#list + 1] = { key = "unread", spells = { 23456 } }
+  combat, restricted = true, true
+  ns.ResetRows() -- already draws the window
+  expect("never read and hidden: no guessing", "unread", "...", "dim")
+  combat, restricted = false, false
+  table.remove(list)
+  ns.ResetRows()
+
+  for name, value in pairs(backup) do
+    _G[name] = value
+  end
+  GetTime = backup.GetTime
+  C_Spell, C_Secrets, C_UnitAuras, UnitFactionGroup = nil, nil, nil, nil
+end
+
 -- Language follows the client: German strings only on a deDE client.
 if clientLocale == "deDE" then
   check(ns.L.MELEE == "Nahkampf", "deDE client shows German")

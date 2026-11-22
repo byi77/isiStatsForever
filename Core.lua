@@ -459,6 +459,7 @@ events:SetScript("OnEvent", function(self, event, arg1, arg2)
       pcall(self.RegisterEvent, self, e)
     end
     ns.Data.Prime()
+    ns.Buffs.Read()
     ns.Tracking.Schedule()
     ns.SetInFight(inCombat()) -- a reload during a fight
     if db.combatMode ~= "always" then
@@ -485,6 +486,9 @@ events:SetScript("OnEvent", function(self, event, arg1, arg2)
     end
     if ns.Tracking.EVENTS[event] then
       ns.Tracking.Schedule()
+    end
+    if event == "UNIT_AURA" or event == "PLAYER_ENTERING_WORLD" or event == "PLAYER_REGEN_ENABLED" then
+      ns.Buffs.Read()
     end
     if event == "PLAYER_EQUIPMENT_CHANGED" then
       ns.UpdateFishingAlert()

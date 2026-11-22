@@ -16,7 +16,12 @@ function Data.GetCatalog()
   local function resist(i)
     return str(_G["RESISTANCE" .. i .. "_NAME"]) or ("Resist " .. i)
   end
+  local buffs = {}
+  for _, buff in ipairs(ns.Buffs.LIST) do
+    buffs[#buffs + 1] = { id = ns.Buffs.RowId(buff), label = ns.Buffs.Name(buff) }
+  end
   return {
+    { key = "buffs", title = L.BUFF_SECTION, rows = buffs },
     {
       key = "warn",
       title = L.WARN_SECTION,
@@ -157,6 +162,9 @@ function Data.GetDefaults()
   end
   for _, id in ipairs(COMMON_DEFAULTS) do
     defaults[id] = true
+  end
+  for _, buff in ipairs(ns.Buffs.LIST) do
+    defaults[ns.Buffs.RowId(buff)] = true
   end
   return defaults
 end

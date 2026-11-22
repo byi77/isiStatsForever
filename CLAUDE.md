@@ -15,7 +15,7 @@ isiStatsForever is a character stats addon for **WoW Forever** only. The repo li
 ## Files
 
 `Locale.lua` texts - `ErrorLog.lua` own error log - `Util.lua` guarded calls, secret values,
-formatting, formulas - `Skills.lua` skill lines and weapon slots - `Tracking.lua` gathering tracking warning - `Catalog.lua` value rows and
+formatting, formulas - `Skills.lua` skill lines and weapon slots - `Tracking.lua` gathering tracking warning - `Buffs.lua` buff reminder - `Catalog.lua` value rows and
 class defaults - `Data.lua` collects the sections - `CombatCache.lua` last values in combat -
 `UI.lua` window - `Options.lua` settings page - `Core.lua` saved variables, events, slash commands.
 
@@ -40,6 +40,10 @@ class defaults - `Data.lua` collects the sections - `CombatCache.lua` last value
   Blizzard's source defines it outside `Blizzard_Deprecated*`.
 - Minimap tracking: `C_Minimap.GetTrackingInfo(i)` (`spellID`, `active`), event
   `MINIMAP_UPDATE_TRACKING`; herbs 2383 / 8387, minerals 2580 / 8388.
+- Buff reminder: a new buff is one entry in `Buffs.LIST` (`Buffs.lua`, fields documented there); no
+  catalog, locale or option edits. Take every spell ID of the name from the game data.
+- Auras: `C_UnitAuras.GetPlayerAuraBySpellID` returns **nil for a hidden aura** in combat. Treat nil
+  as missing only when `C_Secrets.ShouldSpellAuraBeSecret(id)` is false.
 - When a feature stops producing data without an error, check the API member first
   (`/isistats debug` prints what exists).
 
