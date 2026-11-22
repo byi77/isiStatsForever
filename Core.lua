@@ -34,6 +34,11 @@ end
 
 function ns.SetRowEnabled(id, value)
   charDB.rows[id] = value and true or false
+  if id == "warn_tracking" then
+    ns.Tracking.Update()
+  elseif id == "warn_fishing_combat" then
+    ns.UpdateFishingAlert()
+  end
   ns.Refresh()
 end
 
@@ -43,12 +48,16 @@ function ns.SetAllRows(value)
       charDB.rows[row.id] = value and true or false
     end
   end
+  ns.Tracking.Update()
+  ns.UpdateFishingAlert()
   ns.Refresh()
 end
 
 function ns.ResetRows()
   charDB.rows = {}
   rowDefaults = nil
+  ns.Tracking.Update()
+  ns.UpdateFishingAlert()
   ns.Refresh()
 end
 
@@ -98,38 +107,58 @@ function ns.PruneRows()
   end
 end
 
--- Combat starts with the fishing pole still in hand: raid warning and sound,
--- also when the window is closed.
--- The raid warning comes FISHING_WARN_COUNT times, FISHING_WARN_GAP seconds
--- apart, so it stays on screen; it stops early when the pole is taken off.
-local FISHING_WARN_COUNT = 5
-local FISHING_WARN_GAP = 1
-local fishingWarnRun = 0
+-- Fishing pole in combat (also with the window closed): the text stays until
+-- the pole is taken off, also after the fight, and the sound comes at once and
+-- then every FISHING_SOUND_GAP seconds until the fight is over or the pole is
+-- off. It does not start outside combat, fishing needs the pole.
+local FISHING_SOUND_GAP = 2
+-- Own flag: InCombatLockdown() is still false during PLAYER_REGEN_DISABLED.
+local inFight = false
+local fishingSoundOn, fishingSoundRun = false, 0
 
-local function fishingWarning(run, left)
-  if run ~= fishingWarnRun or not ns.IsRowEnabled("warn_fishing_combat") or not ns.Skills.hasFishingPole() then
+local function fishingWarningWanted()
+  return ns.IsRowEnabled("warn_fishing_combat") and ns.Skills.hasFishingPole()
+end
+
+local function stopFishingSound()
+  fishingSoundOn = false
+  fishingSoundRun = fishingSoundRun + 1 -- pending timers do nothing
+end
+
+local function fishingSound(run)
+  if run ~= fishingSoundRun then
     return
   end
-  local text = L.WARN_FISHING_COMBAT
-  if type(RaidNotice_AddMessage) == "function" and RaidWarningFrame then
-    local info = type(ChatTypeInfo) == "table" and ChatTypeInfo.RAID_WARNING or { r = 1, g = 0.3, b = 0.3 }
-    pcall(RaidNotice_AddMessage, RaidWarningFrame, text, info)
-  elseif UIErrorsFrame then
-    pcall(UIErrorsFrame.AddMessage, UIErrorsFrame, text, 1, 0.3, 0.3)
+  if not inFight or not fishingWarningWanted() then
+    stopFishingSound()
+    return
   end
-  if type(PlaySound) == "function" and type(SOUNDKIT) == "table" and SOUNDKIT.RAID_WARNING then
-    pcall(PlaySound, SOUNDKIT.RAID_WARNING, "Master")
-  end
-  if left > 1 and type(C_Timer) == "table" and C_Timer.After then
-    C_Timer.After(FISHING_WARN_GAP, function()
-      fishingWarning(run, left - 1)
+  ns.UI.PlayAlertSound()
+  if type(C_Timer) == "table" and C_Timer.After then
+    C_Timer.After(FISHING_SOUND_GAP, function()
+      fishingSound(run)
     end)
   end
 end
 
-function ns.WarnFishingPoleInCombat()
-  fishingWarnRun = fishingWarnRun + 1 -- a new combat starts a new series
-  fishingWarning(fishingWarnRun, FISHING_WARN_COUNT)
+-- After combat, gear and settings changes.
+function ns.UpdateFishingAlert()
+  if not fishingWarningWanted() then
+    ns.UI.SetAlert("fishing", nil)
+    stopFishingSound()
+  elseif not inFight then
+    stopFishingSound() -- the text stays
+  elseif not fishingSoundOn then
+    ns.UI.SetAlert("fishing", L.WARN_FISHING_COMBAT, true)
+    fishingSoundOn = true
+    fishingSoundRun = fishingSoundRun + 1
+    fishingSound(fishingSoundRun)
+  end
+end
+
+function ns.SetInFight(value)
+  inFight = value
+  ns.UpdateFishingAlert()
 end
 
 function ns.IsLocked()
@@ -426,7 +455,12 @@ events:SetScript("OnEvent", function(self, event, arg1, arg2)
     for _, e in ipairs(UNIT_EVENTS) do
       pcall(self.RegisterUnitEvent, self, e, "player")
     end
+    for e in pairs(ns.Tracking.EVENTS) do
+      pcall(self.RegisterEvent, self, e)
+    end
     ns.Data.Prime()
+    ns.Tracking.Schedule()
+    ns.SetInFight(inCombat()) -- a reload during a fight
     if db.combatMode ~= "always" then
       ns.ApplyCombatVisibility()
     elseif db.shown and not db.dock then
@@ -449,8 +483,16 @@ events:SetScript("OnEvent", function(self, event, arg1, arg2)
     if PRIME_EVENTS[event] then
       ns.Data.Prime()
     end
+    if ns.Tracking.EVENTS[event] then
+      ns.Tracking.Schedule()
+    end
+    if event == "PLAYER_EQUIPMENT_CHANGED" then
+      ns.UpdateFishingAlert()
+    end
     if event == "PLAYER_REGEN_DISABLED" then
-      ns.WarnFishingPoleInCombat()
+      ns.SetInFight(true)
+    elseif event == "PLAYER_REGEN_ENABLED" then
+      ns.SetInFight(false)
     end
     if (event == "PLAYER_REGEN_DISABLED" or event == "PLAYER_REGEN_ENABLED") and db.combatMode ~= "always" then
       ns.ApplyCombatVisibility()

@@ -1,8 +1,9 @@
 # Project Instructions
 
-isiStatsForever is a character stats addon for **WoW Forever** only. The repo lives directly in the
-addon folder `C:\World of Warcraft\_forever_\Interface\AddOns\isiStatsForever` (public: `byi77/isiStatsForever`,
-CurseForge project `1812815`). Rules adapted from isiLive; see also `AGENTS.md` and `docs/RULES.md`.
+isiStatsForever is a character stats addon for **WoW Forever** only. The repo lives in
+`C:\Git\isiStatsForever` (public: `byi77/isiStatsForever`, CurseForge project `1812815`); the game folder
+`C:\World of Warcraft\_forever_\Interface\AddOns\isiStatsForever` only gets the addon files through
+`tools/deploy_local.ps1`. Rules adapted from isiLive; see also `AGENTS.md` and `docs/RULES.md`.
 
 ## Language
 
@@ -14,7 +15,7 @@ CurseForge project `1812815`). Rules adapted from isiLive; see also `AGENTS.md` 
 ## Files
 
 `Locale.lua` texts - `ErrorLog.lua` own error log - `Util.lua` guarded calls, secret values,
-formatting, formulas - `Skills.lua` skill lines and weapon slots - `Catalog.lua` value rows and
+formatting, formulas - `Skills.lua` skill lines and weapon slots - `Tracking.lua` gathering tracking warning - `Catalog.lua` value rows and
 class defaults - `Data.lua` collects the sections - `CombatCache.lua` last values in combat -
 `UI.lua` window - `Options.lua` settings page - `Core.lua` saved variables, events, slash commands.
 
@@ -32,6 +33,13 @@ class defaults - `Data.lua` collects the sections - `CombatCache.lua` last value
   are isiLive's own generated corner textures (rounded window, ring, shadow).
 - Every WoW API call goes through `call()` in `Util.lua` (type check + `pcall`). Never call a
   `C_*` member bare; a removed member reads as `nil` and must fail closed.
+- Screen alerts: `UI.SetAlert(key, text or nil)`, texts that stay while their cause lasts, with the
+  warning sound once when one appears. Exception fishing pole: sound every 2 s while in combat
+  (user decisions 2026-11-22; no fading notices). `RaidNotice_AddMessage` is a deprecation shim that is nil
+  unless cvar `loadDeprecationFallbacks` is set. Before using a classic global, check that
+  Blizzard's source defines it outside `Blizzard_Deprecated*`.
+- Minimap tracking: `C_Minimap.GetTrackingInfo(i)` (`spellID`, `active`), event
+  `MINIMAP_UPDATE_TRACKING`; herbs 2383 / 8387, minerals 2580 / 8388.
 - When a feature stops producing data without an error, check the API member first
   (`/isistats debug` prints what exists).
 
@@ -131,6 +139,11 @@ isiLive "modern" look: graphite surfaces, hairline borders, cool blue accent (`C
 ## Releases and commits
 
 - Never release (tag, CurseForge upload) unless the user explicitly asks.
+- After every commit and every push (release commits included) run `tools/deploy_local.ps1` right
+  away, without asking (user rule 2026-11-22), and compare the installed files with the repo. If
+  the TOC's file list changed and WoW is running, don't copy: ask to close WoW first (`/reload`
+  does not load new files). The script copies the working tree: say so when it holds uncommitted
+  changes. Deploys without a commit or push still need the user's word.
 - Release: bump `## Version` in the TOC, move `## Unreleased` in `CHANGELOG.md` to
   `## X.Y.Z - YYYY-MM-DD`, commit `release(vX.Y.Z)`, tag `vX.Y.Z`, push main then the tag. The
   release workflow checks tag = TOC version, builds the zip, publishes the GitHub release and uploads

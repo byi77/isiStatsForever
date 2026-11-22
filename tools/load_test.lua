@@ -70,7 +70,7 @@ check(
 )
 check(findRow(sections, ns.L.DEFENSE) ~= nil, "defense row")
 
--- Fishing pole: red row at the very top, raid warning with sound at combat start.
+-- Fishing pole: red row at the very top, lasting text with sound from combat start.
 GetInventoryItemID = function(_, slot)
   return slot == 16 and 6256 or nil
 end
@@ -82,28 +82,146 @@ C_Item = {
 }
 local fishSections = ns.Data.Collect()
 check(fishSections[1].key == "warn" and fishSections[1].rows[1].key == "warn_fishing", "fishing pole row at the top")
-local warned, played, warnCount = nil, nil, 0
-RaidWarningFrame = {}
-RaidNotice_AddMessage = function(_, text)
-  warned = text
-  warnCount = warnCount + 1
-end
+local played, soundCount = nil, 0
 SOUNDKIT = { RAID_WARNING = 8959 }
 PlaySound = function(id)
   played = id
+  soundCount = soundCount + 1
 end
-StubFrames[1].scripts.OnEvent(StubFrames[1], "PLAYER_REGEN_DISABLED")
-check(warned == ns.L.WARN_FISHING_COMBAT and played == 8959, "raid warning with sound when combat starts")
-check(warnCount == 5, "raid warning comes 5 times")
-ns.SetRowEnabled("warn_fishing", false)
+-- The first alert creates the frame: record what it draws and where it sits.
+local alertLines, alertAnchor, alertVisible = {}, nil, false
+local createFrame = CreateFrame
+RaidWarningFrame = createFrame("Frame")
+CreateFrame = function(...)
+  local frame = createFrame(...)
+  local createString = frame.CreateFontString
+  frame.CreateFontString = function(self, name, layer, font)
+    local fs = createString(self, name, layer, font)
+    if font == "GameFontNormalHuge" then
+      local line = {}
+      alertLines[#alertLines + 1] = line
+      fs.SetText = function(_, text)
+        line.text = text
+      end
+      local show, hide = self.Show, self.Hide
+      if #alertLines == 1 then
+        self.Show = function(me)
+          show(me)
+          alertVisible = true
+        end
+        self.Hide = function(me)
+          hide(me)
+          alertVisible = false
+        end
+      end
+    end
+    return fs
+  end
+  frame.SetPoint = function(_, point, relative, relativePoint)
+    if relative and relative == RaidWarningFrame then
+      alertAnchor = point .. ">" .. relativePoint
+    end
+  end
+  return frame
+end
+local function fireCore(event)
+  StubFrames[1].scripts.OnEvent(StubFrames[1], event)
+end
+-- The fishing sound repeats: run its timers by hand.
+local afterNow, soundTimers = C_Timer.After, {}
+C_Timer.After = function(delay, fn)
+  if delay == 2 then
+    soundTimers[#soundTimers + 1] = fn
+  else
+    afterNow(delay, fn)
+  end
+end
+local function twoSeconds()
+  local due = soundTimers
+  soundTimers = {}
+  for _, fn in ipairs(due) do
+    fn()
+  end
+end
+check(ns.UI.GetAlert("fishing") == nil, "pole outside combat: no screen text")
+fireCore("PLAYER_REGEN_DISABLED")
+CreateFrame = createFrame
+check(ns.UI.GetAlert("fishing") == ns.L.WARN_FISHING_COMBAT and played == 8959, "text with sound when combat starts")
+check(alertVisible and alertLines[1].text == ns.L.WARN_FISHING_COMBAT, "fishing text drawn")
+check(alertAnchor == "BOTTOM>TOP", "screen texts sit above the raid warnings")
+check(soundCount == 1, "sound at once when combat starts")
+for i = 2, 8 do
+  twoSeconds()
+  check(soundCount == i, "sound every 2 seconds while in combat")
+end
+fireCore("PLAYER_EQUIPMENT_CHANGED")
+twoSeconds()
+check(soundCount == 9, "other gear during the fight: still one series")
+fireCore("PLAYER_REGEN_ENABLED")
+check(alertVisible, "fishing text stays after the fight")
+twoSeconds()
+check(soundCount == 9, "fight over: sound stops")
+fireCore("PLAYER_EQUIPMENT_CHANGED")
+check(alertVisible, "fishing text stays when other gear changes")
+fireCore("PLAYER_REGEN_DISABLED")
+check(soundCount == 10, "next combat with the text still up: sound again")
+fireCore("PLAYER_REGEN_ENABLED")
+soundCount = 1
+ns.UI.SetAlert("tracking", "Radar")
+check(soundCount == 2, "second text: its own sound")
+ns.UI.SetAlert("tracking", "Radar")
+check(soundCount == 2, "same text again: no sound")
+check(alertLines[1].text == ns.L.WARN_FISHING_COMBAT and alertLines[2].text == "Radar", "both texts stacked")
+
+local poleInfo = C_Item
+C_Item = {
+  GetItemInfoInstant = function()
+    return 1, "Schwert", "", "", 0, 2, 7
+  end,
+}
+fireCore("PLAYER_EQUIPMENT_CHANGED")
+check(ns.UI.GetAlert("fishing") == nil, "pole taken off: text gone")
+check(alertVisible and alertLines[1].text == "Radar" and alertLines[2].text == "", "other text moves down")
+ns.UI.SetAlert("tracking", nil)
+check(not alertVisible, "no text left: nothing on screen")
+check(soundCount == 2, "taking texts away is silent")
+fireCore("PLAYER_REGEN_DISABLED")
+check(ns.UI.GetAlert("fishing") == nil, "combat with a weapon: no text")
+
+C_Item = poleInfo
+soundCount = 0
+fireCore("PLAYER_EQUIPMENT_CHANGED")
+check(ns.UI.GetAlert("fishing") ~= nil and soundCount == 1, "pole equipped during a fight: text and sound")
+local swordInfo = {
+  GetItemInfoInstant = function()
+    return 1, "Schwert", "", "", 0, 2, 7
+  end,
+}
+C_Item = swordInfo
+fireCore("PLAYER_EQUIPMENT_CHANGED")
+twoSeconds()
+check(soundCount == 1, "pole off during the fight: sound stops")
+C_Item = poleInfo
+fireCore("PLAYER_EQUIPMENT_CHANGED")
+check(soundCount == 2, "pole on again: sound again")
 ns.SetRowEnabled("warn_fishing_combat", false)
-warned = nil
-StubFrames[1].scripts.OnEvent(StubFrames[1], "PLAYER_REGEN_DISABLED")
-check(warned == nil and ns.Data.Collect()[1].key ~= "warn", "fishing warnings switchable")
+twoSeconds()
+check(soundCount == 2, "setting off: sound stops")
+check(ns.UI.GetAlert("fishing") == nil, "setting off hides the text at once")
+ns.SetRowEnabled("warn_fishing", false)
+soundCount = 0
+fireCore("PLAYER_REGEN_DISABLED")
+check(
+  ns.UI.GetAlert("fishing") == nil and soundCount == 0 and ns.Data.Collect()[1].key ~= "warn",
+  "fishing warnings switchable"
+)
 ns.ResetRows()
 GetInventoryItemID, C_Item = nil, savedItemInfo
 check(ns.Data.Collect()[1].key ~= "warn", "no warning without a fishing pole")
-RaidWarningFrame, RaidNotice_AddMessage, SOUNDKIT, PlaySound = nil, nil, nil, nil
+fireCore("PLAYER_EQUIPMENT_CHANGED")
+fireCore("PLAYER_REGEN_ENABLED")
+C_Timer.After = afterNow
+RaidWarningFrame, SOUNDKIT, PlaySound = nil, nil, nil
 
 -- Chat history: sent lines are saved, a repeat moves to the end, and the
 -- saved lines go back into the edit box history (oldest first) on login.
@@ -549,6 +667,180 @@ do
   for _, name in ipairs(names) do
     _G[name] = backup[name]
   end
+end
+
+-- Gathering tracking warning, through the real event handler.
+do
+  local backup = { C_SkillInfo = C_SkillInfo, InCombatLockdown = InCombatLockdown, issecretvalue = issecretvalue }
+  local after = C_Timer.After
+  local herb, mining, herbOn, mineralsOn, otherOn, loaded, secret = false, false, false, false, false, true, false
+  local combat = false
+  local hidden = {}
+  local timers = {}
+  local alert = setmetatable({}, { -- what the player sees
+    __index = function(_, key)
+      local text = ns.UI.GetAlert("tracking")
+      if key == "shown" then
+        return text ~= nil
+      end
+      return text
+    end,
+  })
+  C_Timer.After = function(_, fn)
+    timers[#timers + 1] = fn
+  end
+  issecretvalue = function(v)
+    return v == hidden
+  end
+  InCombatLockdown = function()
+    return combat
+  end
+  C_SkillInfo = {
+    GetSkillLineInfoByID = function(id)
+      if (id == 182 and herb) or (id == 186 and mining) then
+        return { name = "P" .. id, rank = 174, maxRank = 225, modifier = 0 }
+      end
+    end,
+  }
+  local function list()
+    local out = { { name = "Briefkasten" }, { name = "Humanoide", spellID = 5225, active = otherOn } }
+    if loaded and herb then
+      out[#out + 1] = { name = "Kräutersuche", spellID = 2383, active = herbOn }
+    end
+    if loaded and mining then
+      local active = mineralsOn
+      if secret then
+        active = hidden
+      end
+      out[#out + 1] = { name = "Mineraliensuche", spellID = 2580, active = active }
+    end
+    return out
+  end
+  C_Minimap = {
+    GetNumTrackingTypes = function()
+      return #list()
+    end,
+    GetTrackingInfo = function(index)
+      return list()[index]
+    end,
+  }
+  local function fire(event)
+    StubFrames[1].scripts.OnEvent(StubFrames[1], event or "MINIMAP_UPDATE_TRACKING")
+  end
+  local function settle()
+    local due = timers
+    timers = {}
+    for _, fn in ipairs(due) do
+      fn()
+    end
+  end
+  -- Is the text on screen after the event and the delay?
+  local function after3s(event)
+    fire(event)
+    settle()
+    return alert.shown
+  end
+  local function reset()
+    herb, mining, herbOn, mineralsOn, otherOn, loaded, secret = false, false, false, false, false, true, false
+    combat = false
+    after3s()
+  end
+  local sounds = 0
+  SOUNDKIT = { RAID_WARNING = 8959 }
+  PlaySound = function()
+    sounds = sounds + 1
+  end
+  ns.ResetRows()
+  check(ns.IsRowEnabled("warn_tracking"), "tracking warning on by default")
+
+  reset()
+  check(not after3s("PLAYER_ENTERING_WORLD"), "no profession: no warning")
+
+  mining = true
+  fire("PLAYER_ENTERING_WORLD")
+  check(not alert.shown, "waits before it appears")
+  check(sounds == 0, "no sound before it appears")
+  settle()
+  check(alert.shown, "mining without tracking: warning")
+  check(sounds == 1, "sound once when the warning appears")
+  check(alert.text == ns.L.WARN_TRACKING_FMT:format("Mineraliensuche"), "warning names the tracking")
+  settle()
+  check(alert.shown, "stays")
+  check(after3s("LOADING_SCREEN_DISABLED"), "stays after a loading screen")
+  combat = true
+  check(after3s("SKILL_LINES_CHANGED"), "stays in combat")
+  combat = false
+  check(after3s("PLAYER_REGEN_ENABLED"), "stays after a fight")
+  loaded = false
+  check(after3s(), "stays while the list is not loaded")
+  loaded, secret = true, true
+  check(after3s(), "stays while the state is hidden")
+  check(sounds == 1, "no more sounds while it stays")
+  secret, mineralsOn = false, true
+  fire()
+  check(not alert.shown, "gone at once when switched on")
+  settle()
+  check(not alert.shown, "stays gone while on")
+  mineralsOn = false
+  check(after3s(), "back when switched off")
+  check(sounds == 2, "sound again when it appears again")
+  herb = true
+  check(after3s() and sounds == 2, "only the text changes: no sound")
+
+  reset()
+  check(not alert.shown, "profession unlearned: gone")
+  herb = true
+  check(after3s() and alert.text:find("Kräutersuche", 1, true), "herbalism: warning")
+
+  reset()
+  herb, mining, herbOn = true, true, true
+  check(not after3s(), "both learned, herbs on: no warning")
+  herbOn, mineralsOn = false, true
+  check(not after3s(), "both learned, minerals on: no warning")
+  mineralsOn = false
+  check(after3s(), "both learned, none on: warning")
+  check(alert.text:find("Kräutersuche / Mineraliensuche", 1, true), "both trackings named")
+
+  reset()
+  herb, mining, herbOn = true, true, true
+  after3s()
+  herbOn = false
+  fire()
+  check(not alert.shown, "switching between both: nothing in between")
+  mineralsOn = true
+  fire()
+  settle()
+  check(not alert.shown, "switching between both: no warning")
+
+  reset()
+  mining, otherOn = true, true
+  check(after3s(), "another tracking does not count")
+
+  reset()
+  mining, loaded = true, false
+  check(not after3s(), "list not loaded: no guessing")
+  loaded, secret = true, true
+  check(not after3s(), "secret state: no guessing")
+
+  reset()
+  mining = true
+  after3s()
+  ns.SetRowEnabled("warn_tracking", false)
+  check(not alert.shown, "switching the setting off hides at once")
+  check(not after3s(), "stays off")
+  ns.SetRowEnabled("warn_tracking", true)
+  check(alert.shown, "switching the setting on shows at once")
+  ns.SetAllRows(false)
+  check(not alert.shown, "all off hides it")
+  ns.ResetRows()
+  check(alert.shown, "class defaults show it again")
+
+  reset()
+  for name, value in pairs(backup) do
+    _G[name] = value
+  end
+  C_Timer.After = after
+  C_Minimap, SOUNDKIT, PlaySound = nil, nil, nil
 end
 
 -- Language follows the client: German strings only on a deDE client.

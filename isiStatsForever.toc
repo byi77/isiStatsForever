@@ -18,6 +18,7 @@ Util.lua
 LevelTime.lua
 ChatHistory.lua
 Skills.lua
+Tracking.lua
 Catalog.lua
 Data.lua
 CombatCache.lua

@@ -438,6 +438,77 @@ function UI.Render(sections, collapsedMap, showHeaders)
   frame:SetHeight(-y + GRIP_SIZE + 2)
 end
 
+-- ---------------------------------------------------------------- screen alerts
+
+-- Texts in the middle of the screen that stay until they are taken away (the
+-- game's raid warnings always fade out). They sit above the raid warnings, so
+-- they never cover one, and stack upwards in this order. An alert plays the
+-- warning sound once when it appears, unless its caller does the sound.
+local ALERT_ORDER = { "fishing", "tracking" }
+local ALERT_LINE_H = 26
+local ALERT_GAP = 4
+local ALERT_FALLBACK_Y = -156
+local alerts, alertTexts = nil, {}
+
+local function createAlerts()
+  alerts = CreateFrame("Frame", nil, UIParent)
+  alerts:SetSize(800, ALERT_LINE_H)
+  alerts:SetFrameStrata("HIGH")
+  alerts:EnableMouse(false)
+  if RaidWarningFrame then
+    alerts:SetPoint("BOTTOM", RaidWarningFrame, "TOP", 0, ALERT_GAP) -- follows it in edit mode
+  else
+    alerts:SetPoint("TOP", UIParent, "TOP", 0, ALERT_FALLBACK_Y)
+  end
+  alerts.lines = {}
+  for i = 1, #ALERT_ORDER do
+    local line = alerts:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
+    line:SetPoint("BOTTOM", alerts, "BOTTOM", 0, (i - 1) * ALERT_LINE_H)
+    setColor(line, "bad")
+    alerts.lines[i] = line
+  end
+end
+
+function UI.PlayAlertSound()
+  if type(PlaySound) == "function" and type(SOUNDKIT) == "table" and SOUNDKIT.RAID_WARNING then
+    pcall(PlaySound, SOUNDKIT.RAID_WARNING, "Master")
+  end
+end
+
+-- text nil: takes the alert away. silent: the caller does the sound.
+function UI.SetAlert(key, text, silent)
+  if alertTexts[key] == text then
+    return
+  end
+  local appears = text ~= nil and alertTexts[key] == nil
+  alertTexts[key] = text
+  if appears and not silent then
+    UI.PlayAlertSound()
+  end
+  if not alerts then
+    createAlerts()
+  end
+  local shown = 0
+  for _, name in ipairs(ALERT_ORDER) do
+    if alertTexts[name] then
+      shown = shown + 1
+      alerts.lines[shown]:SetText(alertTexts[name])
+    end
+  end
+  for i = shown + 1, #ALERT_ORDER do
+    alerts.lines[i]:SetText("")
+  end
+  if shown > 0 then
+    alerts:Show()
+  else
+    alerts:Hide()
+  end
+end
+
+function UI.GetAlert(key)
+  return alertTexts[key]
+end
+
 function UI.SetFlashEnabled(enabled)
   flashEnabled = enabled and true or false
 end

@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- New: gathering tracking warning. With herbalism or mining learned, a text stays in the middle of the screen while neither Find Herbs nor Find Minerals is on (one is enough with both professions) and goes away as soon as one is switched on. A warning sound plays once when it appears. Switchable in the settings.
+- Fishing pole warning: the text now stays in the middle of the screen from combat start until the pole is taken off (before, it was only small red error text that faded out, as the raid warning function it used is missing on this client). The sound now comes every 2 seconds for as long as you are in combat with the pole (before: 5 times), also when the pole is equipped during a fight.
+
 ## 0.8.0 - 2026-11-22
 
 The percentage behind your weapon skills has a new meaning: where it showed e.g. -0.72% it can now show 63%. Your character did not get worse - the old number was only the penalty from missing skill, the new one is how many attacks really don't hit fully.
