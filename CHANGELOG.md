@@ -2,7 +2,9 @@
 
 ## Unreleased
 
-- New: buff warnings in the middle of the screen. Well-Rested (below level 60): a message with sound 15 minutes before it runs out, and a text that stays while it is missing, like the tracking warning. Might of Stormwind: a message with sound 5 minutes before it runs out. The messages before the end come once and stay 10 seconds. The warnings have their own switches in the settings.
+## 0.10.0 - 2026-11-22
+
+- New: buff warnings in the middle of the screen. Well-Rested (below level 60): a message with sound 15 minutes before it runs out, and a text that stays while it is missing, like the tracking warning. Might of Stormwind: a message with sound 5 minutes before it runs out. The messages before the end come once and stay 10 seconds. The warnings are on by default; each has its own switch in the settings (Options -> AddOns -> isiStatsForever -> Buffs).
 - The Well-Rested row turns yellow in the last 15 minutes (was 5).
 
 ## 0.9.0 - 2026-11-22
