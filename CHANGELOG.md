@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.9.0 - 2026-11-22
+
 - New: buff reminder at the very top of the window for Well-Rested (sleeping bag: stacks out of 3 and time left; hidden from level 60, it only gives XP) and Might of Stormwind (world buff, Alliance: time left). Red when missing, yellow with fewer stacks or in the last 5 minutes. Each can be switched off in the settings. In combat a buff the game hides keeps its last readable state, greyed out, with the time counting on.
 - New: gathering tracking warning. With herbalism or mining learned, a text stays in the middle of the screen while neither Find Herbs nor Find Minerals is on (one is enough with both professions) and goes away as soon as one is switched on. A warning sound plays once when it appears. Switchable in the settings.
 - Fishing pole warning: the text now stays in the middle of the screen from combat start until the pole is taken off (before, it was only small red error text that faded out, as the raid warning function it used is missing on this client). The sound now comes every 2 seconds for as long as you are in combat with the pole (before: 5 times), also when the pole is equipped during a fight.
