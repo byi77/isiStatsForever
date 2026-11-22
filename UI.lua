@@ -670,6 +670,19 @@ function UI.Create()
     ns.Hide()
   end)
 
+  -- The installed version (TOC) at the bottom left, in the margin the resize
+  -- grip keeps free on the right; nothing if unknown.
+  local version = frame:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+  version:SetPoint("BOTTOMLEFT", PAD, 3)
+  local fontPath, _, fontFlags = version:GetFont()
+  if fontPath then
+    version:SetFont(fontPath, 9, fontFlags) -- small
+  end
+  setColor(version, "dim")
+  local v = ns.ErrorLog.Version()
+  version:SetText(v ~= "?" and ("v" .. v) or "")
+  frame.version = version
+
   createResizeGrip()
   UI.SetBackgroundAlpha(bgAlpha)
 

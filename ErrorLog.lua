@@ -30,6 +30,7 @@ local function addonVersion()
   local ok, version = pcall(getMeta, "isiStatsForever", "Version")
   return ok and type(version) == "string" and version or "?"
 end
+ErrorLog.Version = addonVersion
 
 local function record(message)
   if type(db) ~= "table" or type(db.errors) ~= "table" then

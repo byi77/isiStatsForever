@@ -3,6 +3,15 @@ local dir = arg[1]
 local clientLocale = arg[2] or "deDE"
 local ns = assert(loadfile(dir .. "/tools/wow_stub.lua"))(dir, clientLocale)
 assert(ns.UI.GetFrame():IsShown(), "fresh install: own window, open")
+assert(ns.UI.GetFrame().version, "version text in the title bar")
+C_AddOns = {
+  GetAddOnMetadata = function(name, key)
+    return name == "isiStatsForever" and key == "Version" and "1.2.3" or nil
+  end,
+}
+assert(ns.ErrorLog.Version() == "1.2.3", "version from the TOC")
+C_AddOns = nil
+assert(ns.ErrorLog.Version() == "?", "no metadata API: unknown")
 CharacterFrame:Show()
 CharacterFrame:Hide()
 SlashCmdList.ISISTATS("alpha 40")
@@ -222,6 +231,381 @@ fireCore("PLAYER_EQUIPMENT_CHANGED")
 fireCore("PLAYER_REGEN_ENABLED")
 C_Timer.After = afterNow
 RaidWarningFrame, SOUNDKIT, PlaySound = nil, nil, nil
+
+-- Soul shard warning, through the real event handler.
+do
+  local backup = {
+    UnitClass = UnitClass,
+    C_Item = C_Item,
+    C_SpellBook = C_SpellBook,
+    UnitExists = UnitExists,
+    GetInventoryItemID = GetInventoryItemID,
+  }
+  local after, timers = C_Timer.After, {}
+  local class, known, shards, sounds = "WARLOCK", true, 3, 0
+  C_Timer.After = function(_, fn)
+    timers[#timers + 1] = fn
+  end
+  UnitClass = function()
+    return "Hexenmeister", class
+  end
+  C_SpellBook = {
+    IsSpellKnown = function(id)
+      return known and id == 697
+    end,
+  }
+  C_Item = {
+    GetItemCount = function(id)
+      return id == 6265 and shards or 0
+    end,
+  }
+  SOUNDKIT = { RAID_WARNING = 8959 }
+  PlaySound = function()
+    sounds = sounds + 1
+  end
+  local function after3s(event)
+    StubFrames[1].scripts.OnEvent(StubFrames[1], event or "BAG_UPDATE_DELAYED")
+    local due = timers
+    timers = {}
+    for _, fn in ipairs(due) do
+      fn()
+    end
+    return ns.UI.GetAlert("shards")
+  end
+  ns.ResetRows()
+  check(ns.IsRowEnabled("warn_shards"), "shard warning on by default")
+  local text = after3s("PLAYER_ENTERING_WORLD")
+  check(text == ns.L.WARN_SHARDS_FMT:format(3), "3 shards: warning with the count")
+  check(sounds == 1, "sound once when it appears")
+  shards = 5
+  check(after3s() == ns.L.WARN_SHARDS_FMT:format(5), "5 shards: still a warning")
+  check(sounds == 1, "new count: no new sound")
+  shards = 6
+  StubFrames[1].scripts.OnEvent(StubFrames[1], "BAG_UPDATE_DELAYED")
+  check(ns.UI.GetAlert("shards") == nil, "6 shards: gone at once")
+  shards = 0
+  StubFrames[1].scripts.OnEvent(StubFrames[1], "BAG_UPDATE_DELAYED")
+  check(ns.UI.GetAlert("shards") == nil, "waits before it appears")
+  check(after3s() == ns.L.WARN_SHARDS_FMT:format(0), "no shards: warning")
+  ns.SetRowEnabled("warn_shards", false)
+  check(ns.UI.GetAlert("shards") == nil, "setting off hides at once")
+  ns.SetRowEnabled("warn_shards", true)
+  check(ns.UI.GetAlert("shards") ~= nil, "setting on shows at once")
+  known = false
+  check(after3s("SPELLS_CHANGED") == nil, "no shard spell known: no warning")
+  known, class = true, "WARRIOR"
+  check(after3s() == nil, "other classes: no warning")
+  class = "WARLOCK"
+  C_Item = {}
+  check(after3s() == nil, "no count from the game: no guessing")
+  C_SpellBook = nil
+  check(after3s() == nil, "no spell API: no guessing")
+
+  -- The other class warnings.
+  local inv, ammo, auras, stance, happy, pet, deadPet = {}, 500, {}, 0, 3, true, false
+  local alertStatus = {}
+  C_SpellBook = {
+    IsSpellKnown = function(id)
+      return id == 883 or id == 6673
+    end,
+  }
+  C_Item = {
+    GetItemInfoInstant = function(id)
+      local t = inv[id]
+      if t then
+        return id, "", "", "", 0, t[1], t[2]
+      end
+    end,
+    GetItemCount = function()
+      return 50
+    end,
+  }
+  GetInventoryItemID = function(_, slot)
+    return (slot == 18 and inv.ranged) or (slot == 17 and inv.off) or nil
+  end
+  GetInventoryItemCount = function(_, slot)
+    return slot == 0 and ammo or 0
+  end
+  C_UnitAuras = {
+    GetPlayerAuraBySpellID = function(id)
+      return auras[id]
+    end,
+  }
+  C_Secrets = {
+    ShouldSpellAuraBeSecret = function()
+      return false
+    end,
+  }
+  GetShapeshiftForm = function()
+    return stance == 0 and 0 or 1
+  end
+  GetShapeshiftFormInfo = function()
+    return 0, true, true, stance
+  end
+  HasPetUI = function()
+    return pet, pet
+  end
+  C_PetInfo = {
+    GetPetHappiness = function()
+      return happy, 100, 0
+    end,
+  }
+  UnitExists = function(unit)
+    return unit ~= "pet" or pet
+  end
+  UnitIsDead = function(unit)
+    return unit == "pet" and deadPet
+  end
+  GetInventoryAlertStatus = function(index)
+    return alertStatus[index] or 0
+  end
+  local function shown(key)
+    return ns.UI.GetAlert(key)
+  end
+  local function fight(on)
+    StubFrames[1].scripts.OnEvent(StubFrames[1], on and "PLAYER_REGEN_DISABLED" or "PLAYER_REGEN_ENABLED")
+    local due = timers
+    timers = {}
+    for _, fn in ipairs(due) do
+      fn()
+    end
+  end
+
+  class = "HUNTER"
+  ns.ResetRows()
+  inv.ranged, inv[1] = 1, { 2, 2 } -- bow
+  after3s()
+  check(shown("ammo") == nil, "hunter with 500 arrows: no warning")
+  ammo = 200
+  after3s()
+  check(shown("ammo") == ns.L.WARN_AMMO_FMT:format(200), "200 arrows: warning")
+  inv[1] = { 2, 16 } -- thrown
+  after3s()
+  check(shown("ammo") == nil, "thrown weapon: no ammo warning")
+  inv[1] = { 2, 2 }
+  ammo = 900
+  after3s()
+  auras[5118] = {}
+  check(shown("aspect") == nil, "cheetah out of combat: fine")
+  fight(true)
+  check(shown("aspect") == ns.L.WARN_ASPECT_TEXT, "cheetah in combat: warning")
+  auras[5118], auras[13159] = nil, {}
+  StubFrames[1].scripts.OnEvent(StubFrames[1], "UNIT_AURA", "player")
+  check(shown("aspect") ~= nil, "pack in combat: warning")
+  auras[13159] = nil
+  StubFrames[1].scripts.OnEvent(StubFrames[1], "UNIT_AURA", "player")
+  check(shown("aspect") == nil, "aspect changed: gone at once")
+  check(shown("pet_missing") == nil, "pet there: fine")
+  deadPet = true
+  StubFrames[1].scripts.OnEvent(StubFrames[1], "UNIT_PET", "player")
+  check(shown("pet_missing") == ns.L.WARN_PET_DEAD, "dead pet in combat")
+  pet, deadPet = false, false
+  StubFrames[1].scripts.OnEvent(StubFrames[1], "UNIT_PET", "player")
+  check(shown("pet_missing") == ns.L.WARN_PET_MISSING, "no pet in combat")
+  fight(false)
+  check(shown("pet_missing") == nil, "fight over: no pet text")
+  pet, happy = true, 2
+  check(after3s("UNIT_HAPPINESS") == nil and shown("pet_happy") == ns.L.WARN_PET_CONTENT, "content pet")
+  happy = 1
+  after3s("UNIT_HAPPINESS")
+  check(shown("pet_happy") == ns.L.WARN_PET_MAD, "unhappy pet")
+  happy = 3
+  after3s("UNIT_HAPPINESS")
+  check(shown("pet_happy") == nil, "happy pet: fine")
+
+  class = "WARRIOR"
+  ns.ResetRows()
+  after3s()
+  check(shown("ammo") == nil and shown("pet_happy") == nil, "warrior: no hunter texts")
+  stance = 71
+  after3s("UPDATE_SHAPESHIFT_FORM")
+  check(shown("def_shield") == ns.L.WARN_DEF_SHIELD, "defensive stance, no shield")
+  inv.off, inv[2] = 2, { 4, 6 }
+  after3s("PLAYER_EQUIPMENT_CHANGED")
+  check(shown("def_shield") == nil, "shield on: fine")
+  check(ns.IsRowEnabled("warn_rage_stance"), "every warning on by default")
+  fight(true)
+  check(shown("battle_shout") == ns.L.WARN_BATTLE_SHOUT, "no battle shout in combat")
+  check(shown("rage_stance") == ns.L.WARN_RAGE_STANCE, "defensive stance in combat warns")
+  auras[6673] = {}
+  StubFrames[1].scripts.OnEvent(StubFrames[1], "UNIT_AURA", "player")
+  check(shown("battle_shout") == nil, "battle shout on: fine")
+  auras[6673] = nil
+  C_Secrets.ShouldSpellAuraBeSecret = function()
+    return true
+  end
+  StubFrames[1].scripts.OnEvent(StubFrames[1], "UNIT_AURA", "player")
+  check(shown("battle_shout") == nil, "hidden aura: no guessing")
+  ns.SetRowEnabled("warn_rage_stance", false)
+  check(shown("rage_stance") == nil, "switched off: gone at once")
+  fight(false)
+  check(shown("battle_shout") == nil and shown("rage_stance") == nil, "fight over: combat texts gone")
+
+  alertStatus[9] = 1
+  after3s("UPDATE_INVENTORY_ALERTS")
+  check(shown("durability") == ns.L.WARN_GEAR_LOW, "weapon almost broken")
+  alertStatus[3] = 2
+  after3s("UPDATE_INVENTORY_ALERTS")
+  check(shown("durability") == ns.L.WARN_GEAR_BROKEN, "chest broken")
+  alertStatus = {}
+  after3s("UPDATE_INVENTORY_ALERTS")
+  check(shown("durability") == nil, "repaired: gone")
+
+  -- Rogue: poison; Shaman: imbue in combat; self buffs; reagents.
+  local enchanted, items = { [0] = false, [1] = false }, {}
+  C_Item.GetWeaponEnchantInfo = function(slot)
+    return { { hasEnchant = enchanted[slot] } }
+  end
+  C_Item.GetItemCount = function(id)
+    return items[id] or 0
+  end
+  C_Item.GetItemNameByID = function(id)
+    return "Item" .. id
+  end
+  local knownSpells = {}
+  C_SpellBook.IsSpellKnown = function(id)
+    return knownSpells[id] == true
+  end
+  UnitIsDeadOrGhost = function()
+    return false
+  end
+  C_Secrets.ShouldSpellAuraBeSecret = function()
+    return false
+  end
+  auras = {}
+  inv.off, inv[1], inv[2] = 1, { 2, 7 }, nil -- sword in both hands
+  inv.main = 1
+  GetInventoryItemID = function(_, slot)
+    return (slot == 16 and inv.main) or (slot == 17 and inv.off) or (slot == 18 and inv.ranged) or nil
+  end
+
+  class = "ROGUE"
+  ns.ResetRows()
+  knownSpells = { [2842] = true }
+  after3s()
+  check(shown("poison") == ns.L.WARN_POISON, "rogue without poison")
+  enchanted[0] = true
+  after3s("UNIT_INVENTORY_CHANGED")
+  check(shown("poison") == ns.L.WARN_POISON, "off hand still without poison")
+  enchanted[1] = true
+  after3s("UNIT_INVENTORY_CHANGED")
+  check(shown("poison") == nil, "both poisoned: fine")
+  enchanted[0] = false
+  local hiddenValue = {} -- stands for a secret value
+  C_Item.GetWeaponEnchantInfo = function(slot)
+    return { { hasEnchant = slot == 0 and hiddenValue or true } }
+  end
+  issecretvalue = function(v)
+    return v == hiddenValue
+  end
+  after3s("UNIT_INVENTORY_CHANGED")
+  check(shown("poison") == nil, "hidden enchant state: no error, no guessing")
+  issecretvalue = function()
+    return false
+  end
+  C_Item.GetWeaponEnchantInfo = function(slot)
+    return { { hasEnchant = enchanted[slot] } }
+  end
+  inv[1] = { 2, 20 } -- fishing pole
+  inv.off = nil
+  after3s("PLAYER_EQUIPMENT_CHANGED")
+  check(shown("poison") == nil, "fishing pole: no poison warning")
+  inv[1], inv.off = { 2, 7 }, 1
+  enchanted[0] = true
+  knownSpells = { [2842] = true, [1856] = true, [1857] = true, [2094] = true }
+  items[5140] = 3
+  items[5530] = 9
+  after3s()
+  check(shown("reagents") == ns.L.WARN_REAGENTS_FMT:format("Item5140 3"), "flash powder low, blinding fine")
+  local loading, requests = true, 0
+  C_Item.GetItemNameByID = function(id)
+    return not loading and ("Item" .. id) or nil
+  end
+  C_Item.RequestLoadItemDataByID = function()
+    requests = requests + 1
+  end
+  items[5140] = 2
+  after3s()
+  check(shown("reagents") == ns.L.WARN_REAGENTS_FMT:format("#5140 2") and requests == 1, "name loading: id first")
+  loading = false
+  StubFrames[1].scripts.OnEvent(StubFrames[1], "ITEM_DATA_LOAD_RESULT", 99999, true)
+  check(shown("reagents"):find("#5140", 1, true), "other item loaded: no update")
+  StubFrames[1].scripts.OnEvent(StubFrames[1], "ITEM_DATA_LOAD_RESULT", 5140, true)
+  check(shown("reagents") == ns.L.WARN_REAGENTS_FMT:format("Item5140 2"), "own item loaded: name")
+
+  class = "DRUID"
+  ns.ResetRows()
+  knownSpells = { [20484] = true, [20739] = true, [1126] = true }
+  items = { [17034] = 20 }
+  after3s()
+  check(shown("reagents") == ns.L.WARN_REAGENTS_FMT:format("Item17035 0"), "only the highest rank's seed counts")
+  check(shown("druid_buffs") == ns.L.WARN_BUFFS_MISSING_FMT:format("#1126"), "mark of the wild missing")
+  auras[21850] = {}
+  after3s("UNIT_AURA")
+  check(shown("druid_buffs") == nil, "gift of the wild counts")
+  auras = {}
+  fight(true)
+  check(shown("druid_buffs") == nil, "self buffs: not in combat")
+  fight(false)
+  UnitIsDeadOrGhost = function()
+    return true
+  end
+  after3s()
+  check(shown("druid_buffs") == nil, "dead: no buff text")
+  UnitIsDeadOrGhost = function()
+    return false
+  end
+
+  class = "PALADIN"
+  ns.ResetRows()
+  knownSpells = { [465] = true, [19740] = true, [25780] = true }
+  inv.off, inv[2] = 2, { 4, 6 }
+  after3s()
+  local both = ns.L.WARN_BUFFS_MISSING_FMT:format(ns.L.WARN_LABEL_AURA .. ", " .. ns.L.WARN_LABEL_BLESSING)
+  check(shown("paladin_buffs") == both, "paladin: aura and blessing missing")
+  check(shown("righteous_fury") ~= nil, "paladin with shield: righteous fury missing")
+  auras[19900], auras[25898] = {}, {}
+  after3s("UNIT_AURA")
+  check(shown("paladin_buffs") == nil, "any aura and a greater blessing count")
+  check(shown("reagents") == nil, "no greater blessing known: no symbol warning")
+
+  class = "SHAMAN"
+  ns.ResetRows()
+  knownSpells = { [8017] = true, [324] = true }
+  enchanted[0] = false
+  after3s()
+  check(shown("imbue") == nil, "imbue: only in combat")
+  check(shown("shaman_buffs") ~= nil, "lightning shield missing out of combat")
+  fight(true)
+  check(shown("imbue") == ns.L.WARN_IMBUE, "no imbue in combat")
+  enchanted[0] = true
+  StubFrames[1].scripts.OnEvent(StubFrames[1], "UNIT_INVENTORY_CHANGED", "player")
+  check(shown("imbue") == nil, "imbued: gone at once")
+  fight(false)
+  UnitIsDeadOrGhost = nil
+
+  local catalogIds = {}
+  for _, section in ipairs(ns.Data.GetCatalog()) do
+    for _, row in ipairs(section.rows) do
+      catalogIds[row.id] = row.label
+    end
+  end
+  check(catalogIds.warn_imbue and catalogIds.warn_reagents and not catalogIds.warn_ammo, "own class only")
+  for _, warning in ipairs(ns.Warnings.LIST) do
+    check(ns.L["WARN_" .. warning.key:upper() .. "_OPT"], "option text for " .. warning.key)
+  end
+  GetShapeshiftForm, GetShapeshiftFormInfo, HasPetUI, C_PetInfo = nil, nil, nil, nil
+  GetInventoryItemCount, GetInventoryAlertStatus, UnitIsDead, C_Secrets = nil, nil, nil, nil
+  UnitExists, C_UnitAuras, GetInventoryItemID = backup.UnitExists, nil, backup.GetInventoryItemID
+
+  for name, value in pairs(backup) do
+    _G[name] = value
+  end
+  C_Timer.After = after
+  SOUNDKIT, PlaySound = nil, nil
+  after3s()
+  check(ns.UI.GetAlert("shards") == nil, "warrior again: no text")
+end
 
 -- Damage meter: cleared once per group joined, through the real event handler.
 do

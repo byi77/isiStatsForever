@@ -40,6 +40,7 @@ function ns.SetRowEnabled(id, value)
   elseif id == "warn_fishing_combat" then
     ns.UpdateFishingAlert()
   end
+  ns.Warnings.Update(true)
   ns.Buffs.Update()
   ns.Refresh()
 end
@@ -51,6 +52,7 @@ function ns.SetAllRows(value)
     end
   end
   ns.Tracking.Update()
+  ns.Warnings.Update(true)
   ns.UpdateFishingAlert()
   ns.Buffs.Update()
   ns.Refresh()
@@ -60,6 +62,7 @@ function ns.ResetRows()
   charDB.rows = {}
   rowDefaults = nil
   ns.Tracking.Update()
+  ns.Warnings.Update(true)
   ns.UpdateFishingAlert()
   ns.Buffs.Update()
   ns.Refresh()
@@ -158,6 +161,10 @@ function ns.UpdateFishingAlert()
     fishingSoundRun = fishingSoundRun + 1
     fishingSound(fishingSoundRun)
   end
+end
+
+function ns.IsInFight()
+  return inFight
 end
 
 function ns.SetInFight(value)
@@ -505,13 +512,23 @@ events:SetScript("OnEvent", function(self, event, arg1, arg2)
     for e in pairs(ns.Tracking.EVENTS) do
       pcall(self.RegisterEvent, self, e)
     end
+    for e in pairs(ns.Warnings.EVENTS) do
+      if e ~= "UNIT_AURA" then -- registered for the player only, above
+        pcall(self.RegisterEvent, self, e)
+      end
+    end
+    for e, unit in pairs(ns.Warnings.UNIT_EVENTS) do
+      pcall(self.RegisterUnitEvent, self, e, unit)
+    end
     ns.Data.Prime()
     pcall(self.RegisterEvent, self, "LOADING_SCREEN_ENABLED")
     pcall(self.RegisterEvent, self, "GROUP_JOINED")
     pcall(self.RegisterEvent, self, "GROUP_FORMED")
+    pcall(self.RegisterEvent, self, "ITEM_DATA_LOAD_RESULT")
     ns.Buffs.SetLoading(false)
     ns.Tracking.Schedule()
     ns.SetInFight(inCombat()) -- a reload during a fight
+    ns.Warnings.Update() -- after the fight flag
     if db.combatMode ~= "always" then
       ns.ApplyCombatVisibility()
     elseif db.shown and not db.dock then
@@ -521,11 +538,17 @@ events:SetScript("OnEvent", function(self, event, arg1, arg2)
     ns.LevelTime.Request()
     ns.LevelTime.Start()
     if type(C_Timer) == "table" and C_Timer.NewTicker then
-      C_Timer.NewTicker(30, ns.RequestRefresh)
+      C_Timer.NewTicker(30, function()
+        ns.RequestRefresh()
+        ns.Warnings.Update() -- poisons and imbues run out without an event
+      end)
     end
   else
     if event == "GROUP_JOINED" or event == "GROUP_FORMED" then
       resetMeterOnJoin(arg2)
+      return
+    elseif event == "ITEM_DATA_LOAD_RESULT" then
+      ns.Warnings.OnItemLoaded(arg1)
       return
     end
     if event == "TIME_PLAYED_MSG" then
@@ -555,6 +578,9 @@ events:SetScript("OnEvent", function(self, event, arg1, arg2)
       ns.SetInFight(true)
     elseif event == "PLAYER_REGEN_ENABLED" then
       ns.SetInFight(false)
+    end
+    if ns.Warnings.EVENTS[event] or ns.Warnings.UNIT_EVENTS[event] then
+      ns.Warnings.Update() -- after SetInFight
     end
     if (event == "PLAYER_REGEN_DISABLED" or event == "PLAYER_REGEN_ENABLED") and db.combatMode ~= "always" then
       ns.ApplyCombatVisibility()

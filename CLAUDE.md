@@ -15,7 +15,7 @@ isiStatsForever is a character stats addon for **WoW Forever** only. The repo li
 ## Files
 
 `Locale.lua` texts - `ErrorLog.lua` own error log - `Util.lua` guarded calls, secret values,
-formatting, formulas - `Skills.lua` skill lines and weapon slots - `Tracking.lua` gathering tracking warning - `Buffs.lua` buff reminder - `Catalog.lua` value rows and
+formatting, formulas - `Skills.lua` skill lines and weapon slots - `Tracking.lua` gathering tracking warning - `Warnings.lua` class and gear warnings - `Buffs.lua` buff reminder - `Catalog.lua` value rows and
 class defaults - `Data.lua` collects the sections - `CombatCache.lua` last values in combat -
 `UI.lua` window - `Options.lua` settings page - `Core.lua` saved variables, events, slash commands.
 
@@ -47,6 +47,14 @@ class defaults - `Data.lua` collects the sections - `CombatCache.lua` last value
   `warnMinutes` = one message before the end (10 s, once per buff run, also across a reload).
 - Auras: `C_UnitAuras.GetPlayerAuraBySpellID` returns **nil for a hidden aura** in combat. Treat nil
   as missing only when `C_Secrets.ShouldSpellAuraBeSecret(id)` is false.
+- Class and gear warnings (user request 2026-11-22): one entry in `Warnings.LIST` (`Warnings.lua`,
+  fields documented there) plus `WARN_<KEY>_OPT` and its texts in enUS and deDE. Sources: soul shard
+  item 6265 is a reagent as in classic (SpellReagents 1.60.1.71037); ammo = slot 0; durability =
+  `GetInventoryAlertStatus` (DurabilityFrame); pet = `C_PetInfo.GetPetHappiness` (PetHappiness.lua);
+  stance = `GetShapeshiftFormInfo` spell ID (StanceBar); poisons / imbues =
+  `C_Item.GetWeaponEnchantInfo` (BuffFrame). Self buffs and reagents are tables generated from
+  SpellReagents, SpellLevels and SkillLineAbility (class mask). Every warning is on by default for
+  every class (user decision 2026-11-22). Auras: same nil-in-combat rule as below.
 - Damage meter: `C_DamageMeter.ResetAllCombatSessions()` (Blizzard's own "reset all sessions"
   menu entry) on `GROUP_JOINED` / `GROUP_FORMED`, once per `partyGUID`. Neither fires on a login or
   `/reload` inside a group (user request 2026-11-22: clear once per group join).

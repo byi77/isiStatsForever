@@ -25,16 +25,25 @@ function Data.GetCatalog()
       buffs[#buffs + 1] = { id = alertId, label = string.format(L.BUFF_ALERT_OPT_FMT, name) }
     end
   end
+  local warn = {
+    { id = "warn_fishing", label = L.WARN_FISHING_OPT },
+    { id = "warn_fishing_combat", label = L.WARN_FISHING_COMBAT_OPT },
+    { id = "warn_tracking", label = L.WARN_TRACKING_OPT },
+  }
+  local _, classToken = call(UnitClass, "player")
+  classToken = str(classToken)
+  for _, warning in ipairs(ns.Warnings.LIST) do
+    if ns.Warnings.AppliesTo(warning, classToken) then
+      local id = ns.Warnings.OptionId(warning)
+      warn[#warn + 1] = { id = id, label = L["WARN_" .. warning.key:upper() .. "_OPT"] }
+    end
+  end
   return {
     { key = "buffs", title = L.BUFF_SECTION, rows = buffs },
     {
       key = "warn",
       title = L.WARN_SECTION,
-      rows = {
-        { id = "warn_fishing", label = L.WARN_FISHING_OPT },
-        { id = "warn_fishing_combat", label = L.WARN_FISHING_COMBAT_OPT },
-        { id = "warn_tracking", label = L.WARN_TRACKING_OPT },
-      },
+      rows = warn,
     },
     {
       key = "xp",
@@ -167,6 +176,9 @@ function Data.GetDefaults()
   end
   for _, id in ipairs(COMMON_DEFAULTS) do
     defaults[id] = true
+  end
+  for _, warning in ipairs(ns.Warnings.LIST) do
+    defaults[ns.Warnings.OptionId(warning)] = true
   end
   for _, buff in ipairs(ns.Buffs.LIST) do
     defaults[ns.Buffs.RowId(buff)] = true

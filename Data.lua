@@ -776,6 +776,12 @@ function Data.DebugDump(print)
   )
   print("GetExpertise:", type(GetExpertise))
   print("gathering tracking:", ns.Tracking.State())
+  local _, classToken = call(UnitClass, "player")
+  for _, warning in ipairs(ns.Warnings.LIST) do
+    if ns.Warnings.AppliesTo(warning, str(classToken)) then
+      print("warning " .. warning.key .. ":", warning.check())
+    end
+  end
   local buffs = ns.Buffs.Section()
   for _, row in ipairs(buffs and buffs.rows or {}) do
     print("buff " .. row.key .. ":", row.value, row.stale and "(last readable)" or "")

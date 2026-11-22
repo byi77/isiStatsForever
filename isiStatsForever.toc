@@ -19,6 +19,7 @@ LevelTime.lua
 ChatHistory.lua
 Skills.lua
 Tracking.lua
+Warnings.lua
 Buffs.lua
 Catalog.lua
 Data.lua
