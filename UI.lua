@@ -36,7 +36,7 @@ local WHITE = "Interface\\Buttons\\WHITE8X8"
 local GRIP_SIZE = 14
 
 -- Skill rows use fixed right-aligned columns so the numbers line up:
--- [label ........ ] [+/- vs. target] [bonus] [current / max]
+-- [label ........ ] [not a full hit] [bonus] [current / max]
 local COL_VALUE = 64
 local COL_BONUS = 26
 local COL_PCT = 52
@@ -315,7 +315,7 @@ local function acquireRow(index)
   return row
 end
 
--- Places value (and for skill rows bonus and +/- columns) and the label.
+-- Places value (and for skill rows bonus and percent columns) and the label.
 local function anchorColumns(row, columns)
   row.value:ClearAllPoints()
   row.label:ClearAllPoints()
@@ -393,7 +393,7 @@ local function layoutRow(row, data, alt, y)
     row.bonus:SetText(data.bonus or "")
     setColor(row.bonus, data.stale and "dim" or nil, "value")
     row.pct:SetText(data.pct or "")
-    setColor(row.pct, data.stale and "dim" or nil, "value")
+    setColor(row.pct, data.stale and "dim" or data.pctColor, "value")
   end
   layoutProgress(row, data.progress)
   row.sectionKey = nil

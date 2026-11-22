@@ -22,7 +22,6 @@ local SKILL_NAMES = {
   [226] = "Armbrüste",
   [228] = "Zauberstäbe",
   [229] = "Stangenwaffen",
-  [473] = "Faustwaffen",
 }
 
 -- Item subclasses (weapon class 2) and the shield (armor class 4, subclass 6).
@@ -48,7 +47,7 @@ local CLASSES = {
   ROGUE = {
     gear = { SWORD, DAGGER, THROWN },
     mana = false,
-    skills = { 43, 173, 473, 54, 176, 45, 162, 95 },
+    skills = { 43, 173, 54, 176, 45, 162, 95 },
     mainStat = 2,
     attack = "melee",
   },
@@ -114,7 +113,7 @@ local ALL_SUBCLASS_SKILL = {
   [7] = 43,
   [8] = 55,
   [10] = 136,
-  [13] = 473,
+  [13] = 162,
   [15] = 173,
   [16] = 176,
   [18] = 226,
@@ -337,7 +336,7 @@ for _, token in ipairs(ORDER) do
     check(row ~= nil, ("%s with %s: skill row shown"):format(token, name))
     if row then
       check(row.tip and row.tip:find(L.EQUIPPED, 1, true), ("%s with %s: marked equipped"):format(token, name))
-      check(row.pct and row.pct:find("%%"), ("%s with %s: vs.-target value in its column"):format(token, name))
+      check(row.pct and row.pct:find("^%d+%%$"), ("%s with %s: percentage in its column"):format(token, name))
       check(row.value:match("^%d+ / %d+$"), ("%s with %s: current / max alone in the right column"):format(token, name))
       check(row.progress and row.progress > 0 and row.progress <= 1, ("%s with %s: progress bar"):format(token, name))
       check(

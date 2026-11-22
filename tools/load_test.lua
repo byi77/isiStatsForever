@@ -351,6 +351,206 @@ end
 ns.Refresh()
 check(flashPlays == before, "no fade-in when switched off")
 
+-- Hit results and the five corrected sources, through the real event handler.
+do
+  local names = {
+    "GetInventoryItemID",
+    "C_Item",
+    "C_SkillInfo",
+    "UnitLevel",
+    "UnitExists",
+    "UnitCanAttack",
+    "UnitClassification",
+    "UnitIsPlayer",
+    "GetCombatRatingBonus",
+    "GetHitModifier",
+    "GetOffhandHitModifier",
+    "GetRangedHitModifier",
+    "GetGlancingBlowChance",
+    "GetGlancingBlowPenalty",
+    "GetExpertise",
+    "issecretvalue",
+    "InCombatLockdown",
+    "UnitAttackSpeed",
+    "UnitDamage",
+  }
+  local backup = {}
+  for _, name in ipairs(names) do
+    backup[name] = _G[name]
+  end
+  local handler = StubFrames[1]
+  local targetLevel, rank, combat, hasTarget = 45, 207, false, true
+  local hit, expertise = 0, 0
+  local gear = { [16] = 7 }
+  local hidden = {} -- stands for a secret value
+  issecretvalue = function(v)
+    return v == hidden
+  end
+  local function secretInCombat(value)
+    if combat then
+      return hidden
+    end
+    return value
+  end
+  InCombatLockdown = function()
+    return combat
+  end
+  GetInventoryItemID = function(_, slot)
+    return gear[slot] and slot or nil
+  end
+  C_Item = {
+    GetItemInfoInstant = function(slot)
+      return slot, nil, nil, nil, nil, 2, gear[slot]
+    end,
+  }
+  C_SkillInfo = {
+    GetSkillLineInfoByID = function(id)
+      return { name = "S" .. id, rank = rank, maxRank = id == 95 and 300 or 230, modifier = 0 }
+    end,
+  }
+  UnitExists = function()
+    return hasTarget
+  end
+  UnitCanAttack = UnitExists
+  UnitIsPlayer = function()
+    return false
+  end
+  UnitClassification = function()
+    return "normal"
+  end
+  UnitLevel = function(unit)
+    return unit == "target" and targetLevel or 46
+  end
+  GetCombatRatingBonus = function()
+    return secretInCombat(0)
+  end
+  GetHitModifier = function()
+    return secretInCombat(hit)
+  end
+  GetExpertise = function()
+    return secretInCombat(expertise), secretInCombat(expertise)
+  end
+  GetGlancingBlowChance = function(skill, defense)
+    return secretInCombat(math.max(0, math.min(1, 0.1 + (defense - skill) * 0.02)))
+  end
+  GetGlancingBlowPenalty = function()
+    return secretInCombat(0.47)
+  end
+  ns.ResetRows()
+
+  local function byKey(key)
+    for _, s in ipairs(ns.Data.Collect()) do
+      for _, r in ipairs(s.rows) do
+        if r.key == key then
+          return r
+        end
+      end
+    end
+  end
+  local function expect(message, value, color)
+    local row = byKey("w:S43")
+    check(
+      row.pct == value and row.pctColor == color,
+      message .. (" (got %s %s)"):format(row.pct, tostring(row.pctColor))
+    )
+  end
+
+  expect("skill 207 vs. level 45", "63%", "bad")
+  local tip = byKey("w:S43").tip
+  for _, part in ipairs({ "63%", "17%", "46%", "37%" }) do
+    check(tip:find(part, 1, true), "tooltip has the split: " .. part)
+  end
+  check(byKey("wr:43:fail") == nil, "one value, no rows below the weapon")
+  hit = 2
+  expect("hit lowers the miss", "61%", "bad")
+  hit, expertise = 0, 2
+  expect("expertise lowers dodge and parry", "59%", "bad")
+  expertise = 0
+  gear[17] = 7
+  expect("dual wielding: 19% more miss", "82%", "bad")
+  gear[17] = nil
+
+  -- Primed through the event, as with a hidden window: no Collect before combat.
+  targetLevel = 45
+  rank = 210
+  handler.scripts.OnEvent(handler, "SKILL_LINES_CHANGED")
+  combat = true
+  targetLevel = 42
+  expect("another target level in combat", "25%", nil)
+  rank = 212
+  targetLevel = 44
+  expect("skill rises in combat", "42%", "warn")
+  check(not byKey("w:S43").stale, "calculated live in combat")
+  rank = 225 -- never asked before combat
+  expect("glancing unknown: no value that looks too good", "...", nil)
+  combat = false
+
+  rank = 207
+  hasTarget = false
+  check(byKey("w_vs_target").label == ns.L.SAME_LEVEL, "without a target: an enemy of your level")
+  hasTarget = true
+  targetLevel = 45
+  UnitIsPlayer = function()
+    return true
+  end
+  expect("no glancing against players", "17%", nil)
+  UnitIsPlayer = function()
+    return false
+  end
+
+  local U = ns.Util
+  local function near(a, b)
+    return math.abs(a - b) < 0.001
+  end
+  local dodge, parry = U.avoidChance(300, 315, 0, true)
+  check(near(dodge, 6.5) and near(parry, 16.5), "boss dodge 6.5% / parry 16.5% as in the game's tooltip")
+  dodge, parry = U.avoidChance(300, 300, 0)
+  check(near(dodge, 5) and near(parry, 5), "same level dodge 5% / parry 5%")
+  dodge, parry = U.avoidChance(300, 300, 7)
+  check(dodge == 0 and parry == 0, "expertise never below 0")
+
+  -- The five fixes.
+  ns.SetAllRows(true)
+  gear = { [16] = 7, [17] = 15, [18] = 2 }
+  UnitAttackSpeed = function()
+    return 2.6, 1.8
+  end
+  UnitDamage = function()
+    return 100, 180, 50, 90
+  end
+  GetHitModifier = function()
+    return 1
+  end
+  GetOffhandHitModifier = function()
+    return 4
+  end
+  GetRangedHitModifier = function()
+    return 3
+  end
+  GetCombatRatingBonus = function(rating)
+    return rating == 6 and 2 or 0.5
+  end
+  check(byKey("m_hit").value == "3.00%", "hit = rating + modifier")
+  check(byKey("m_hit").tip == ns.L.HIT_OFF:format(6), "off hand has its own hit")
+  check(byKey("r_hit").value == "3.50%", "ranged hit from the ranged API")
+  check(near(U.missChance(300, 315, 0, true), 8), "boss miss 8%")
+  check(near(U.missChance(300, 315, 0, true, true), 27), "boss miss dual wield 27%")
+  check(near(U.missChance(300, 300, 0, false, true), 24), "same level dual wield 24%")
+  check(ns.Skills.SUBCLASS_SKILL[13] == 162, "fist weapons use unarmed")
+  local chance, penalty = U.glancing(200, 225)
+  check(near(chance, 60) and near(penalty, 47), "glancing from the game's API")
+
+  -- What the test builds saved is dropped on load.
+  IsiStatsCharDB.swings = { version = 3, trace = { "x" } }
+  handler.scripts.OnEvent(handler, "ADDON_LOADED", "isiStatsForever")
+  check(IsiStatsCharDB.swings == nil, "saved swings of the test builds removed")
+
+  ns.ResetRows()
+  for _, name in ipairs(names) do
+    _G[name] = backup[name]
+  end
+end
+
 -- Language follows the client: German strings only on a deDE client.
 if clientLocale == "deDE" then
   check(ns.L.MELEE == "Nahkampf", "deDE client shows German")

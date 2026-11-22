@@ -15,7 +15,7 @@
 - **Chat history**: Up / Down in the chat input step through your sent lines, also after a restart.
 - **Leveling**: XP to the next level in thousands, time on this level and the estimated time to the next level.
 - **Weapon skills** of every learned weapon type as *current / max*. Skills below the cap are yellow, equipped weapons are highlighted.
-- **Vs. your target**: behind every weapon skill its hit and crit modifier against the target you have selected - the same numbers as the game's skill panel. Hover a skill for glancing blows.
+- **Vs. your target**: behind every weapon skill how many of your auto attacks don't hit fully (no damage or only glancing), calculated from the game's own values with your weapon skill, hit and expertise. Hover a skill for the split. Ranged weapons show the miss chance.
 - **Defense** with the chance to be missed and crit reduction vs. an attacker of your level, plus armor reduction vs. your level and level +3.
 - **Melee**: attack power, damage, speed, DPS, crit, hit, miss chance vs. a boss (level +3).
 - **Ranged** (with a ranged weapon) and **spell** values (for mana users): spell damage per school, healing, spell crit, spell hit, mana per 5.

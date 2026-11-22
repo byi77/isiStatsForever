@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- **Real hit value**: the percentage behind each weapon skill now is the share of auto attacks that don't hit fully against your target - no damage (missed, dodged, parried) plus only glancing; ranged: missed. Calculated from the game's own values with weapon skill, hit, expertise and dual wielding, also in combat. The small +/- from skill alone moved into the tooltip, next to the split.
+- Fixed: miss vs. boss was too low (now 8% / 27% dual wielding at maximum skill, as in the game's tooltip).
+- Fixed: hit includes the hit rating bonus, and the off hand uses its own value.
+- Fixed: ranged hit showed the melee value.
+- Fixed: fist weapons use the unarmed skill, like the game.
+- Fixed: glancing blows come from the game's own functions and are also shown against targets of your level and below.
+
 ## 0.7.3 - 2026-11-21
 
 - Estimated time to the next level: now calculated from your XP rate in the last 30 minutes of active play instead of the average over the whole level. Breaks without XP count as 5 minutes at most, so after a few idle hours the estimate matches your pace a few kills into farming. While you gain no XP, the last rate stays. The rate is kept per character across level-ups and relogs; until there is enough data (3 XP gains, 5 minutes of active play) the level average is used as before. The tooltip says which one is shown.

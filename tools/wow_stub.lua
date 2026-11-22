@@ -178,6 +178,23 @@ end
 UnitAttackSpeed = function()
   return 2.6, nil
 end
+GetCombatRatingBonus = function()
+  return 0
+end
+GetHitModifier = function()
+  return 0
+end
+GetOffhandHitModifier = GetHitModifier
+GetRangedHitModifier = GetHitModifier
+GetExpertise = function()
+  return 0, 0, 0
+end
+GetGlancingBlowChance = function()
+  return 0.4
+end
+GetGlancingBlowPenalty = function()
+  return 0.25
+end
 UnitArmor = function()
   return 3000, 3500
 end

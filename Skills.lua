@@ -24,7 +24,6 @@ local SKILL = {
   CROSSBOWS = 226,
   WANDS = 228,
   POLEARMS = 229,
-  FIST = 473,
 }
 Data.SKILL = SKILL
 
@@ -38,7 +37,6 @@ local WEAPON_SKILL_ORDER = {
   SKILL.POLEARMS,
   SKILL.STAVES,
   SKILL.DAGGERS,
-  SKILL.FIST,
   SKILL.UNARMED,
   SKILL.BOWS,
   SKILL.GUNS,
@@ -59,7 +57,7 @@ local SUBCLASS_SKILL = {
   [7] = SKILL.SWORDS,
   [8] = SKILL.SWORDS_2H,
   [10] = SKILL.STAVES,
-  [13] = SKILL.FIST,
+  [13] = SKILL.UNARMED, -- fist weapons use unarmed (PaperDollFrameStats.lua)
   [15] = SKILL.DAGGERS,
   [16] = SKILL.THROWN,
   [18] = SKILL.CROSSBOWS,
@@ -150,6 +148,15 @@ local function hasFishingPole()
   return classID == WEAPON_CLASS_ID and subclassID == FISHING_POLE_SUBCLASS_ID
 end
 
+-- The main hand's skill; an empty hand fights unarmed.
+local function mainHandSkill()
+  return skillForSlot(SLOT_MAIN) or (not itemTypeInSlot(SLOT_MAIN) and SKILL.UNARMED) or nil
+end
+
+local function isDualWielding()
+  return itemTypeInSlot(SLOT_OFF) == WEAPON_CLASS_ID
+end
+
 local function hasShield()
   local classID, subclassID = itemTypeInSlot(SLOT_OFF)
   return classID == ARMOR_CLASS_ID and subclassID == SHIELD_SUBCLASS_ID
@@ -165,6 +172,8 @@ ns.Skills = {
   itemTypeInSlot = itemTypeInSlot,
   skillForSlot = skillForSlot,
   hasShield = hasShield,
+  mainHandSkill = mainHandSkill,
+  isDualWielding = isDualWielding,
   hasFishingPole = hasFishingPole,
   scanClassicWeaponSkills = scanClassicWeaponSkills,
 }

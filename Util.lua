@@ -121,32 +121,57 @@ local function buffColor(pos, neg)
   return nil
 end
 
--- ---------------------------------------------------------------- formulas (classic)
+-- ---------------------------------------------------------------- formulas (from the game)
 
--- Miss chance of a special attack against a target with `defense`,
--- classic rules: +0.1% per point of difference, +0.2% once the gap is
--- larger than 10, and 1% of hit is lost against such targets.
--- The WoW Forever skill panel rates every point between weapon skill and
--- target defense at 0.04% (hit and crit), at any gap; that panel is the
--- reference here.
+-- The WoW Forever skill panel (SkillsFrame.lua) rates every point between
+-- weapon skill and target defense at 0.04% for hit, dodge, parry and crit.
 local SKILL_STEP = 0.04
+-- The game's tooltips, against your level and against a raid boss:
+-- miss CR_*_HIT_CAP_TOOLTIP, dodge and parry CR_EXPERTISE_TOOLTIP.
+local SAME_LEVEL = { miss = 5, dodge = 5, parry = 5 }
+local RAID_BOSS = { miss = 8, dodge = 6.5, parry = 16.5 }
+local BOSS_GAP = 15 -- three levels: the gap the boss values already contain
+local DUAL_WIELD_MISS = 19
 
-local function missChance(skill, defense, hit)
-  local miss = 5 + (defense - skill) * SKILL_STEP
-  return math.max(0, miss - hit), math.max(0, miss + 19 - hit)
+local function clamp(v)
+  return math.max(0, math.min(100, v))
 end
 
--- Glancing blows (classic): chance from the defense gap to the capped skill,
--- damage from the gap to the real skill. Matches the game panel
--- (skill 203 vs. 315: 100% glancing, 89% less damage).
-local function glancing(skill, defense, playerLevel)
-  local cappedSkill = math.min(skill, playerLevel * 5)
-  local chance = math.max(0, math.min(100, 10 + (defense - cappedSkill) * 2))
-  local diff = defense - skill
-  local low = math.max(0.01, math.min(0.91, 1.3 - 0.05 * diff))
-  local high = math.max(0.2, math.min(0.99, 1.2 - 0.03 * diff))
-  local reduction = (1 - (low + high) / 2) * 100
-  return chance, math.floor(reduction)
+local function baseChance(kind, skill, defense, boss)
+  local gap = defense - skill
+  if boss then
+    return RAID_BOSS[kind] + (gap - BOSS_GAP) * SKILL_STEP
+  end
+  return SAME_LEVEL[kind] + gap * SKILL_STEP
+end
+
+local function missChance(skill, defense, hit, boss, dual)
+  return clamp(baseChance("miss", skill, defense, boss) + (dual and DUAL_WIELD_MISS or 0) - hit)
+end
+
+-- Dodge and parry of the target; expertise (percent) lowers each of them.
+local function avoidChance(skill, defense, expertise, boss)
+  return clamp(baseChance("dodge", skill, defense, boss) - expertise),
+    clamp(baseChance("parry", skill, defense, boss) - expertise)
+end
+
+-- Glancing blows from the game itself, as in the skill panel: chance and
+-- damage penalty in percent. The game hides them in combat, so the answers
+-- from outside combat are kept per skill and defense.
+local knownGlancing = {}
+
+local function glancing(skill, defense)
+  local key = skill .. ":" .. defense
+  local chance = num(call(GetGlancingBlowChance, skill, defense))
+  local penalty = num(call(GetGlancingBlowPenalty, skill, defense))
+  if chance and penalty then
+    knownGlancing[key] = { chance * 100, penalty * 100 }
+  end
+  local cached = knownGlancing[key]
+  if cached then
+    return cached[1], cached[2]
+  end
+  return nil
 end
 
 local function signedPct(v)
@@ -177,6 +202,7 @@ ns.Util = {
   buffColor = buffColor,
   SKILL_STEP = SKILL_STEP,
   missChance = missChance,
+  avoidChance = avoidChance,
   glancing = glancing,
   signedPct = signedPct,
   armorReduction = armorReduction,

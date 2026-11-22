@@ -65,9 +65,26 @@ third-party databases. Current references (WoW Forever skill panel, verified 202
 
 - Hit and crit modifier: `(weapon skill - target defense) * 0.04%` at any gap.
 - Target defense = target level x 5; "Schlachtzugsboss" = defense 315 (level 63).
-- Glancing blows: chance `10% + (defense - min(skill, 5 x level)) * 2%`, capped 0-100; damage
-  reduction from `1.3 - 0.05 x diff` (0.01-0.91) and `1.2 - 0.03 x diff` (0.2-0.99) averaged
-  (skill 203 vs. 315 -> 100% / 89% less, matches the panel).
+- Glancing blows: `GetGlancingBlowChance` / `GetGlancingBlowPenalty` (0-1), never a rebuilt formula.
+  They also happen against targets below the player's level (combat log 2026-11-22).
+- Miss: 5% vs. your level, 8% vs. a raid boss, +19% dual wielding (`CR_*_HIT_CAP_TOOLTIP`).
+- Dodge / parry: 5% / 5% vs. your level, 6.5% / 16.5% vs. a raid boss (`CR_EXPERTISE_TOOLTIP`);
+  `GetExpertise()` is in percent and lowers both. The Lua tables `BASE_ENEMY_*` in Blizzard's
+  `PaperDollFrame.lua` are leftovers - not a source.
+- Blizzard's global strings: wago.tools/db2/GlobalStrings (build + locale). Read the tooltip texts
+  there before calling a value unknown.
+- Hit: `GetCombatRatingBonus(6)` + `GetHitModifier` / `GetOffhandHitModifier`; ranged
+  `GetCombatRatingBonus(7)` + `GetRangedHitModifier`. Fist weapons use skill 162 (unarmed).
+- Blizzard's UI source for this client: github.com/Gethe/wow-ui-source, branch `forever`.
+
+## Hit results: calculated, not counted
+
+User decision 2026-11-22: one percentage behind each skill = not a full hit (no damage + glancing),
+calculated from the values above, not the bare skill modifier; the split only in the tooltip, no
+extra rows. Checked against 514 white swings from `/combatlog` files (one-handed,
+mobs 42-45): no damage 15.4% calculated / 14.4% logged, glancing 17.5% / 16.7%. Don't build a
+swing counter again: 20 swings are +/-16 points, worse than the calculation. Judge a formula only
+on hundreds of swings.
 
 A target of level `??` that is not a world boss has an unknown defense: show `??`, compute nothing.
 

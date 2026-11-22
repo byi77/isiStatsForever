@@ -13,6 +13,7 @@ local signed = U.signed
 local buffColor = U.buffColor
 local SKILL_STEP = U.SKILL_STEP
 local missChance = U.missChance
+local avoidChance = U.avoidChance
 local glancing = U.glancing
 local signedPct = U.signedPct
 local armorReduction = U.armorReduction
@@ -25,6 +26,8 @@ local SLOT_RANGED = K.SLOT_RANGED
 local itemTypeInSlot = K.itemTypeInSlot
 local skillForSlot = K.skillForSlot
 local hasShield = K.hasShield
+local mainHandSkill = K.mainHandSkill
+local isDualWielding = K.isDualWielding
 local scanClassicWeaponSkills = K.scanClassicWeaponSkills
 
 -- Collects the shown values as sections of rows (see Catalog.lua for the ids).
@@ -128,6 +131,39 @@ local function baseSection()
   return { key = "base", title = L.BASE, rows = rows }
 end
 
+-- Hit as on the character sheet (PaperDollFrameStats.lua): rating + modifier.
+-- `now` is nil while the game hides it; `known` keeps the last plain values,
+-- for the hit results only.
+local CR_HIT_MELEE, CR_HIT_RANGED = 6, 7
+local knownHit = {}
+
+local function readHit()
+  local function total(rating, getModifier)
+    local bonus, modifier = num(call(GetCombatRatingBonus, rating)), num(call(getModifier))
+    return bonus and modifier and bonus + modifier or nil
+  end
+  local now = {
+    main = total(CR_HIT_MELEE, GetHitModifier),
+    off = total(CR_HIT_MELEE, GetOffhandHitModifier),
+    ranged = total(CR_HIT_RANGED, GetRangedHitModifier),
+  }
+  for hand, value in pairs(now) do
+    knownHit[hand] = value
+  end
+  return now, knownHit
+end
+
+-- Expertise in percent, as the character sheet shows it (GetExpertise).
+local knownExpertise = {}
+
+local function readExpertise()
+  local main, off = call(GetExpertise)
+  main, off = num(main), num(off)
+  knownExpertise.main = main or knownExpertise.main
+  knownExpertise.off = off or knownExpertise.off
+  return knownExpertise
+end
+
 local function meleeSection(level, skills, hit)
   local rows = {}
   local base, pos, neg = call(UnitAttackPower, "player")
@@ -165,11 +201,14 @@ local function meleeSection(level, skills, hit)
   end
 
   addRow(rows, "m_crit", L.CRIT, show(call(GetCritChance), "%.2f%%"))
-  addRow(rows, "m_hit", L.HIT, hit and pct(hit) or show(call(GetHitModifier), "%.2f%%"))
+  if hit.main then
+    local tip = dualWield and hit.off and string.format(L.HIT_OFF, hit.off) or nil
+    addRow(rows, "m_hit", L.HIT, pct(hit.main), nil, tip)
+  end
 
   -- Main-hand weapon skill for the miss chance (the skills themselves are
   -- listed under weapon skills).
-  local mainSkillID = skillForSlot(SLOT_MAIN) or (not itemTypeInSlot(SLOT_MAIN) and SKILL.UNARMED) or nil
+  local mainSkillID = mainHandSkill()
   local mainSkill = mainSkillID and skills[mainSkillID]
 
   -- Classic API fallback: UnitAttackBothHands gives base and modifier.
@@ -179,16 +218,21 @@ local function meleeSection(level, skills, hit)
     mainSkill = { name = "", rank = mhBase, mod = mhMod }
   end
 
-  if mainSkill and level and hit then
+  if mainSkill and level and hit.main then
     local targetLevel = level + 3
     local targetDefense = targetLevel * 5
-    local miss, missDW = missChance(mainSkill.rank + mainSkill.mod, targetDefense, hit)
+    local total = mainSkill.rank + mainSkill.mod
+    local miss = missChance(total, targetDefense, hit.main, true)
     local tip = string.format(L.MISS_TIP, targetLevel, targetDefense)
     if dualWield then
-      tip = tip .. "\n" .. string.format(L.MISS_DW, missDW)
+      tip = tip .. "\n" .. string.format(L.MISS_DW, missChance(total, targetDefense, hit.main, true, true))
+      local offSkill = skills[skillForSlot(SLOT_OFF) or 0]
+      if offSkill and hit.off then
+        local offMiss = missChance(offSkill.rank + offSkill.mod, targetDefense, hit.off, true, true)
+        tip = tip .. "\n" .. string.format(L.MISS_DW_OFF, offMiss)
+      end
     end
-    local label = string.format(L.MISS_VS, targetLevel)
-    addRow(rows, "m_miss", label, string.format("%.1f%%", miss), miss > 9 and "warn" or nil, tip)
+    addRow(rows, "m_miss", L.MISS_VS_BOSS, string.format("%.1f%%", miss), miss > 9 and "warn" or nil, tip)
   end
 
   return { key = "melee", title = L.MELEE, rows = rows }
@@ -224,7 +268,9 @@ local function rangedSection(hit)
 
   if not isWand then
     addRow(rows, "r_crit", L.CRIT, show(call(GetRangedCritChance), "%.2f%%"))
-    addRow(rows, "r_hit", L.HIT, hit and pct(hit) or show(call(GetHitModifier), "%.2f%%"))
+    if hit.ranged then
+      addRow(rows, "r_hit", L.HIT, pct(hit.ranged))
+    end
   end
 
   return { key = "ranged", title = L.RANGED, rows = rows }
@@ -351,7 +397,7 @@ local function currentTarget(playerLevel)
     local level = num(rawLevel)
     local classification = str(call(UnitClassification, "target"))
     if classification == "worldboss" then
-      return { name = name, levelText = "??", level = RAID_BOSS_LEVEL, defense = RAID_BOSS_LEVEL * 5 }
+      return { name = name, levelText = "??", level = RAID_BOSS_LEVEL, defense = RAID_BOSS_LEVEL * 5, boss = true }
     end
     if level == -1 then
       -- Level ?? (not a world boss): its defense is unknown; nothing is
@@ -359,7 +405,14 @@ local function currentTarget(playerLevel)
       return { name = name, levelText = "??", unknownDefense = true }
     end
     if level and level > 0 then
-      return { name = name, levelText = tostring(level), level = level, defense = level * 5 }
+      local isPlayer = call(UnitIsPlayer, "target")
+      return {
+        name = name,
+        levelText = tostring(level),
+        level = level,
+        defense = level * 5,
+        player = isSecret(isPlayer) or isPlayer == true,
+      }
     end
   end
   return {
@@ -401,6 +454,7 @@ local function skillRow(key, label, s, opts)
     color = (max and s.rank < max) and "warn" or nil,
     bonus = s.mod ~= 0 and signed(s.mod) or nil,
     pct = opts.pct,
+    pctColor = opts.pctColor,
     columns = true,
     progress = max and math.min(1, s.rank / max) or nil,
     tip = #lines > 0 and table.concat(lines, "\n") or nil,
@@ -415,22 +469,70 @@ local RANGED_SKILLS = {
   [SKILL.WANDS] = true,
 }
 
--- Tooltip for a weapon row: the full comparison against the target.
-local function versusTip(foe, total, melee, playerLevel)
+-- Tooltip for a weapon row: what the skill alone changes against the target.
+local function versusTip(foe, total, melee)
   local delta = (total - foe.defense) * SKILL_STEP
   local lines = {
     string.format("%s - " .. L.T_LEVEL_FMT, foe.name, foe.levelText, foe.defense),
+    L.T_SKILL_PART,
     L.T_HIT .. ": " .. signedPct(delta),
     L.T_CRIT .. ": " .. signedPct(delta),
   }
-  if melee and foe.level > playerLevel then
-    local chance, reduction = glancing(total, foe.defense, playerLevel)
-    lines[#lines + 1] = L.T_GLANCE .. ": " .. string.format(L.T_GLANCE_FMT, chance, reduction)
+  if melee then
+    local chance, penalty = glancing(total, foe.defense)
+    if chance then
+      lines[#lines + 1] = L.T_GLANCE .. ": " .. string.format(L.T_GLANCE_FMT, chance, penalty)
+    end
   end
   return table.concat(lines, "\n")
 end
 
-local function weaponSkillSection(skills, classicList, level)
+local LOST_WARN, LOST_BAD = 30, 50
+
+-- The one value behind a skill: how many attacks do not hit fully (no damage +
+-- only glancing; ranged and against players: no damage). Returns the text,
+-- its color and the split for the tooltip.
+local function attackResult(total, foe, opts)
+  local calcTip = opts.melee and L.R_CALC_TIP or L.R_CALC_RANGED_TIP
+  if not opts.hit or (opts.melee and not opts.expertise) then
+    return "...", nil, calcTip -- not known yet (logged in during combat)
+  end
+  local miss = missChance(total, foe.defense, opts.hit, foe.boss, opts.dual)
+  local fail, split = miss, nil
+  if opts.melee then
+    local dodge, parry = avoidChance(total, foe.defense, opts.expertise, foe.boss)
+    fail = math.min(100, miss + dodge + parry)
+    split = string.format(L.R_SPLIT_TIP, miss, dodge, parry)
+  end
+  fail = math.floor(fail + 0.5)
+  local glance = 0
+  if opts.melee and not foe.player then
+    local chance = glancing(total, foe.defense)
+    if not chance then
+      return "...", nil, calcTip -- without glancing the value would look far too good
+    end
+    glance = math.min(100 - fail, math.floor(chance + 0.5))
+  end
+
+  local lost = fail + glance
+  local lines = { string.format("%s: %d%%", L.R_NOT_FULL, lost) }
+  if split then
+    lines[#lines + 1] = string.format("   %s: %d%% (%s)", L.R_FAIL, fail, split)
+    lines[#lines + 1] = string.format("   %s: %d%%", L.R_GLANCE, glance)
+    lines[#lines + 1] = string.format("%s: %d%%", L.R_FULL, 100 - lost)
+  end
+  lines[#lines + 1] = calcTip
+
+  local color
+  if lost >= LOST_BAD then
+    color = "bad"
+  elseif lost >= LOST_WARN then
+    color = "warn"
+  end
+  return string.format("%d%%", lost), color, table.concat(lines, "\n")
+end
+
+local function weaponSkillSection(skills, classicList, level, hit, expertise)
   local showEquipped, showOther = enabled("w_equipped"), enabled("w_other")
   local showDefense = enabled("d_def") and skills[SKILL.DEFENSE] ~= nil
   if not showEquipped and not showOther and not showDefense then
@@ -459,24 +561,36 @@ local function weaponSkillSection(skills, classicList, level)
       equipped[id] = true
     end
   end
-  if not itemTypeInSlot(SLOT_MAIN) then
-    equipped[SKILL.UNARMED] = true
+  local mainID = mainHandSkill()
+  if mainID then
+    equipped[mainID] = true
   end
+  local dual = isDualWielding()
+  local offID = dual and skillForSlot(SLOT_OFF) or nil
 
   local function add(s, isEquipped, id)
     if (isEquipped and not showEquipped) or (not isEquipped and not showOther) then
       return
     end
     local total = s.rank + s.mod
-    local pctText, vs
+    local melee = not RANGED_SKILLS[id]
+    local pctText, pctColor, vs
     if foe and not foe.unknownDefense then
-      pctText = signedPct((total - foe.defense) * SKILL_STEP)
-      vs = "\n" .. versusTip(foe, total, not RANGED_SKILLS[id], level)
+      local hand = not melee and "ranged" or (id == offID and id ~= mainID) and "off" or "main"
+      local resultTip
+      pctText, pctColor, resultTip = attackResult(total, foe, {
+        melee = melee,
+        dual = melee and dual,
+        hit = hit[hand],
+        expertise = expertise[hand],
+      })
+      vs = "\n" .. resultTip .. "\n\n" .. versusTip(foe, total, melee)
     end
     rows[#rows + 1] = skillRow("w:" .. s.name, s.name, s, {
       equipped = isEquipped,
       weapon = true,
       pct = pctText,
+      pctColor = pctColor,
       partial = foeHidden or nil,
       extraTip = vs,
     })
@@ -530,12 +644,57 @@ end
 
 -- ---------------------------------------------------------------- public
 
-function Data.Collect()
-  local level = num(call(UnitLevel, "player"))
-  local hit = num(call(GetHitModifier))
-  if hit == nil and type(GetHitModifier) ~= "function" then
-    hit = 0
+-- The glancing API is closed in combat: ask it beforehand for every enemy
+-- level, and for the next few skill points of the weapons in hand.
+local PRIME_SKILL_POINTS = 5
+local PRIME_LEVELS_ABOVE = 5
+local primed = {}
+
+local function primeGlancing(level, id, isEquipped)
+  local s = Data.GetSkill(id)
+  if not s then
+    return
   end
+  local points = isEquipped and s.max and math.min(PRIME_SKILL_POINTS, s.max - s.rank) or 0
+  for total = s.rank + s.mod, s.rank + s.mod + math.max(0, points) do
+    local key = level .. ":" .. total
+    if not primed[key] then
+      local complete = true
+      for foeLevel = 1, math.max(RAID_BOSS_LEVEL, level + PRIME_LEVELS_ABOVE) do
+        if not glancing(total, foeLevel * 5) then
+          complete = false
+          break
+        end
+      end
+      primed[key] = complete or nil
+    end
+  end
+end
+
+-- Reads what the game hides in combat.
+function Data.Prime()
+  if type(InCombatLockdown) == "function" and InCombatLockdown() then
+    return
+  end
+  readHit()
+  readExpertise()
+  local level = num(call(UnitLevel, "player"))
+  if not level or not enabled("w_vs") then
+    return
+  end
+  local mainID, offID = mainHandSkill(), skillForSlot(SLOT_OFF)
+  for _, id in ipairs(WEAPON_SKILL_ORDER) do
+    if not RANGED_SKILLS[id] then
+      primeGlancing(level, id, id == mainID or id == offID)
+    end
+  end
+end
+
+function Data.Collect()
+  Data.Prime()
+  local level = num(call(UnitLevel, "player"))
+  local hit, lastHit = readHit()
+  local expertise = readExpertise()
 
   local skills = {}
   for _, id in ipairs(WEAPON_SKILL_ORDER) do
@@ -577,7 +736,7 @@ function Data.Collect()
   push(rangedSection(hit))
   push(spellSection())
   push(defenseSection(level, skills))
-  push(weaponSkillSection(skills, classicList, level))
+  push(weaponSkillSection(skills, classicList, level, lastHit, expertise))
   push(resistanceSection())
 
   if #sections == 0 then
@@ -606,6 +765,15 @@ function Data.DebugDump(print)
     "GetHitModifier:",
     type(GetHitModifier)
   )
+  print(
+    "GetCombatRatingBonus:",
+    type(GetCombatRatingBonus),
+    "GetGlancingBlowChance:",
+    type(GetGlancingBlowChance),
+    "GetRangedHitModifier:",
+    type(GetRangedHitModifier)
+  )
+  print("GetExpertise:", type(GetExpertise))
   print("Settings:", type(Settings), "InterfaceOptions_AddCategory:", type(InterfaceOptions_AddCategory))
   local secret = Data.SecretApiNames()
   print("secret in combat:", #secret > 0 and table.concat(secret, ", ") or "-")

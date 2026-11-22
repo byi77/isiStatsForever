@@ -368,6 +368,16 @@ local REFRESH_EVENTS = {
   "PLAYER_REGEN_ENABLED",
   "UNIT_LEVEL",
 }
+-- The game hides hit, expertise and glancing in combat: read them on these
+-- events, also while the window is hidden (e.g. "show only in combat").
+local PRIME_EVENTS = {
+  PLAYER_EQUIPMENT_CHANGED = true,
+  PLAYER_LEVEL_UP = true,
+  SKILL_LINES_CHANGED = true,
+  CHARACTER_POINTS_CHANGED = true,
+  COMBAT_RATING_UPDATE = true,
+  PLAYER_REGEN_ENABLED = true,
+}
 local UNIT_EVENTS = {
   "UNIT_STATS",
   "UNIT_AURA",
@@ -401,6 +411,7 @@ events:SetScript("OnEvent", function(self, event, arg1, arg2)
     IsiStatsCharDB = IsiStatsCharDB or {}
     charDB = IsiStatsCharDB
     charDB.rows = charDB.rows or {}
+    charDB.swings = nil -- left over from test builds that counted swings
     ns.LevelTime.Init(charDB)
     ns.PruneRows()
     self:UnregisterEvent("ADDON_LOADED")
@@ -415,6 +426,7 @@ events:SetScript("OnEvent", function(self, event, arg1, arg2)
     for _, e in ipairs(UNIT_EVENTS) do
       pcall(self.RegisterUnitEvent, self, e, "player")
     end
+    ns.Data.Prime()
     if db.combatMode ~= "always" then
       ns.ApplyCombatVisibility()
     elseif db.shown and not db.dock then
@@ -433,6 +445,9 @@ events:SetScript("OnEvent", function(self, event, arg1, arg2)
       ns.LevelTime.OnLevelUp()
     elseif event == "PLAYER_XP_UPDATE" then
       ns.LevelTime.OnXPUpdate()
+    end
+    if PRIME_EVENTS[event] then
+      ns.Data.Prime()
     end
     if event == "PLAYER_REGEN_DISABLED" then
       ns.WarnFishingPoleInCombat()
