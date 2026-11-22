@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- New: buff warnings in the middle of the screen. Well-Rested (below level 60): a message with sound 15 minutes before it runs out, and a text that stays while it is missing, like the tracking warning. Might of Stormwind: a message with sound 5 minutes before it runs out. The messages before the end come once and stay 10 seconds. The warnings have their own switches in the settings.
+- The Well-Rested row turns yellow in the last 15 minutes (was 5).
+
 ## 0.9.0 - 2026-11-22
 
 - New: buff reminder at the very top of the window for Well-Rested (sleeping bag: stacks out of 3 and time left; hidden from level 60, it only gives XP) and Might of Stormwind (world buff, Alliance: time left). Red when missing, yellow with fewer stacks or in the last 5 minutes. Each can be switched off in the settings. In combat a buff the game hides keeps its last readable state, greyed out, with the time counting on.

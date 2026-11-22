@@ -33,7 +33,8 @@ class defaults - `Data.lua` collects the sections - `CombatCache.lua` last value
   are isiLive's own generated corner textures (rounded window, ring, shadow).
 - Every WoW API call goes through `call()` in `Util.lua` (type check + `pcall`). Never call a
   `C_*` member bare; a removed member reads as `nil` and must fail closed.
-- Screen alerts: `UI.SetAlert(key, text or nil)`, texts that stay while their cause lasts, with the
+- Screen alerts: `UI.SetAlert(key, text or nil)`, texts that stay while their cause lasts (buff
+  "runs out soon": 10 s), with the
   warning sound once when one appears. Exception fishing pole: sound every 2 s while in combat
   (user decisions 2026-11-22; no fading notices). `RaidNotice_AddMessage` is a deprecation shim that is nil
   unless cvar `loadDeprecationFallbacks` is set. Before using a classic global, check that
@@ -42,6 +43,8 @@ class defaults - `Data.lua` collects the sections - `CombatCache.lua` last value
   `MINIMAP_UPDATE_TRACKING`; herbs 2383 / 8387, minerals 2580 / 8388.
 - Buff reminder: a new buff is one entry in `Buffs.LIST` (`Buffs.lua`, fields documented there); no
   catalog, locale or option edits. Take every spell ID of the name from the game data.
+- Buff warnings (user decision 2026-11-22): `warnMissing` = text stays like the tracking warning;
+  `warnMinutes` = one message before the end (10 s, once per buff run, also across a reload).
 - Auras: `C_UnitAuras.GetPlayerAuraBySpellID` returns **nil for a hidden aura** in combat. Treat nil
   as missing only when `C_Secrets.ShouldSpellAuraBeSecret(id)` is false.
 - When a feature stops producing data without an error, check the API member first

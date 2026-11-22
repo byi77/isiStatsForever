@@ -6,7 +6,7 @@ Character stats for **WoW Forever** (client 1.60.x, interface 16001): attributes
 
 ## Features
 
-- **Buff reminder** at the very top: Well-Rested from the sleeping bag (stacks out of 3 and time left; hidden from level 60, it only gives XP) and the world buff Might of Stormwind (Alliance, time left). Red when missing, yellow with fewer stacks or in the last 5 minutes, each switchable. More buffs: one entry in `Buffs.lua`.
+- **Buff reminder** at the very top: Well-Rested from the sleeping bag (stacks out of 3 and time left; hidden from level 60, it only gives XP) and the world buff Might of Stormwind (Alliance, time left). Red when missing, yellow with fewer stacks or shortly before the end, each switchable. Screen warnings with their own switches: one message with sound 15 minutes (Well-Rested) or 5 minutes (Might of Stormwind) before the end, and a text that stays while Well-Rested is missing. More buffs: one entry in `Buffs.lua`.
 - **Fishing pole warning**: a red row near the top while a fishing pole is equipped, and when combat starts with it in hand a text in the middle of the screen that stays until the pole is taken off, and a sound every 2 seconds while the fight lasts (also with the window closed, and when the pole is equipped during a fight).
 - **Gathering tracking warning**: with herbalism or mining learned, a text stays in the middle of the screen while neither Find Herbs nor Find Minerals is on (with both professions one is enough). It goes away as soon as one is on. A warning sound plays once when it appears.
 - **Chat history**: Up / Down in the chat input step through the lines you sent, kept across /reload and restarts (last 100; `/isistats chat clear`).

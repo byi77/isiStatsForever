@@ -11,7 +11,7 @@
 
 **isiStatsForever** shows the numbers the character sheet hides, in one compact window, free or docked to your character frame.
 
-- **Buff reminder**: Well-Rested (sleeping bag, with stacks, below level 60) and Might of Stormwind with time left at the top of the window, red when missing.
+- **Buff reminder**: Well-Rested (sleeping bag, with stacks, below level 60) and Might of Stormwind with time left at the top of the window, red when missing. A screen warning before they run out (15 / 5 minutes), and one that stays while Well-Rested is missing.
 - **Fishing pole warning**: red row while a fishing pole is equipped; when combat starts with it, a text stays on screen until you take it off, with a warning sound every 2 seconds during the fight.
 - **Gathering tracking warning**: a text stays on screen while you have herbalism or mining and Find Herbs / Find Minerals is off, with a warning sound when it appears.
 - **Chat history**: Up / Down in the chat input step through your sent lines, also after a restart.

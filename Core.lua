@@ -39,6 +39,7 @@ function ns.SetRowEnabled(id, value)
   elseif id == "warn_fishing_combat" then
     ns.UpdateFishingAlert()
   end
+  ns.Buffs.Update()
   ns.Refresh()
 end
 
@@ -50,6 +51,7 @@ function ns.SetAllRows(value)
   end
   ns.Tracking.Update()
   ns.UpdateFishingAlert()
+  ns.Buffs.Update()
   ns.Refresh()
 end
 
@@ -58,6 +60,7 @@ function ns.ResetRows()
   rowDefaults = nil
   ns.Tracking.Update()
   ns.UpdateFishingAlert()
+  ns.Buffs.Update()
   ns.Refresh()
 end
 
@@ -407,6 +410,12 @@ local PRIME_EVENTS = {
   COMBAT_RATING_UPDATE = true,
   PLAYER_REGEN_ENABLED = true,
 }
+local BUFF_EVENTS = {
+  UNIT_AURA = true,
+  UNIT_LEVEL = true,
+  PLAYER_LEVEL_UP = true,
+  PLAYER_REGEN_ENABLED = true,
+}
 local UNIT_EVENTS = {
   "UNIT_STATS",
   "UNIT_AURA",
@@ -442,6 +451,7 @@ events:SetScript("OnEvent", function(self, event, arg1, arg2)
     charDB.rows = charDB.rows or {}
     charDB.swings = nil -- left over from test builds that counted swings
     ns.LevelTime.Init(charDB)
+    ns.Buffs.Init(charDB)
     ns.PruneRows()
     self:UnregisterEvent("ADDON_LOADED")
   elseif event == "PLAYER_LOGIN" then
@@ -459,7 +469,8 @@ events:SetScript("OnEvent", function(self, event, arg1, arg2)
       pcall(self.RegisterEvent, self, e)
     end
     ns.Data.Prime()
-    ns.Buffs.Read()
+    pcall(self.RegisterEvent, self, "LOADING_SCREEN_ENABLED")
+    ns.Buffs.SetLoading(false)
     ns.Tracking.Schedule()
     ns.SetInFight(inCombat()) -- a reload during a fight
     if db.combatMode ~= "always" then
@@ -487,8 +498,12 @@ events:SetScript("OnEvent", function(self, event, arg1, arg2)
     if ns.Tracking.EVENTS[event] then
       ns.Tracking.Schedule()
     end
-    if event == "UNIT_AURA" or event == "PLAYER_ENTERING_WORLD" or event == "PLAYER_REGEN_ENABLED" then
-      ns.Buffs.Read()
+    if event == "LOADING_SCREEN_ENABLED" then
+      ns.Buffs.SetLoading(true)
+    elseif event == "LOADING_SCREEN_DISABLED" or event == "PLAYER_ENTERING_WORLD" then
+      ns.Buffs.SetLoading(false)
+    elseif BUFF_EVENTS[event] then
+      ns.Buffs.Update()
     end
     if event == "PLAYER_EQUIPMENT_CHANGED" then
       ns.UpdateFishingAlert()

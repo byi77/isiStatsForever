@@ -442,13 +442,14 @@ end
 
 -- Texts in the middle of the screen that stay until they are taken away (the
 -- game's raid warnings always fade out). They sit above the raid warnings, so
--- they never cover one, and stack upwards in this order. An alert plays the
--- warning sound once when it appears, unless its caller does the sound.
-local ALERT_ORDER = { "fishing", "tracking" }
+-- they never cover one, and stack upwards: first the keys in ALERT_FIRST, then
+-- the others by key. An alert plays the warning sound once when it appears,
+-- unless its caller does the sound.
+local ALERT_FIRST = { fishing = 1, tracking = 2 }
 local ALERT_LINE_H = 26
 local ALERT_GAP = 4
 local ALERT_FALLBACK_Y = -156
-local alerts, alertTexts = nil, {}
+local alerts, alertTexts, alertColors = nil, {}, {}
 
 local function createAlerts()
   alerts = CreateFrame("Frame", nil, UIParent)
@@ -461,12 +462,24 @@ local function createAlerts()
     alerts:SetPoint("TOP", UIParent, "TOP", 0, ALERT_FALLBACK_Y)
   end
   alerts.lines = {}
-  for i = 1, #ALERT_ORDER do
-    local line = alerts:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
-    line:SetPoint("BOTTOM", alerts, "BOTTOM", 0, (i - 1) * ALERT_LINE_H)
-    setColor(line, "bad")
-    alerts.lines[i] = line
+end
+
+local function alertLine(index)
+  local line = alerts.lines[index]
+  if not line then
+    line = alerts:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
+    line:SetPoint("BOTTOM", alerts, "BOTTOM", 0, (index - 1) * ALERT_LINE_H)
+    alerts.lines[index] = line
   end
+  return line
+end
+
+local function alertBefore(a, b)
+  local rankA, rankB = ALERT_FIRST[a] or math.huge, ALERT_FIRST[b] or math.huge
+  if rankA ~= rankB then
+    return rankA < rankB
+  end
+  return a < b
 end
 
 function UI.PlayAlertSound()
@@ -476,29 +489,33 @@ function UI.PlayAlertSound()
 end
 
 -- text nil: takes the alert away. silent: the caller does the sound.
-function UI.SetAlert(key, text, silent)
+-- color: a palette key, default "bad".
+function UI.SetAlert(key, text, silent, color)
   if alertTexts[key] == text then
     return
   end
   local appears = text ~= nil and alertTexts[key] == nil
-  alertTexts[key] = text
+  alertTexts[key], alertColors[key] = text, color
   if appears and not silent then
     UI.PlayAlertSound()
   end
   if not alerts then
     createAlerts()
   end
-  local shown = 0
-  for _, name in ipairs(ALERT_ORDER) do
-    if alertTexts[name] then
-      shown = shown + 1
-      alerts.lines[shown]:SetText(alertTexts[name])
-    end
+  local keys = {}
+  for name in pairs(alertTexts) do
+    keys[#keys + 1] = name
   end
-  for i = shown + 1, #ALERT_ORDER do
+  table.sort(keys, alertBefore)
+  for i, name in ipairs(keys) do
+    local line = alertLine(i)
+    setColor(line, alertColors[name], "bad")
+    line:SetText(alertTexts[name])
+  end
+  for i = #keys + 1, #alerts.lines do
     alerts.lines[i]:SetText("")
   end
-  if shown > 0 then
+  if #keys > 0 then
     alerts:Show()
   else
     alerts:Hide()

@@ -845,6 +845,8 @@ end
 
 -- Buff reminder, through the real event handler.
 do
+  local afterNow = C_Timer.After
+  C_Timer.After = function() end -- the warnings have their own test below
   local backup = {
     InCombatLockdown = InCombatLockdown,
     issecretvalue = issecretvalue,
@@ -920,8 +922,10 @@ do
   expect("2 stacks", "well_rested", "2/3  1h 42m", "warn")
   auras[429959] = { applications = 0, expirationTime = now + 6120 }
   expect("no count means one stack", "well_rested", "1/3  1h 42m", "warn")
-  auras[429959] = { applications = 3, expirationTime = now + 300 }
-  expect("last 5 minutes", "well_rested", "3/3  5m", "warn")
+  auras[429959] = { applications = 3, expirationTime = now + 960 }
+  expect("16 minutes left", "well_rested", "3/3  16m", "good")
+  auras[429959] = { applications = 3, expirationTime = now + 900 }
+  expect("last 15 minutes", "well_rested", "3/3  15m", "warn")
   auras[429959] = { applications = 3, expirationTime = now + 20 }
   expect("last minute is not 0m", "well_rested", "3/3  1m", "warn")
 
@@ -934,15 +938,15 @@ do
   expect("no time limit", "might_stormwind", ns.L.BUFF_ACTIVE, "good")
 
   -- Combat: hidden must not read as missing.
-  auras[429959] = { applications = 3, expirationTime = now + 600 }
+  auras[429959] = { applications = 3, expirationTime = now + 1500 }
   auras[460939] = nil
   fire("UNIT_AURA") -- read without drawing the window
   combat, restricted = true, true
   now = now + 120
-  expect("hidden: last state, time counts on", "well_rested", "3/3  8m", "dim")
+  expect("hidden: last state, time counts on", "well_rested", "3/3  23m", "dim")
   check(buff("well_rested").stale, "hidden: marked as last readable")
   expect("hidden and missing before", "might_stormwind", missing, "dim")
-  now = now + 600
+  now = now + 1500
   expect("run out while hidden", "well_rested", missing, "bad")
   combat, restricted = false, false
   auras[429959] = nil
@@ -1011,6 +1015,227 @@ do
   end
   GetTime = backup.GetTime
   C_Spell, C_Secrets, C_UnitAuras, UnitFactionGroup = nil, nil, nil, nil
+  C_Timer.After = afterNow
+end
+
+-- Buff warnings: a clock and the timers run by hand.
+do
+  local backup = { InCombatLockdown = InCombatLockdown, UnitLevel = UnitLevel }
+  local getTime, afterNow = GetTime, C_Timer.After
+  local now, level, faction, restricted = 50000, 46, "Alliance", false
+  local auras, timers, sounds = {}, {}, 0
+  GetTime = function()
+    return now
+  end
+  C_Timer.After = function(delay, fn)
+    timers[#timers + 1] = { at = now + delay, fn = fn }
+  end
+  local function advance(seconds)
+    local finish, steps = now + seconds, 0
+    while true do
+      local first
+      for i, timer in ipairs(timers) do
+        if timer.at <= finish and (not first or timer.at < timers[first].at) then
+          first = i
+        end
+      end
+      if not first then
+        break
+      end
+      steps = steps + 1
+      assert(steps < 2000, "timers never come to rest")
+      local timer = table.remove(timers, first)
+      now = math.max(now, timer.at)
+      timer.fn()
+    end
+    now = finish
+  end
+  InCombatLockdown = function()
+    return restricted
+  end
+  UnitLevel = function()
+    return level
+  end
+  UnitFactionGroup = function()
+    return faction
+  end
+  local names = { [429959] = "Gut erholt", [460939] = "Macht von Stormwind" }
+  C_Spell = {
+    GetSpellName = function(id)
+      return names[id]
+    end,
+  }
+  C_Secrets = {
+    ShouldSpellAuraBeSecret = function()
+      return restricted
+    end,
+  }
+  C_UnitAuras = {
+    GetPlayerAuraBySpellID = function(id)
+      if not restricted then
+        return auras[id]
+      end
+    end,
+  }
+  SOUNDKIT = { RAID_WARNING = 8959 }
+  PlaySound = function()
+    sounds = sounds + 1
+  end
+  local function fire(event)
+    StubFrames[1].scripts.OnEvent(StubFrames[1], event, "player")
+  end
+  local function rested(seconds)
+    auras[429959] = seconds and { applications = 3, expirationTime = now + seconds } or nil
+    fire("UNIT_AURA")
+  end
+  local function worldBuff(seconds)
+    auras[460939] = seconds and { applications = 0, expirationTime = now + seconds } or nil
+    fire("UNIT_AURA")
+  end
+  local function restedText()
+    return ns.UI.GetAlert("buff_well_rested")
+  end
+  local function worldText()
+    return ns.UI.GetAlert("buff_might_stormwind")
+  end
+  local missingText = ns.L.BUFF_MISSING_ALERT_FMT:format("Gut erholt")
+  local soonRested = ns.L.BUFF_SOON_ALERT_FMT:format("Gut erholt", 15)
+  local soonWorld = ns.L.BUFF_SOON_ALERT_FMT:format("Macht von Stormwind", 5)
+
+  -- Login: the auras come a moment late.
+  ns.ResetRows()
+  fire("PLAYER_ENTERING_WORLD")
+  advance(1)
+  rested(7200)
+  advance(10)
+  check(restedText() == nil and sounds == 0, "auras late at login: no false alarm")
+  check(ns.IsRowEnabled("buff_well_rested_alert"), "well rested warning on by default")
+  check(ns.IsRowEnabled("buff_might_stormwind_alert"), "world buff warning on by default")
+
+  -- 15 minutes before the end: once, 10 seconds.
+  rested(920)
+  advance(19)
+  check(restedText() == nil, "nothing before the last 15 minutes")
+  advance(2)
+  check(restedText() == soonRested and sounds == 1, "15 minutes left: message with sound")
+  fire("UNIT_AURA")
+  advance(7)
+  check(restedText() == soonRested and sounds == 1, "message stays a few seconds")
+  advance(4)
+  check(restedText() == nil, "message gone after 10 seconds")
+  fire("UNIT_AURA")
+  advance(120)
+  fire("UNIT_AURA")
+  check(restedText() == nil and sounds == 1, "message only once")
+  local held = auras[429959]
+  auras[429959] = nil
+  fire("UNIT_AURA")
+  advance(1)
+  auras[429959] = held
+  fire("UNIT_AURA")
+  advance(1)
+  check(restedText() == nil and sounds == 1, "a short gap: no second message")
+
+  -- Reload: the saved flag holds, also with the auras empty for a moment.
+  local saved = auras[429959]
+  check(IsiStatsCharDB.buffNoticed.well_rested == true, "message saved per character")
+  fire("LOADING_SCREEN_ENABLED")
+  auras[429959] = nil
+  fire("UNIT_AURA")
+  advance(30)
+  check(restedText() == nil, "no warning during a loading screen")
+  fire("LOADING_SCREEN_DISABLED")
+  advance(1)
+  auras[429959] = saved
+  fire("UNIT_AURA")
+  advance(10)
+  check(restedText() == nil and sounds == 1, "no second message after a loading screen")
+
+  -- Run out: the text stays.
+  advance(760)
+  check(restedText() == missingText and sounds == 2, "run out: lasting text with sound")
+  advance(1800)
+  fire("UNIT_AURA")
+  check(restedText() == missingText and sounds == 2, "stays, no repeated sound")
+  restricted = true
+  fire("UNIT_AURA")
+  advance(60)
+  check(restedText() == missingText, "stays while the game hides the buff")
+  restricted = false
+  rested(7200)
+  check(restedText() == nil, "gone at once with the buff")
+  check(IsiStatsCharDB.buffNoticed.well_rested == nil, "a new buff can warn again")
+
+  rested(nil)
+  advance(1)
+  check(restedText() == nil, "a short gap is no alarm")
+  rested(7200)
+  advance(5)
+  check(restedText() == nil and sounds == 2, "renewed within the gap: nothing")
+
+  rested(905)
+  advance(7)
+  check(restedText() == soonRested and sounds == 3, "next run: message again")
+  rested(7200)
+  check(restedText() == nil, "renewed: message gone at once")
+
+  -- Hidden in combat: the clock still runs.
+  rested(905)
+  restricted = true
+  fire("UNIT_AURA")
+  advance(7)
+  check(restedText() == soonRested and sounds == 4, "15 minutes also while hidden")
+  advance(910)
+  check(restedText() == missingText and sounds == 5, "run out also while hidden")
+  restricted = false
+  rested(7200)
+  restricted = true
+  fire("UNIT_AURA")
+  advance(30)
+  check(restedText() == nil, "hidden is not missing")
+  restricted = false
+
+  -- World buff: one message, no text when it is missing.
+  worldBuff(3600)
+  advance(3290)
+  check(worldText() == nil, "world buff: nothing before 5 minutes")
+  advance(11)
+  check(worldText() == soonWorld and sounds == 6, "world buff: message at 5 minutes")
+  advance(11)
+  check(worldText() == nil, "world buff message gone after 10 seconds")
+  advance(320)
+  worldBuff(nil)
+  advance(30)
+  check(worldText() == nil and sounds == 6, "world buff missing: no text")
+
+  -- Switches, level, faction.
+  rested(nil)
+  advance(4)
+  check(restedText() == missingText and sounds == 7, "missing: text after the delay")
+  ns.SetRowEnabled("buff_well_rested", false)
+  check(restedText() == missingText, "row and warning switch separately")
+  ns.SetRowEnabled("buff_well_rested_alert", false)
+  check(restedText() == nil, "warning off: gone at once")
+  ns.ResetRows()
+  advance(4)
+  check(restedText() == missingText, "warning on again")
+  level = 60
+  fire("PLAYER_LEVEL_UP")
+  advance(5)
+  check(restedText() == nil, "no well rested warning at 60")
+  faction = "Horde"
+  worldBuff(200)
+  advance(5)
+  check(worldText() == nil, "no stormwind warning for the Horde")
+
+  ns.SetAllRows(false)
+  check(restedText() == nil and worldText() == nil, "all off hides the warnings")
+  for name, value in pairs(backup) do
+    _G[name] = value
+  end
+  GetTime, C_Timer.After = getTime, afterNow
+  C_Spell, C_Secrets, C_UnitAuras, UnitFactionGroup, SOUNDKIT, PlaySound = nil, nil, nil, nil, nil, nil
+  ns.ResetRows()
 end
 
 -- Language follows the client: German strings only on a deDE client.

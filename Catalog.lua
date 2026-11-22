@@ -18,7 +18,12 @@ function Data.GetCatalog()
   end
   local buffs = {}
   for _, buff in ipairs(ns.Buffs.LIST) do
-    buffs[#buffs + 1] = { id = ns.Buffs.RowId(buff), label = ns.Buffs.Name(buff) }
+    local name = ns.Buffs.Name(buff)
+    buffs[#buffs + 1] = { id = ns.Buffs.RowId(buff), label = name }
+    local alertId = ns.Buffs.AlertId(buff)
+    if alertId then
+      buffs[#buffs + 1] = { id = alertId, label = string.format(L.BUFF_ALERT_OPT_FMT, name) }
+    end
   end
   return {
     { key = "buffs", title = L.BUFF_SECTION, rows = buffs },
@@ -165,6 +170,10 @@ function Data.GetDefaults()
   end
   for _, buff in ipairs(ns.Buffs.LIST) do
     defaults[ns.Buffs.RowId(buff)] = true
+    local alertId = ns.Buffs.AlertId(buff)
+    if alertId then
+      defaults[alertId] = true
+    end
   end
   return defaults
 end
