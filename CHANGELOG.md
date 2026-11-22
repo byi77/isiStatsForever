@@ -2,7 +2,8 @@
 
 ## Unreleased
 
-- The window shows the addon version at the bottom left.
+## 0.11.0 - 2026-11-23
+
 - New: class and gear warnings. A red text stays in the middle of the screen while the cause lasts, with a sound once when it appears, like the missing Well-Rested warning. All are on by default for every class; each has its own switch in the settings (Warnings), where only your class's warnings are listed.
   - Warlock: 5 soul shards or fewer in the bags (once you know a spell that uses them).
   - Hunter: 200 ammo or less (with a bow, gun or crossbow); Aspect of the Cheetah or the Pack on in combat; pet only content or unhappy; no pet or a dead pet in combat.
@@ -12,6 +13,7 @@
   - Reagents at 5 or fewer, for the highest rank you know: Flash and Blinding Powder, teleport and portal runes, Arcane Powder, candles, Rebirth seeds and Gift of the Wild herbs, Symbol of Kings, Ankh.
   - Everyone: gear almost broken or broken (the same state as the game's armor figure).
 - New: Blizzard's damage meter is cleared once each time you join a group (one line in the chat says so). A /reload or login inside a group keeps the numbers. On by default, switch: Options -> AddOns -> isiStatsForever -> "Clear the damage meter when joining a group".
+- The window shows the addon version at the bottom left.
 
 ## 0.10.0 - 2026-11-22
 

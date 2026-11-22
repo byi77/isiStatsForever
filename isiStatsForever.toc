@@ -3,7 +3,7 @@
 ## Notes: Character stats, weapon skills and defense for WoW Forever
 ## Notes-deDE: Charakterwerte, Waffenfertigkeiten und Verteidigung für WoW Forever
 ## Author: mematiWoW
-## Version: 0.10.0
+## Version: 0.11.0
 ## Category: Character
 ## X-Curse-Project-ID: 1812815
 ## Category-deDE: Charakter
