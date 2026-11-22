@@ -12,6 +12,7 @@ local DEFAULTS = {
   locked = false, -- no moving / resizing
   chatHistoryArrows = true, -- Up / Down in the chat input walk the sent lines
   chatHistory = {}, -- sent chat lines, oldest first (ChatHistory.lua)
+  resetMeterOnJoin = true, -- clear Blizzard's damage meter when joining a group
   errors = {}, -- own Lua errors (ErrorLog.lua)
   pos = nil, -- { point, relativePoint, x, y }
   collapsed = {},
@@ -162,6 +163,42 @@ end
 function ns.SetInFight(value)
   inFight = value
   ns.UpdateFishingAlert()
+end
+
+-- Blizzard's damage meter is cleared once per group the player joins (the
+-- same call as its own "reset all sessions" menu entry). The game sends no
+-- GROUP_JOINED on a login or /reload inside a group, so those keep the numbers.
+-- GROUP_FORMED and GROUP_JOINED can both come for one group: its partyGUID
+-- makes that one reset; without a readable GUID, one per JOIN_SAME_GROUP seconds.
+local JOIN_SAME_GROUP = 2
+local meterGroup, meterResetAt
+
+function ns.GetResetMeterOnJoin()
+  return db and db.resetMeterOnJoin and true or false
+end
+
+function ns.SetResetMeterOnJoin(value)
+  db.resetMeterOnJoin = value and true or false
+end
+
+local function resetMeterOnJoin(partyGUID)
+  local meter = type(C_DamageMeter) == "table" and C_DamageMeter or nil
+  local reset = meter and meter.ResetAllCombatSessions
+  if not db.resetMeterOnJoin or type(reset) ~= "function" then
+    return
+  end
+  local group, now = ns.Util.str(partyGUID), ns.Util.num(ns.Util.call(GetTime))
+  if group then
+    if group == meterGroup then
+      return
+    end
+  elseif meterGroup == nil and meterResetAt and now and now - meterResetAt < JOIN_SAME_GROUP then
+    return
+  end
+  meterGroup, meterResetAt = group, now
+  if pcall(reset) then
+    print("|cff1e90ffisiStatsForever|r: " .. L.METER_RESET_DONE)
+  end
 end
 
 function ns.IsLocked()
@@ -470,6 +507,8 @@ events:SetScript("OnEvent", function(self, event, arg1, arg2)
     end
     ns.Data.Prime()
     pcall(self.RegisterEvent, self, "LOADING_SCREEN_ENABLED")
+    pcall(self.RegisterEvent, self, "GROUP_JOINED")
+    pcall(self.RegisterEvent, self, "GROUP_FORMED")
     ns.Buffs.SetLoading(false)
     ns.Tracking.Schedule()
     ns.SetInFight(inCombat()) -- a reload during a fight
@@ -485,6 +524,10 @@ events:SetScript("OnEvent", function(self, event, arg1, arg2)
       C_Timer.NewTicker(30, ns.RequestRefresh)
     end
   else
+    if event == "GROUP_JOINED" or event == "GROUP_FORMED" then
+      resetMeterOnJoin(arg2)
+      return
+    end
     if event == "TIME_PLAYED_MSG" then
       ns.LevelTime.OnTimePlayed(arg1, arg2)
     elseif event == "PLAYER_LEVEL_UP" then

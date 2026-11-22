@@ -47,6 +47,9 @@ class defaults - `Data.lua` collects the sections - `CombatCache.lua` last value
   `warnMinutes` = one message before the end (10 s, once per buff run, also across a reload).
 - Auras: `C_UnitAuras.GetPlayerAuraBySpellID` returns **nil for a hidden aura** in combat. Treat nil
   as missing only when `C_Secrets.ShouldSpellAuraBeSecret(id)` is false.
+- Damage meter: `C_DamageMeter.ResetAllCombatSessions()` (Blizzard's own "reset all sessions"
+  menu entry) on `GROUP_JOINED` / `GROUP_FORMED`, once per `partyGUID`. Neither fires on a login or
+  `/reload` inside a group (user request 2026-11-22: clear once per group join).
 - When a feature stops producing data without an error, check the API member first
   (`/isistats debug` prints what exists).
 

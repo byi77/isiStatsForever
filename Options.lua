@@ -143,6 +143,9 @@ function Options.Sync()
   if panel.chatHistory then
     panel.chatHistory:SetChecked(ns.ChatHistory.GetArrows())
   end
+  if panel.meterReset then
+    panel.meterReset:SetChecked(ns.GetResetMeterOnJoin())
+  end
   if panel.combatHide then
     panel.combatHide:SetChecked(ns.GetCombatMode() == "hide")
     panel.combatOnly:SetChecked(ns.GetCombatMode() == "only")
@@ -213,6 +216,11 @@ local function build()
   end)
   panel.combatOnly = checkbox(content, 16 + COL_W, y, L.OPT_COMBAT_ONLY, function(checked)
     ns.SetCombatMode(checked and "only" or "always")
+  end)
+  y = y - ROW_H - 4
+
+  panel.meterReset = checkbox(content, 16, y, L.OPT_METER_RESET, function(checked)
+    ns.SetResetMeterOnJoin(checked)
   end)
   y = y - ROW_H - 4
 

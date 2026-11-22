@@ -223,6 +223,49 @@ fireCore("PLAYER_REGEN_ENABLED")
 C_Timer.After = afterNow
 RaidWarningFrame, SOUNDKIT, PlaySound = nil, nil, nil
 
+-- Damage meter: cleared once per group joined, through the real event handler.
+do
+  local resets, lines, printBackup, timeBackup = 0, {}, print, GetTime
+  GetTime = function()
+    return 500
+  end
+  C_DamageMeter = {
+    ResetAllCombatSessions = function()
+      resets = resets + 1
+    end,
+  }
+  print = function(text)
+    if text:find("^FAIL") then
+      printBackup(text)
+    else
+      lines[#lines + 1] = text
+    end
+  end
+  local function group(event, guid)
+    StubFrames[1].scripts.OnEvent(StubFrames[1], event, 1, guid)
+  end
+  check(IsiStatsDB.resetMeterOnJoin == true, "meter reset on by default")
+  group("GROUP_FORMED", "Party-1")
+  check(resets == 1, "own group: meter cleared")
+  check(lines[1] and lines[1]:find(ns.L.METER_RESET_DONE, 1, true), "chat line says so")
+  group("GROUP_JOINED", "Party-1")
+  check(resets == 1, "formed and joined for one group: one reset")
+  group("GROUP_JOINED", "Party-2")
+  check(resets == 2, "next group: cleared again")
+  ns.SetResetMeterOnJoin(false)
+  group("GROUP_JOINED", "Party-3")
+  check(resets == 2 and IsiStatsDB.resetMeterOnJoin == false, "switched off: kept")
+  ns.SetResetMeterOnJoin(true)
+  group("GROUP_JOINED", nil)
+  group("GROUP_FORMED", nil)
+  check(resets == 3, "unreadable group id: one reset for both events")
+  C_DamageMeter = {}
+  group("GROUP_JOINED", "Party-4")
+  check(#lines == 3, "no meter API: nothing happens")
+  C_DamageMeter = nil
+  print, GetTime = printBackup, timeBackup
+end
+
 -- Chat history: sent lines are saved, a repeat moves to the end, and the
 -- saved lines go back into the edit box history (oldest first) on login.
 check(IsiStatsDB.chatHistoryArrows == true, "chat history arrows on by default")

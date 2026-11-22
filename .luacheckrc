@@ -16,6 +16,7 @@ globals = {
 
 read_globals = {
   "C_AddOns",
+  "C_DamageMeter",
   "C_Item",
   "C_Minimap",
   "C_Secrets",
