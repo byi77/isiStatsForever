@@ -67,7 +67,6 @@ local BATTLE_SHOUT = { 6673, 5242, 6192, 11549, 11550, 11551, 25289 }
 local DAZE_ASPECTS = { 5118, 13159 } -- Aspect of the Cheetah, Aspect of the Pack
 local CALL_PET = { 883 }
 local DEFENSIVE_STANCE = { [71] = true }
-local RAGE_STANCES = { [2457] = true, [2458] = true } -- Battle, Berserker
 local AMMO_WEAPONS = { [2] = true, [3] = true, [18] = true } -- bow, gun, crossbow
 local SLOT_AMMO = 0
 local ALERT_SLOTS = 11 -- INVENTORY_ALERT_STATUS_SLOTS in DurabilityFrame.lua
@@ -617,18 +616,6 @@ Warnings.LIST = {
         return nil
       end
       return DEFENSIVE_STANCE[spellID] and not ns.Skills.hasShield() and L.WARN_DEF_SHIELD
-    end,
-  },
-  {
-    key = "rage_stance",
-    class = "WARRIOR",
-    combat = true,
-    check = function()
-      local spellID = stanceSpell()
-      if not spellID then
-        return nil
-      end
-      return not RAGE_STANCES[spellID] and L.WARN_RAGE_STANCE
     end,
   },
   {

@@ -423,10 +423,10 @@ do
   inv.off, inv[2] = 2, { 4, 6 }
   after3s("PLAYER_EQUIPMENT_CHANGED")
   check(shown("def_shield") == nil, "shield on: fine")
-  check(ns.IsRowEnabled("warn_rage_stance"), "every warning on by default")
+  check(ns.IsRowEnabled("warn_battle_shout"), "every warning on by default")
   fight(true)
   check(shown("battle_shout") == ns.L.WARN_BATTLE_SHOUT, "no battle shout in combat")
-  check(shown("rage_stance") == ns.L.WARN_RAGE_STANCE, "defensive stance in combat warns")
+  check(shown("rage_stance") == nil, "no stance warning in combat (removed)")
   auras[6673] = {}
   StubFrames[1].scripts.OnEvent(StubFrames[1], "UNIT_AURA", "player")
   check(shown("battle_shout") == nil, "battle shout on: fine")
@@ -436,10 +436,11 @@ do
   end
   StubFrames[1].scripts.OnEvent(StubFrames[1], "UNIT_AURA", "player")
   check(shown("battle_shout") == nil, "hidden aura: no guessing")
-  ns.SetRowEnabled("warn_rage_stance", false)
-  check(shown("rage_stance") == nil, "switched off: gone at once")
+  IsiStatsCharDB.rows.warn_rage_stance = true
+  ns.PruneRows()
+  check(IsiStatsCharDB.rows.warn_rage_stance == nil, "removed stance warning: saved setting dropped")
   fight(false)
-  check(shown("battle_shout") == nil and shown("rage_stance") == nil, "fight over: combat texts gone")
+  check(shown("battle_shout") == nil, "fight over: combat texts gone")
 
   alertStatus[9] = 1
   after3s("UPDATE_INVENTORY_ALERTS")
