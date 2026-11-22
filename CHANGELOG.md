@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.8.0 - 2026-11-22
+
+The percentage behind your weapon skills has a new meaning: where it showed e.g. -0.72% it can now show 63%. Your character did not get worse - the old number was only the penalty from missing skill, the new one is how many attacks really don't hit fully.
+
 - **Real hit value**: the percentage behind each weapon skill now is the share of auto attacks that don't hit fully against your target - no damage (missed, dodged, parried) plus only glancing; ranged: missed. Calculated from the game's own values with weapon skill, hit, expertise and dual wielding, also in combat. The small +/- from skill alone moved into the tooltip, next to the split.
 - Fixed: miss vs. boss was too low (now 8% / 27% dual wielding at maximum skill, as in the game's tooltip).
 - Fixed: hit includes the hit rating bonus, and the off hand uses its own value.
