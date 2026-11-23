@@ -14,7 +14,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install StyLua (same version as local)
         run: cargo install stylua --version 2.6.0 --locked
