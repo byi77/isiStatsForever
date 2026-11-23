@@ -1,3 +1,5 @@
+---@diagnostic disable: undefined-global
+-- Runs in standalone Lua (io, os, loadfile), not in the WoW client.
 -- Locale gate (adapted from isiLive's locale-drift and format-string checks):
 -- enUS and deDE in Locale.lua must have the same keys and the same format
 -- placeholders per key. Exit 1 on any difference.

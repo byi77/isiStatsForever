@@ -1,3 +1,5 @@
+---@diagnostic disable: undefined-global
+-- Runs in standalone Lua (io, os, loadfile), not in the WoW client.
 -- Shared WoW stub environment for the tools: defines the WoW globals the
 -- addon reads, loads every file listed in isiStatsForever.toc and fires
 -- ADDON_LOADED + PLAYER_LOGIN through the real event handler.

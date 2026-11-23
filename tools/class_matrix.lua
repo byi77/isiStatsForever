@@ -1,3 +1,5 @@
+---@diagnostic disable: undefined-global
+-- Runs in standalone Lua (io, os, loadfile), not in the WoW client.
 -- Class matrix: loads the real addon once per class (typical gear, power
 -- type and weapon skills) and checks what the window shows - with the class
 -- defaults and with every value switched on. Exit 1 on any failure.

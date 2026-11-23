@@ -1,3 +1,5 @@
+---@diagnostic disable: undefined-global
+-- Runs in standalone Lua (io, os, loadfile), not in the WoW client.
 local dir = arg[1]
 -- Client language to simulate (second argument): deDE (default) or enUS.
 local clientLocale = arg[2] or "deDE"
