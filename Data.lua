@@ -487,11 +487,11 @@ local function versusTip(foe, total, melee)
   return table.concat(lines, "\n")
 end
 
-local LOST_WARN, LOST_BAD = 30, 50
-
 -- The one value behind a skill: how many attacks do not hit fully (no damage +
 -- only glancing; ranged and against players: no damage). Returns the text,
--- its color and the split for the tooltip.
+-- its color and the split for the tooltip. The color follows the skill effect
+-- against the target (as the tooltip's hit line): below its defense red, above
+-- green, equal plain.
 local function attackResult(total, foe, opts)
   local calcTip = opts.melee and L.R_CALC_TIP or L.R_CALC_RANGED_TIP
   if not opts.hit or (opts.melee and not opts.expertise) then
@@ -524,10 +524,10 @@ local function attackResult(total, foe, opts)
   lines[#lines + 1] = calcTip
 
   local color
-  if lost >= LOST_BAD then
+  if total < foe.defense then
     color = "bad"
-  elseif lost >= LOST_WARN then
-    color = "warn"
+  elseif total > foe.defense then
+    color = "good"
   end
   return string.format("%d%%", lost), color, table.concat(lines, "\n")
 end

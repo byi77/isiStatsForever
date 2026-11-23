@@ -1023,9 +1023,11 @@ do
   combat = true
   targetLevel = 42
   expect("another target level in combat", "25%", nil)
+  targetLevel = 41
+  expect("skill above the defense: green", "14%", "good")
   rank = 212
   targetLevel = 44
-  expect("skill rises in combat", "42%", "warn")
+  expect("skill rises in combat", "42%", "bad")
   check(not byKey("w:S43").stale, "calculated live in combat")
   rank = 225 -- never asked before combat
   expect("glancing unknown: no value that looks too good", "...", nil)
@@ -1039,7 +1041,7 @@ do
   UnitIsPlayer = function()
     return true
   end
-  expect("no glancing against players", "17%", nil)
+  expect("no glancing against players", "17%", "bad")
   UnitIsPlayer = function()
     return false
   end

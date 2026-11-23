@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Changed: the percentage behind a weapon skill (attacks that do not hit fully) is colored by the skill effect against the target, like the hit line in its tooltip: red when your skill is below the target's defense, green when above, white when equal. Before, it only turned yellow from 30% and red from 50%.
+
 ## 0.11.0 - 2026-11-23
 
 - New: class and gear warnings. A red text stays in the middle of the screen while the cause lasts, with a sound once when it appears, like the missing Well-Rested warning. All are on by default for every class; each has its own switch in the settings (Warnings), where only your class's warnings are listed.
