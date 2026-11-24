@@ -408,6 +408,18 @@ do
   check(shown("pet_missing") == nil, "fight over: no pet text")
   pet, happy = true, 2
   check(after3s("UNIT_HAPPINESS") == nil and shown("pet_happy") == ns.L.WARN_PET_CONTENT, "content pet")
+  local hasPetUI = HasPetUI
+  HasPetUI = function()
+    return true, true -- the game can still report a dismissed hunter pet
+  end
+  pet = false
+  after3s("UNIT_HAPPINESS")
+  check(shown("pet_happy") == nil, "dismissed pet: no mood text")
+  pet, deadPet = true, true
+  after3s("UNIT_HAPPINESS")
+  check(shown("pet_happy") == nil, "dead pet: no mood text")
+  HasPetUI, deadPet = hasPetUI, false
+  after3s("UNIT_HAPPINESS")
   happy = 1
   after3s("UNIT_HAPPINESS")
   check(shown("pet_happy") == ns.L.WARN_PET_MAD, "unhappy pet")

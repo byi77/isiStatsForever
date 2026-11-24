@@ -555,10 +555,13 @@ Warnings.LIST = {
     key = "pet_happy",
     class = "HUNTER",
     check = function()
+      -- HasPetUI and GetPetHappiness can still report a dismissed pet; the
+      -- game only shows the mood on the pet frame, i.e. while the pet is out.
       local _, isHunterPet = call(HasPetUI)
-      if isSecret(isHunterPet) then
+      local out, dead = call(UnitExists, "pet"), call(UnitIsDead, "pet")
+      if isSecret(isHunterPet) or isSecret(out) or isSecret(dead) then
         return nil
-      elseif not isHunterPet then
+      elseif not isHunterPet or not out or dead then
         return false
       end
       local api = type(C_PetInfo) == "table" and C_PetInfo or {}

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fixed: the hunter pet mood warning showed while the pet was dismissed (or dead). It now only checks a pet that is out.
+
 ## 0.11.1 - 2026-11-23
 
 - Changed: the percentage behind a weapon skill (attacks that do not hit fully) is colored by the skill effect against the target, like the hit line in its tooltip: red when your skill is below the target's defense, green when above, white when equal. Before, it only turned yellow from 30% and red from 50%.
