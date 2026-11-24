@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.11.2 - 2026-11-24
+
 - Fixed: the hunter pet mood warning showed while the pet was dismissed (or dead). It now only checks a pet that is out.
 
 ## 0.11.1 - 2026-11-23
