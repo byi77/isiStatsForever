@@ -24,7 +24,7 @@ end
 
 local function editBoxes()
   local boxes = {}
-  local count = type(NUM_CHAT_WINDOWS) == "number" and NUM_CHAT_WINDOWS or 10
+  local count = ns.Util.chatWindowCount() or 0
   for i = 1, count do
     local box = _G["ChatFrame" .. i .. "EditBox"]
     if type(box) == "table" and box.AddHistoryLine then

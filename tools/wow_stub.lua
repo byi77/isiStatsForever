@@ -209,6 +209,9 @@ C_SkillInfo = {
     end
   end,
 }
+-- Client constant for the chat window count (NUM_CHAT_WINDOWS is only a
+-- deprecation shim in Forever and stays undefined here).
+Constants = { ChatFrameConstants = { MaxChatWindows = 10 } }
 -- Chat input with the game's history methods (history line list + Alt mode).
 ChatFrame1EditBox = {
   history = {},

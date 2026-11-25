@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fixed: API audit against the Forever client source (1.60.1.70938). The chat window count now comes from the client constant `Constants.ChatFrameConstants.MaxChatWindows`; `NUM_CHAT_WINDOWS` only exists as a deprecation shim, and the hard-coded 10 is gone. The window subtitle and the class defaults no longer use a class or level value that could be secret without checking it first.
+
 ## 0.11.2 - 2026-11-24
 
 - Fixed: the hunter pet mood warning showed while the pet was dismissed (or dead). It now only checks a pet that is out.

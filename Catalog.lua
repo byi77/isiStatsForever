@@ -171,7 +171,9 @@ local COMMON_DEFAULTS = {
 function Data.GetDefaults()
   local defaults = {}
   local _, classToken = call(UnitClass, "player")
-  for _, id in ipairs(CLASS_DEFAULTS[classToken] or { "stat1", "m_ap" }) do
+  -- A secret class token must not be used as a table key.
+  classToken = str(classToken)
+  for _, id in ipairs(classToken and CLASS_DEFAULTS[classToken] or { "stat1", "m_ap" }) do
     defaults[id] = true
   end
   for _, id in ipairs(COMMON_DEFAULTS) do

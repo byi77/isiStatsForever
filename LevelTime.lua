@@ -42,7 +42,7 @@ end
 
 local function chatFrames()
   local frames = {}
-  local count = type(NUM_CHAT_WINDOWS) == "number" and NUM_CHAT_WINDOWS or 10
+  local count = ns.Util.chatWindowCount() or 0
   for i = 1, count do
     local frame = _G["ChatFrame" .. i]
     if type(frame) == "table" and frame.IsEventRegistered then

@@ -184,6 +184,19 @@ local function signedPct(v)
   return text
 end
 
+-- Number of chat windows. Constants.ChatFrameConstants.MaxChatWindows is the
+-- client constant; NUM_CHAT_WINDOWS only exists as a Blizzard_DeprecatedChatInfo
+-- shim (cvar loadDeprecationFallbacks). Neither present: nil, nothing guessed.
+local function chatWindowCount()
+  local constants = type(Constants) == "table" and Constants.ChatFrameConstants
+  local count = type(constants) == "table" and num(constants.MaxChatWindows)
+  if count and count > 0 then
+    return count
+  end
+  count = num(NUM_CHAT_WINDOWS)
+  return count and count > 0 and count or nil
+end
+
 local function armorReduction(armor, attackerLevel)
   local dr = armor / (armor + 400 + 85 * attackerLevel)
   return math.min(0.75, math.max(0, dr)) * 100
@@ -206,4 +219,5 @@ ns.Util = {
   glancing = glancing,
   signedPct = signedPct,
   armorReduction = armorReduction,
+  chatWindowCount = chatWindowCount,
 }

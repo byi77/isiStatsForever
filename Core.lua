@@ -359,8 +359,9 @@ function ns.Refresh()
   if not frame or not frame:IsShown() then
     return
   end
-  local level = UnitLevel("player")
-  local class = UnitClass("player")
+  -- Through call() and plain checks: a secret value must not be concatenated.
+  local level = ns.Util.num(ns.Util.call(UnitLevel, "player"))
+  local class = ns.Util.str(ns.Util.call(UnitClass, "player"))
   if frame.subtitle then
     frame.subtitle:SetText((class or "") .. (level and (" " .. level) or ""))
   end

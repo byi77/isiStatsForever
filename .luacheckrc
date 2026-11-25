@@ -26,6 +26,7 @@ read_globals = {
   "C_Spell",
   "C_Timer",
   "C_UnitAuras",
+  "Constants",
   "CreateColor",
   "CreateFrame",
   "DEFENSE",
