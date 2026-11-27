@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Added: combat start and combat end show as a big text in the middle of the screen that fades in and out (red "Combat started", green "Combat over"). On by default, switchable in the settings.
+- Added: combat start and combat end show as a big text in the middle of the screen that rises while it fades in and out (red "Combat started", green "Combat over"). On by default, switchable in the settings.
 - Fixed: API audit against the Forever client source (1.60.1.70938). The chat window count now comes from the client constant `Constants.ChatFrameConstants.MaxChatWindows`; `NUM_CHAT_WINDOWS` only exists as a deprecation shim, and the hard-coded 10 is gone. The window subtitle and the class defaults no longer use a class or level value that could be secret without checking it first.
 
 ## 0.11.2 - 2026-11-24

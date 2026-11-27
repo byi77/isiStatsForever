@@ -529,17 +529,21 @@ end
 -- ---------------------------------------------------------------- combat banner
 
 -- Combat start / end: one big line in the middle of the screen that fades in,
--- stays a moment and fades out. A new one replaces the one still showing.
+-- stays a moment and fades out, rising all the while. A new one replaces the
+-- one still showing.
 local BANNER_IN, BANNER_HOLD, BANNER_OUT = 0.25, 1.2, 0.8
 local BANNER_Y = 120 -- above the character
+local BANNER_RISE = 60 -- px the text climbs from fading in to gone
 local BANNER_SIZE = 34
 local banner
 
 local function bannerUpdate(self, elapsed)
   local age = self.age + elapsed
   self.age = age
-  if age >= BANNER_IN + BANNER_HOLD + BANNER_OUT then
+  local life = BANNER_IN + BANNER_HOLD + BANNER_OUT
+  if age >= life then
     self:Hide()
+    return
   elseif age < BANNER_IN then
     self:SetAlpha(age / BANNER_IN)
   elseif age > BANNER_IN + BANNER_HOLD then
@@ -547,6 +551,7 @@ local function bannerUpdate(self, elapsed)
   else
     self:SetAlpha(1)
   end
+  self.text:SetPoint("CENTER", self, "CENTER", 0, BANNER_RISE * age / life)
 end
 
 function UI.ShowCombatBanner(text, color)
@@ -558,7 +563,7 @@ function UI.ShowCombatBanner(text, color)
     banner:EnableMouse(false)
     banner.text = banner:CreateFontString(nil, "OVERLAY")
     banner.text:SetFont(STANDARD_TEXT_FONT or "Fonts\\FRIZQT__.TTF", BANNER_SIZE, "THICKOUTLINE")
-    banner.text:SetPoint("CENTER")
+    banner.text:SetPoint("CENTER", banner, "CENTER", 0, 0)
     banner.text:SetShadowOffset(2, -2)
     banner:SetScript("OnUpdate", bannerUpdate)
     banner:Hide()
@@ -567,6 +572,7 @@ function UI.ShowCombatBanner(text, color)
   banner.shownText = text
   setColor(banner.text, color, "value")
   banner.age = 0
+  banner.text:SetPoint("CENTER", banner, "CENTER", 0, 0)
   banner:SetAlpha(0)
   banner:Show()
 end
