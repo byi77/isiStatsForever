@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Changed: the weapon skill text in combat only comes when the skill is more than 10 points below its maximum.
 - Fixed: singular texts for 1 free bag slot, 1 unspent talent point and 1 saved flight time; German level texts say "Stufe" like the game.
 - Changed: the bag warning shows for 5 seconds only, and again when the count changes (2 free, 1 free, full).
 

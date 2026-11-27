@@ -546,6 +546,20 @@ do
   check(shown("skillup") ~= nil, "skill text again in the next fight")
   fight(false)
   GetTime = getTime
+  -- only more than 10 below the maximum
+  for _, case in ipairs({ { 140, false }, { 139, true } }) do
+    C_SkillInfo = {
+      GetSkillLineInfoByID = function(id)
+        if id == ns.Skills.SUBCLASS_SKILL[2] then
+          return { name = "Bogen", rank = case[1], maxRank = 150, modifier = 0 }
+        end
+        return skillInfo.GetSkillLineInfoByID(id)
+      end,
+    }
+    fight(true)
+    check((shown("skillup") ~= nil) == case[2], "skill " .. case[1] .. "/150: text " .. tostring(case[2]))
+    fight(false)
+  end
 
   -- Profession at its rank's cap, only from the level the next rank needs.
   C_SkillInfo = {

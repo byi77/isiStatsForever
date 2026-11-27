@@ -76,6 +76,7 @@ local ROCKBITER = { 8017, 8018, 8019, 10399, 16314, 16315, 16316 } -- the shaman
 local RIGHTEOUS_FURY = { 25780, 407627 }
 local REAGENT_LOW = 5
 local BAGS_LOW = 2 -- free slots in the normal bags
+local SKILL_GAP = 10 -- weapon skill text only when more than this below the maximum (user decision 2026-11-27)
 local BAG_FIRST, BAG_LAST = 0, 4 -- backpack and the four bag slots
 -- Professions and secondary skills (skill line IDs): alchemy, blacksmithing,
 -- enchanting, engineering, herbalism, leatherworking, mining, skinning,
@@ -793,7 +794,7 @@ Warnings.LIST = {
           if not s or not s.max then
             return nil
           end
-          if s.rank < s.max then
+          if s.max - s.rank > SKILL_GAP then
             parts[#parts + 1] = string.format("%s %d/%d", s.name, s.rank, s.max)
           end
         end
