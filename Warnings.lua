@@ -526,6 +526,9 @@ end
 --            the bags and auras are empty for a moment after loading screens)
 --   silent   true: no warning sound when it appears
 --   color    palette key of the text (default "bad")
+--   notice   seconds: shown once for this long while the cause lasts, then
+--            hidden until the cause is gone and comes again (user decision
+--            2026-11-27 for the weapon skill text: once per fight, briefly)
 --   check()  text to show, false for none, nil when the game does not say
 Warnings.LIST = {
   {
@@ -770,6 +773,7 @@ Warnings.LIST = {
     delay = 0,
     silent = true,
     color = "warn",
+    notice = 5,
     check = function()
       local Skills = ns.Skills
       local seen, parts = {}, {}
@@ -899,6 +903,11 @@ function Warnings.Check(warning, classToken)
 end
 
 local pending = {} -- key -> run of the timer that may show it
+local noticeEnd = {} -- key -> GetTime() when a `notice` warning is hidden again
+
+local function clock()
+  return type(GetTime) == "function" and GetTime() or 0
+end
 local runs = 0
 
 -- ITEM_DATA_LOAD_RESULT (registered by Core): only for a name asked for.
@@ -918,10 +927,28 @@ function Warnings.Update(now)
     if ns.IsRowEnabled(Warnings.OptionId(warning)) then
       result = Warnings.Check(warning, classToken)
     end
-    if result == nil then -- unknown: leave it as it is
+    if warning.notice and (result or (result == nil and noticeEnd[key])) then
+      -- brief: shown from the first sight of the cause for `notice` seconds
+      pending[key] = nil
+      local t = clock()
+      if not noticeEnd[key] then
+        noticeEnd[key] = t + warning.notice
+        if type(C_Timer) == "table" and C_Timer.After then
+          C_Timer.After(warning.notice, function()
+            Warnings.Update()
+          end)
+        end
+      end
+      if t >= noticeEnd[key] then
+        ns.UI.SetAlert(key, nil)
+      elseif result then
+        ns.UI.SetAlert(key, result, warning.silent, warning.color or "bad")
+      end
+    elseif result == nil then -- unknown: leave it as it is
       pending[key] = nil
     elseif not result then
       pending[key] = nil
+      noticeEnd[key] = nil
       ns.UI.SetAlert(key, nil)
     elseif ns.UI.GetAlert(key) or now or (warning.delay or DEFAULT_DELAY) == 0 then
       pending[key] = nil

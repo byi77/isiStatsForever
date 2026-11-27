@@ -512,10 +512,23 @@ do
   }
   after3s()
   check(shown("skillup") == nil, "skill below max: nothing out of combat")
+  local getTime, clock = GetTime, 100
+  GetTime = function()
+    return clock
+  end
   fight(true)
   check(shown("skillup") == string.format(ns.L.WARN_SKILLUP_FMT, "Bogen 100/150"), "skill below max in combat")
+  clock = 106
+  ns.Warnings.Update()
+  check(shown("skillup") == nil, "skill text only briefly")
+  StubFrames[1].scripts.OnEvent(StubFrames[1], "SKILL_LINES_CHANGED")
+  check(shown("skillup") == nil, "skill text not again in the same fight")
   fight(false)
   check(shown("skillup") == nil, "skill text gone after the fight")
+  fight(true)
+  check(shown("skillup") ~= nil, "skill text again in the next fight")
+  fight(false)
+  GetTime = getTime
 
   -- Profession at its rank's cap, only from the level the next rank needs.
   C_SkillInfo = {
