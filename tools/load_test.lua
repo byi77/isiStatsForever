@@ -485,7 +485,10 @@ do
   bagClock = 106
   after3s("BAG_UPDATE_DELAYED")
   check(shown("bags") == nil, "bags: text only for 5 s")
-  freeSlots[0], freeSlots[1] = 0, 0
+  freeSlots[1] = 0
+  after3s("BAG_UPDATE_DELAYED")
+  check(shown("bags") == ns.L.WARN_BAGS_ONE, "bags: 1 free slot, singular")
+  freeSlots[0] = 0
   after3s("BAG_UPDATE_DELAYED")
   check(shown("bags") == ns.L.WARN_BAGS_FULL, "bags full: shown again for the new text")
   bagClock = 112
@@ -506,6 +509,9 @@ do
   }
   after3s("TRAIT_CONFIG_UPDATED")
   check(shown("talents") == string.format(ns.L.WARN_TALENTS_FMT, 2), "talents: 2 points unspent")
+  unspent = { true, 1, 0 }
+  after3s("TRAIT_CONFIG_UPDATED")
+  check(shown("talents") == ns.L.WARN_TALENTS_ONE, "talents: 1 point, singular")
   unspent = { false, 0, 0 }
   after3s("TRAIT_CONFIG_UPDATED")
   check(shown("talents") == nil, "talents spent: gone")

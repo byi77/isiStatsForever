@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Fixed: singular texts for 1 free bag slot, 1 unspent talent point and 1 saved flight time; German level texts say "Stufe" like the game.
 - Changed: the bag warning shows for 5 seconds only, and again when the count changes (2 free, 1 free, full).
 
 ## 0.12.1 - 2026-11-27

@@ -752,7 +752,8 @@ Warnings.LIST = {
       if not known then
         return nil
       end
-      return free <= BAGS_LOW and (free == 0 and L.WARN_BAGS_FULL or string.format(L.WARN_BAGS_FMT, free))
+      return free <= BAGS_LOW
+        and (free == 0 and L.WARN_BAGS_FULL or free == 1 and L.WARN_BAGS_ONE or string.format(L.WARN_BAGS_FMT, free))
     end,
   },
   {
@@ -768,6 +769,9 @@ Warnings.LIST = {
         return false
       end
       local count = (num(classPoints) or 0) + (num(specPoints) or 0)
+      if count == 1 then
+        return L.WARN_TALENTS_ONE
+      end
       return count > 0 and string.format(L.WARN_TALENTS_FMT, count) or L.WARN_TALENTS_TEXT
     end,
   },

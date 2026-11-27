@@ -404,7 +404,7 @@ function Flights.Print(out)
   if #lines == 0 then
     out(L.FLIGHT_NONE)
   else
-    out(string.format(L.FLIGHT_LIST_FMT, #lines))
+    out(#lines == 1 and L.FLIGHT_LIST_ONE or string.format(L.FLIGHT_LIST_FMT, #lines))
     for _, line in ipairs(lines) do
       out(line)
     end
