@@ -76,7 +76,9 @@ local ROCKBITER = { 8017, 8018, 8019, 10399, 16314, 16315, 16316 } -- the shaman
 local RIGHTEOUS_FURY = { 25780, 407627 }
 local REAGENT_LOW = 5
 local BAGS_LOW = 2 -- free slots in the normal bags
-local SKILL_GAP = 10 -- weapon skill text only when more than this below the maximum (user decision 2026-11-27)
+local BAG_HINT_SECONDS = 5 -- the weapon to train in the bags, once per weapon and character
+local bagHint -- { text, ends } of that hint while it is shown
+local SKILL_GAP = 10 --weapon skill text only when more than this below the maximum (user decision 2026-11-27)
 local BAG_FIRST, BAG_LAST = 0, 4 -- backpack and the four bag slots
 -- Professions and secondary skills (skill line IDs): alchemy, blacksmithing,
 -- enchanting, engineering, herbalism, leatherworking, mining, skinning,
@@ -532,8 +534,6 @@ end
 --            2026-11-27 for the weapon skill text: once per fight, briefly)
 --   renotice true: a notice comes again when its text changes (bags: 2 free,
 --            1 free, full; user decision 2026-11-27: 5 s)
---   once     true: a notice shows each text only once per session, also not
---            again after a fight or when the cause comes back
 --   check()  text to show, false for none, nil when the game does not say
 Warnings.LIST = {
   {
@@ -828,9 +828,21 @@ Warnings.LIST = {
     calm = true,
     silent = true,
     color = "warn",
-    notice = 5,
-    once = true, -- user decision 2026-11-27: must never nag
+    delay = 0,
+    notice = BAG_HINT_SECONDS,
+    -- User decision 2026-11-27: must never nag. Each weapon is named once per
+    -- character, ever (IsiStatsCharDB.bagHinted[skill line] = true).
     check = function()
+      local t = type(GetTime) == "function" and GetTime() or 0
+      if bagHint and t < bagHint.ends then
+        return bagHint.text -- the one being shown right now
+      end
+      bagHint = nil
+      local told = type(IsiStatsCharDB) == "table" and IsiStatsCharDB
+      if not told then
+        return nil
+      end
+      told.bagHinted = type(told.bagHinted) == "table" and told.bagHinted or {}
       local Skills = ns.Skills
       local equipped = false
       for _, slot in ipairs({ Skills.SLOT_MAIN, Skills.SLOT_OFF, Skills.SLOT_RANGED }) do
@@ -851,7 +863,7 @@ Warnings.LIST = {
       end
       local api = type(C_Container) == "table" and C_Container or {}
       local item = type(C_Item) == "table" and C_Item or {}
-      local seen, parts = {}, {}
+      local seen, parts, ids = {}, {}, {}
       for bag = BAG_FIRST, BAG_LAST do
         for slot = 1, num(call(api.GetContainerNumSlots, bag)) or 0 do
           local info = call(api.GetContainerItemInfo, bag, slot)
@@ -859,17 +871,26 @@ Warnings.LIST = {
           if itemID then
             local _, _, _, _, _, classID, subclassID = call(item.GetItemInfoInstant or GetItemInfoInstant, itemID)
             local id = num(classID) == 2 and Skills.SUBCLASS_SKILL[num(subclassID)]
-            if id and not seen[id] then
+            if id and not seen[id] and not told.bagHinted[id] then
               seen[id] = true
               local s = ns.Data.GetSkill(id)
               if s and s.max and s.max - s.rank > SKILL_GAP then
-                parts[#parts + 1] = s.name -- no ranks: the text is what `once` remembers
+                parts[#parts + 1] = string.format("%s %d/%d", s.name, s.rank, s.max)
+                ids[#ids + 1] = id
               end
             end
           end
         end
       end
-      return #parts > 0 and string.format(L.WARN_SKILL_BAG_FMT, table.concat(parts, ", "))
+      if #parts == 0 then
+        return false
+      end
+      for _, id in ipairs(ids) do
+        told.bagHinted[id] = true
+      end
+      local text = string.format(L.WARN_SKILL_BAG_FMT, table.concat(parts, ", "))
+      bagHint = { text = text, ends = t + BAG_HINT_SECONDS }
+      return text
     end,
   },
   {
@@ -965,7 +986,6 @@ end
 local pending = {} -- key -> run of the timer that may show it
 local noticeEnd = {} -- key -> GetTime() when a `notice` warning is hidden again
 local noticeText = {} -- key -> the text that notice was shown with
-local shownOnce = {} -- key -> set of texts a `once` notice has already shown
 local runs = 0
 
 local function clock()
@@ -978,17 +998,8 @@ local function show(warning, text)
   local key = warning.key
   if warning.notice then
     local t = clock()
-    local seen = shownOnce[key]
-    if warning.once and seen and seen[text] and noticeText[key] ~= text then
-      ns.UI.SetAlert(key, nil)
-      return
-    end
     if not noticeEnd[key] or (warning.renotice and noticeText[key] ~= text) then
       noticeEnd[key], noticeText[key] = t + warning.notice, text
-      if warning.once then
-        shownOnce[key] = seen or {}
-        shownOnce[key][text] = true
-      end
       if type(C_Timer) == "table" and C_Timer.After then
         C_Timer.After(warning.notice, function()
           Warnings.Update()
