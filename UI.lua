@@ -526,6 +526,56 @@ function UI.GetAlert(key)
   return alertTexts[key]
 end
 
+-- ---------------------------------------------------------------- combat banner
+
+-- Combat start / end: one big line in the middle of the screen that fades in,
+-- stays a moment and fades out. A new one replaces the one still showing.
+local BANNER_IN, BANNER_HOLD, BANNER_OUT = 0.25, 1.2, 0.8
+local BANNER_Y = 120 -- above the character
+local BANNER_SIZE = 34
+local banner
+
+local function bannerUpdate(self, elapsed)
+  local age = self.age + elapsed
+  self.age = age
+  if age >= BANNER_IN + BANNER_HOLD + BANNER_OUT then
+    self:Hide()
+  elseif age < BANNER_IN then
+    self:SetAlpha(age / BANNER_IN)
+  elseif age > BANNER_IN + BANNER_HOLD then
+    self:SetAlpha(1 - (age - BANNER_IN - BANNER_HOLD) / BANNER_OUT)
+  else
+    self:SetAlpha(1)
+  end
+end
+
+function UI.ShowCombatBanner(text, color)
+  if not banner then
+    banner = CreateFrame("Frame", nil, UIParent)
+    banner:SetSize(800, BANNER_SIZE + 10)
+    banner:SetPoint("CENTER", UIParent, "CENTER", 0, BANNER_Y)
+    banner:SetFrameStrata("HIGH")
+    banner:EnableMouse(false)
+    banner.text = banner:CreateFontString(nil, "OVERLAY")
+    banner.text:SetFont(STANDARD_TEXT_FONT or "Fonts\\FRIZQT__.TTF", BANNER_SIZE, "THICKOUTLINE")
+    banner.text:SetPoint("CENTER")
+    banner.text:SetShadowOffset(2, -2)
+    banner:SetScript("OnUpdate", bannerUpdate)
+    banner:Hide()
+  end
+  banner.text:SetText(text)
+  banner.shownText = text
+  setColor(banner.text, color, "value")
+  banner.age = 0
+  banner:SetAlpha(0)
+  banner:Show()
+end
+
+-- The text on screen (nil: none) and the frame (for the load test).
+function UI.GetCombatBanner()
+  return banner and banner:IsShown() and banner.shownText or nil, banner
+end
+
 function UI.SetFlashEnabled(enabled)
   flashEnabled = enabled and true or false
 end

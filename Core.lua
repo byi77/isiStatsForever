@@ -13,6 +13,7 @@ local DEFAULTS = {
   chatHistoryArrows = true, -- Up / Down in the chat input walk the sent lines
   chatHistory = {}, -- sent chat lines, oldest first (ChatHistory.lua)
   resetMeterOnJoin = true, -- clear Blizzard's damage meter when joining a group
+  combatBanner = true, -- big fading text in the middle on combat start and end
   errors = {}, -- own Lua errors (ErrorLog.lua)
   pos = nil, -- { point, relativePoint, x, y }
   collapsed = {},
@@ -186,6 +187,14 @@ end
 
 function ns.SetResetMeterOnJoin(value)
   db.resetMeterOnJoin = value and true or false
+end
+
+function ns.GetCombatBanner()
+  return db and db.combatBanner and true or false
+end
+
+function ns.SetCombatBanner(value)
+  db.combatBanner = value and true or false
 end
 
 local function resetMeterOnJoin(partyGUID)
@@ -577,8 +586,14 @@ events:SetScript("OnEvent", function(self, event, arg1, arg2)
     end
     if event == "PLAYER_REGEN_DISABLED" then
       ns.SetInFight(true)
+      if db.combatBanner then
+        ns.UI.ShowCombatBanner(L.COMBAT_START, "bad")
+      end
     elseif event == "PLAYER_REGEN_ENABLED" then
       ns.SetInFight(false)
+      if db.combatBanner then
+        ns.UI.ShowCombatBanner(L.COMBAT_END, "good")
+      end
     end
     if ns.Warnings.EVENTS[event] or ns.Warnings.UNIT_EVENTS[event] then
       ns.Warnings.Update() -- after SetInFight

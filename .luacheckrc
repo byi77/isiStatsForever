@@ -99,6 +99,7 @@ read_globals = {
   "PlaySound",
   "RaidWarningFrame",
   "SOUNDKIT",
+  "STANDARD_TEXT_FONT",
   "UnitXP",
   "UnitXPMax",
   "geterrorhandler",
