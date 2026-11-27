@@ -4,7 +4,7 @@
 
 - Added: gear section with the durability of all equipped items, the weakest one in the tooltip (off by default).
 - Added: chat line on a level-up with what the level gave (attributes, health, mana), as the game reports it.
-- Added: out of combat a short yellow hint when the equipped weapons are (nearly) at their maximum and a weapon in the bags can still rise.
+- Added: out of combat a short yellow hint when the equipped weapons are (nearly) at their maximum and a weapon in the bags can still rise (5 s, each weapon only once per session, not again after a fight).
 - Added: session row "Deaths" with the repair costs since the login in its tooltip; the session XP tooltip splits kills from quests and the rest.
 - Added: `/isistats flights` shows how many flights were measured and the time flown.
 

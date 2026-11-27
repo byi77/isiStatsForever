@@ -586,7 +586,12 @@ do
     end,
   }
   after3s("BAG_UPDATE_DELAYED")
-  check(shown("skill_bag") == string.format(ns.L.WARN_SKILL_BAG_FMT, "Dolche 120/200"), "weapon to train in the bags")
+  check(shown("skill_bag") == string.format(ns.L.WARN_SKILL_BAG_FMT, "Dolche"), "weapon to train in the bags")
+  fight(true)
+  check(shown("skill_bag") == nil, "bag hint: not in a fight")
+  fight(false)
+  after3s("BAG_UPDATE_DELAYED")
+  check(shown("skill_bag") == nil, "bag hint once per session, not again after a fight")
   bowRank = 120
   StubFrames[1].scripts.OnEvent(StubFrames[1], "SKILL_LINES_CHANGED")
   check(shown("skill_bag") == nil, "equipped weapon still rises: no bag hint")

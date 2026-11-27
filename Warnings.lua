@@ -532,6 +532,8 @@ end
 --            2026-11-27 for the weapon skill text: once per fight, briefly)
 --   renotice true: a notice comes again when its text changes (bags: 2 free,
 --            1 free, full; user decision 2026-11-27: 5 s)
+--   once     true: a notice shows each text only once per session, also not
+--            again after a fight or when the cause comes back
 --   check()  text to show, false for none, nil when the game does not say
 Warnings.LIST = {
   {
@@ -826,8 +828,8 @@ Warnings.LIST = {
     calm = true,
     silent = true,
     color = "warn",
-    notice = 8,
-    renotice = true,
+    notice = 5,
+    once = true, -- user decision 2026-11-27: must never nag
     check = function()
       local Skills = ns.Skills
       local equipped = false
@@ -861,7 +863,7 @@ Warnings.LIST = {
               seen[id] = true
               local s = ns.Data.GetSkill(id)
               if s and s.max and s.max - s.rank > SKILL_GAP then
-                parts[#parts + 1] = string.format("%s %d/%d", s.name, s.rank, s.max)
+                parts[#parts + 1] = s.name -- no ranks: the text is what `once` remembers
               end
             end
           end
@@ -963,6 +965,7 @@ end
 local pending = {} -- key -> run of the timer that may show it
 local noticeEnd = {} -- key -> GetTime() when a `notice` warning is hidden again
 local noticeText = {} -- key -> the text that notice was shown with
+local shownOnce = {} -- key -> set of texts a `once` notice has already shown
 local runs = 0
 
 local function clock()
@@ -975,8 +978,17 @@ local function show(warning, text)
   local key = warning.key
   if warning.notice then
     local t = clock()
+    local seen = shownOnce[key]
+    if warning.once and seen and seen[text] and noticeText[key] ~= text then
+      ns.UI.SetAlert(key, nil)
+      return
+    end
     if not noticeEnd[key] or (warning.renotice and noticeText[key] ~= text) then
       noticeEnd[key], noticeText[key] = t + warning.notice, text
+      if warning.once then
+        shownOnce[key] = seen or {}
+        shownOnce[key][text] = true
+      end
       if type(C_Timer) == "table" and C_Timer.After then
         C_Timer.After(warning.notice, function()
           Warnings.Update()
