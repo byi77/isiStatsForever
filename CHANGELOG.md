@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.12.1 - 2026-11-27
+
 - Changed: the weapon skill text in combat (skill below its maximum) shows only for 5 seconds, once per fight.
 - Fixed: the flight bar and flight times never started: the game reports the character on the taxi only a moment after take-off. Take-off and landing are now checked a few times per second; a click on a flight point also counts when another addon replaces the game's taxi function.
 - Added: warning when a profession is at its rank's maximum (75, 150, 225) and you are high enough for the next rank at the trainer.
