@@ -476,11 +476,22 @@ do
       return freeSlots[bag], bag == 2 and 8 or 0
     end,
   }
+  local bagTime, bagClock = GetTime, 100
+  GetTime = function()
+    return bagClock
+  end
   after3s("BAG_UPDATE_DELAYED")
   check(shown("bags") == string.format(ns.L.WARN_BAGS_FMT, 2), "bags: 2 free slots, herb bag left out")
+  bagClock = 106
+  after3s("BAG_UPDATE_DELAYED")
+  check(shown("bags") == nil, "bags: text only for 5 s")
   freeSlots[0], freeSlots[1] = 0, 0
   after3s("BAG_UPDATE_DELAYED")
-  check(shown("bags") == ns.L.WARN_BAGS_FULL, "bags full")
+  check(shown("bags") == ns.L.WARN_BAGS_FULL, "bags full: shown again for the new text")
+  bagClock = 112
+  after3s("BAG_UPDATE_DELAYED")
+  check(shown("bags") == nil, "bags full: gone after 5 s")
+  GetTime = bagTime
   freeSlots[0] = 10
   after3s("BAG_UPDATE_DELAYED")
   check(shown("bags") == nil, "bags: room again")

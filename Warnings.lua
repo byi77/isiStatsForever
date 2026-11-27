@@ -529,6 +529,8 @@ end
 --   notice   seconds: shown once for this long while the cause lasts, then
 --            hidden until the cause is gone and comes again (user decision
 --            2026-11-27 for the weapon skill text: once per fight, briefly)
+--   renotice true: a notice comes again when its text changes (bags: 2 free,
+--            1 free, full; user decision 2026-11-27: 5 s)
 --   check()  text to show, false for none, nil when the game does not say
 Warnings.LIST = {
   {
@@ -729,6 +731,8 @@ Warnings.LIST = {
   },
   {
     key = "bags",
+    notice = 5,
+    renotice = true,
     check = function()
       local api = type(C_Container) == "table" and C_Container or {}
       local free, known = 0, false
@@ -904,11 +908,33 @@ end
 
 local pending = {} -- key -> run of the timer that may show it
 local noticeEnd = {} -- key -> GetTime() when a `notice` warning is hidden again
+local noticeText = {} -- key -> the text that notice was shown with
+local runs = 0
 
 local function clock()
   return type(GetTime) == "function" and GetTime() or 0
 end
-local runs = 0
+
+-- Shows a warning's text; a `notice` warning only for its seconds (again for a
+-- new text with `renotice`), then hidden while the cause lasts.
+local function show(warning, text)
+  local key = warning.key
+  if warning.notice then
+    local t = clock()
+    if not noticeEnd[key] or (warning.renotice and noticeText[key] ~= text) then
+      noticeEnd[key], noticeText[key] = t + warning.notice, text
+      if type(C_Timer) == "table" and C_Timer.After then
+        C_Timer.After(warning.notice, function()
+          Warnings.Update()
+        end)
+      end
+    elseif t >= noticeEnd[key] then
+      ns.UI.SetAlert(key, nil)
+      return
+    end
+  end
+  ns.UI.SetAlert(key, text, warning.silent, warning.color or "bad")
+end
 
 -- ITEM_DATA_LOAD_RESULT (registered by Core): only for a name asked for.
 function Warnings.OnItemLoaded(itemID)
@@ -927,32 +953,18 @@ function Warnings.Update(now)
     if ns.IsRowEnabled(Warnings.OptionId(warning)) then
       result = Warnings.Check(warning, classToken)
     end
-    if warning.notice and (result or (result == nil and noticeEnd[key])) then
-      -- brief: shown from the first sight of the cause for `notice` seconds
+    if result == nil then -- unknown: leave it as it is (a brief one still goes)
       pending[key] = nil
-      local t = clock()
-      if not noticeEnd[key] then
-        noticeEnd[key] = t + warning.notice
-        if type(C_Timer) == "table" and C_Timer.After then
-          C_Timer.After(warning.notice, function()
-            Warnings.Update()
-          end)
-        end
-      end
-      if t >= noticeEnd[key] then
+      if warning.notice and noticeEnd[key] and clock() >= noticeEnd[key] then
         ns.UI.SetAlert(key, nil)
-      elseif result then
-        ns.UI.SetAlert(key, result, warning.silent, warning.color or "bad")
       end
-    elseif result == nil then -- unknown: leave it as it is
-      pending[key] = nil
     elseif not result then
       pending[key] = nil
-      noticeEnd[key] = nil
+      noticeEnd[key], noticeText[key] = nil, nil
       ns.UI.SetAlert(key, nil)
-    elseif ns.UI.GetAlert(key) or now or (warning.delay or DEFAULT_DELAY) == 0 then
+    elseif ns.UI.GetAlert(key) or noticeEnd[key] or now or (warning.delay or DEFAULT_DELAY) == 0 then
       pending[key] = nil
-      ns.UI.SetAlert(key, result, warning.silent, warning.color or "bad")
+      show(warning, result)
     elseif not pending[key] and type(C_Timer) == "table" and C_Timer.After then
       runs = runs + 1
       local run = runs
@@ -964,7 +976,7 @@ function Warnings.Update(now)
         pending[key] = nil
         local text = ns.IsRowEnabled(Warnings.OptionId(warning)) and Warnings.Check(warning, playerClass())
         if text then
-          ns.UI.SetAlert(key, text, warning.silent, warning.color or "bad")
+          show(warning, text)
         end
       end)
     end

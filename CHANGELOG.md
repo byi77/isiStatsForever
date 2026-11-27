@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Changed: the bag warning shows for 5 seconds only, and again when the count changes (2 free, 1 free, full).
+
 ## 0.12.1 - 2026-11-27
 
 - Changed: the weapon skill text in combat (skill below its maximum) shows only for 5 seconds, once per fight.
