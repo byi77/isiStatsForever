@@ -18,6 +18,7 @@
 - **Flight times**: every whole flight you take is measured and saved on your own install. The flight map tooltip shows the time of each flight point (or a ~ estimate from saved stretches), and during the flight a bar shows start -> destination with the time left (counting up when the time is not known yet).
 - **More warnings**: almost full bags, unspent talent points, and in combat a quiet yellow hint while an equipped weapon skill can still rise.
 - **XP per hour, kills to the next level, session values** (time, XP, gold, kills since the login): optional rows.
+- **Professions** at their rank's maximum, time to the maximum weapon skill, gold per hour, hearthstone cooldown, repair costs (automatic repair optional), time per level.
 - **Combat banner**: a big text in the middle of the screen when combat starts and ends.
 - **Damage meter reset**: Blizzard's damage meter starts empty in every group you join.
 - **Chat history**: Up / Down in the chat input step through your sent lines, also after a restart.
@@ -46,6 +47,7 @@ Rounded, compact window that floats freely (open from the start) or docks to the
 - `/isistats dock` / `free` / `reset`, `/isistats lock` / `unlock`
 - `/isistats flights` - saved flight times and routes never flown (`flights clear` deletes them)
 - `/isistats session reset` - start the session values again
+- `/isistats levels` - time per level
 - `/isistats errors` - error log for bug reports
 
 Bug reports and ideas: https://github.com/byi77/isiStatsForever/issues

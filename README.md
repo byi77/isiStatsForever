@@ -15,6 +15,8 @@ Character stats for **WoW Forever** (client 1.60.x, interface 16001): attributes
 - **Warnings** also for almost full bags, unspent talent points and (in combat, yellow, silent) an equipped weapon skill below its maximum.
 - **XP per hour, kills to the next level and session values** (time, XP, gold, kills since the login): optional rows, off by default; `/isistats session reset`.
 - **Landing notice** 5 seconds before a known arrival; `/isistats flights` also lists routes from the last flight master you never flew.
+- **Professions** at their rank's maximum: a warning to learn the next rank. Weapon skill tooltips show the time to the maximum.
+- **Gold per hour, hearthstone cooldown**, repair costs at a vendor (automatic repair optional) and the time per level (`/isistats levels`).
 - **Combat banner**: a big fading text in the middle of the screen when combat starts and ends; on by default, switchable.
 - **Damage meter reset**: Blizzard's damage meter is cleared once each time you join a group (not on /reload); switchable.
 - **Chat history**: Up / Down in the chat input step through the lines you sent, kept across /reload and restarts (last 100; `/isistats chat clear`).

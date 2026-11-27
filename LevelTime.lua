@@ -29,6 +29,7 @@ local MIN_GAINS = 3 -- gains in the window before it replaces the level average
 local MIN_ACTIVE = 300 -- seconds of active play in the window, same purpose
 
 local levelSeconds -- played seconds on this level at `receivedAt`
+local saved -- IsiStatsCharDB: levelTimes[level] = seconds that level took
 local receivedAt -- GetTime() of the answer
 local muted = {}
 
@@ -88,8 +89,16 @@ function LevelTime.OnTimePlayed(_, thisLevel)
   end
 end
 
--- A new level starts at zero.
-function LevelTime.OnLevelUp()
+-- A new level starts at zero; the finished level's time is kept (only when
+-- the game's played time was in, so the whole level was measured).
+function LevelTime.OnLevelUp(newLevel)
+  local finished = ns.Util.num(newLevel)
+  finished = finished and finished - 1
+  if levelSeconds and finished and saved then
+    local spent = LevelTime.Seconds()
+    saved.levelTimes[finished] = math.floor(spent + 0.5)
+    ns.Print(string.format(ns.L.LEVEL_DONE_FMT, finished, LevelTime.Format(spent)))
+  end
   if levelSeconds then
     levelSeconds = 0
     receivedAt = now()
@@ -111,6 +120,8 @@ end
 
 -- ADDON_LOADED: the saved gains of this character.
 function LevelTime.Init(charDB)
+  saved = charDB
+  charDB.levelTimes = type(charDB.levelTimes) == "table" and charDB.levelTimes or {}
   if type(charDB.xpRate) ~= "table" or type(charDB.xpRate.gains) ~= "table" then
     charDB.xpRate = { active = 0, gains = {} }
   end
@@ -199,6 +210,24 @@ function LevelTime.Estimate(currentXP, remainingXP)
     return nil
   end
   return remainingXP / (currentXP / seconds), "level"
+end
+
+-- /isistats levels: the kept time of every level, lowest first.
+function LevelTime.PrintLevels(out)
+  local L = ns.L
+  local levels = {}
+  for level in pairs(saved and saved.levelTimes or {}) do
+    levels[#levels + 1] = level
+  end
+  table.sort(levels)
+  if #levels == 0 then
+    out(L.LEVEL_NONE)
+    return
+  end
+  out(string.format(L.LEVEL_LIST_FMT, #levels))
+  for _, level in ipairs(levels) do
+    out(string.format(L.LEVEL_LINE_FMT, level, LevelTime.Format(saved.levelTimes[level])))
+  end
 end
 
 -- "2d 3h", "1h 23m", "45m" (days with the locale's day letter).

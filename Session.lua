@@ -13,6 +13,10 @@ local Session = {}
 ns.Session = Session
 
 local PAIR_WINDOW = 1 -- s: a kill message and an XP gain this close belong together
+local SKILL_IDLE_CAP = 300 -- s: a longer gap between two skill-ups counts as this
+local SKILL_SAMPLES = 10 -- recent skill-ups the pace is taken from
+local MIN_SKILL_UPS = 3 -- fewer: no estimate
+local GOLD_RATE_MIN = 600 -- s of session before gold per hour is shown
 local KILL_SAMPLES = 20 -- recent kills the average is taken from
 local MIN_KILLS = 3 -- fewer: no estimate
 
@@ -20,11 +24,15 @@ local charDB
 local killAt -- GetTime() of a kill message still waiting for its XP gain
 local lastGain, lastGainAt -- an XP gain still waiting for a kill message
 local killGains = {}
+-- Weapon skill-ups of this session (not saved): id -> { rank, at, ups = { { dt, gain } } }
+local skillSeen = {}
 
 Session.EVENTS = {
   PLAYER_ENTERING_WORLD = true,
   PLAYER_MONEY = true,
   CHAT_MSG_COMBAT_XP_GAIN = true,
+  SKILL_LINES_CHANGED = true,
+  PLAYER_REGEN_ENABLED = true, -- skill ranks may be hidden in combat: catch up
 }
 
 local function money()
@@ -68,14 +76,50 @@ function Session.OnXPGain(gain)
   end
 end
 
+-- Weapon skill ranks now: a higher rank than before is a skill-up, with the
+-- active time since the previous one (capped like the XP rate).
+function Session.OnSkillsChanged()
+  local t = type(GetTime) == "function" and GetTime() or 0
+  for _, id in ipairs(ns.Skills.WEAPON_SKILL_ORDER) do
+    local s = ns.Data.GetSkill(id)
+    local seen = skillSeen[id]
+    if s and seen and s.rank > seen.rank then
+      local ups = seen.ups
+      ups[#ups + 1] = { math.min(math.max(0, t - seen.at), SKILL_IDLE_CAP), s.rank - seen.rank }
+      if #ups > SKILL_SAMPLES then
+        table.remove(ups, 1)
+      end
+      seen.rank, seen.at = s.rank, t
+    elseif s and (not seen or s.rank < seen.rank) then
+      skillSeen[id] = { rank = s.rank, at = t, ups = {} }
+    end
+  end
+end
+
+-- Seconds until the skill reaches max at the pace of its recent skill-ups, or nil.
+function Session.SkillEta(id, rank, max)
+  local seen = skillSeen[id]
+  if not (seen and max and rank < max) or #seen.ups < MIN_SKILL_UPS then
+    return nil
+  end
+  local dt, gain = 0, 0
+  for _, u in ipairs(seen.ups) do
+    dt, gain = dt + u[1], gain + u[2]
+  end
+  return dt > 0 and gain > 0 and (max - rank) * dt / gain or nil
+end
+
 function Session.OnEvent(event, isInitialLogin)
   local s = charDB and charDB.session
-  if event == "PLAYER_ENTERING_WORLD" then
+  if event == "SKILL_LINES_CHANGED" or event == "PLAYER_REGEN_ENABLED" then
+    Session.OnSkillsChanged()
+  elseif event == "PLAYER_ENTERING_WORLD" then
     if isInitialLogin == true then
       Session.Reset()
     elseif s and s.money == nil then
       s.money = money()
     end
+    Session.OnSkillsChanged()
   elseif event == "CHAT_MSG_COMBAT_XP_GAIN" and s then
     s.kills = s.kills + 1
     local t = GetTime()
@@ -116,9 +160,17 @@ function Session.Values()
   }
 end
 
--- "+1g 23s 4c" / "-56s"
-function Session.FormatMoney(copper)
-  local sign = copper < 0 and "-" or "+"
+-- Gold won or spent per hour (copper), once the session is GOLD_RATE_MIN old.
+function Session.GoldPerHour(v)
+  if not (v and v.gold) or v.seconds < GOLD_RATE_MIN then
+    return nil
+  end
+  return math.floor(v.gold * 3600 / v.seconds + 0.5)
+end
+
+-- "+1g 23s 4c" / "-56s"; unsigned: no "+".
+function Session.FormatMoney(copper, unsigned)
+  local sign = copper < 0 and "-" or (unsigned and "" or "+")
   copper = math.abs(copper)
   local g, s, c = math.floor(copper / 10000), math.floor(copper % 10000 / 100), copper % 100
   local parts = {}

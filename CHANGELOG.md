@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Fixed: the flight bar and flight times never started: the game reports the character on the taxi only a moment after take-off. Take-off and landing are now checked a few times per second; a click on a flight point also counts when another addon replaces the game's taxi function.
+- Added: warning when a profession is at its rank's maximum (75, 150, 225) and you are high enough for the next rank at the trainer.
+- Added: weapon skill tooltip with the time to the maximum at the pace of your recent skill-ups.
+- Added: session row "Gold per hour" (from 10 minutes on, off by default).
+- Added: travel section with the hearthstone's cooldown and where it is bound (off by default).
+- Added: repair costs as a chat line at a vendor (on by default) and automatic repair (off by default).
+- Added: the time of every finished level is kept (chat line on the level-up); `/isistats levels` lists them.
+
 ## 0.12.0 - 2026-11-27
 
 - Added: warning when your bags are almost full (2 free slots or less, profession bags not counted) and when they are full.

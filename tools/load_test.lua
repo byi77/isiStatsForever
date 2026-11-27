@@ -516,6 +516,28 @@ do
   check(shown("skillup") == string.format(ns.L.WARN_SKILLUP_FMT, "Bogen 100/150"), "skill below max in combat")
   fight(false)
   check(shown("skillup") == nil, "skill text gone after the fight")
+
+  -- Profession at its rank's cap, only from the level the next rank needs.
+  C_SkillInfo = {
+    GetSkillLineInfoByID = function(id)
+      if id == 182 then
+        return { name = "Kräuterkunde", rank = 75, maxRank = 75, modifier = 0 }
+      end
+      return skillInfo.GetSkillLineInfoByID(id)
+    end,
+  }
+  after3s("SKILL_LINES_CHANGED")
+  check(
+    shown("profession") == string.format(ns.L.WARN_PROFESSION_FMT, "Kräuterkunde 75/75"),
+    "profession at its rank's cap"
+  )
+  local unitLevel = UnitLevel
+  UnitLevel = function()
+    return 8
+  end
+  after3s("SKILL_LINES_CHANGED")
+  check(shown("profession") == nil, "too low for the next rank: nothing")
+  UnitLevel = unitLevel
   C_SkillInfo = skillInfo
 
   -- Rogue: poison; Shaman: imbue in combat; self buffs; reagents.
@@ -1871,6 +1893,31 @@ do
   check(ns.Flights.Get(3242, 52) == 80, "last flight counts")
   check(ns.UI.GetFlightBar() == false, "no bar on the ground")
 
+  -- UnitOnTaxi turns true only after PLAYER_CONTROL_LOST: take-off and landing polled
+  ev.scripts.OnEvent(ev, "TAXIMAP_OPENED")
+  local before = #printed
+  ns.Flights.OnTakeTaxi(2)
+  ns.Flights.OnTakeTaxi(2) -- the click hook and the TakeTaxiNode hook: one click
+  check(#printed == before + 1, "one click reported twice: one message")
+  ev.scripts.OnEvent(ev, "PLAYER_CONTROL_LOST")
+  check(not ns.UI.GetFlightBar(), "not on the taxi yet: no bar")
+  now = now + 1
+  taxi = true
+  ns.Flights.Poll()
+  check(ns.UI.GetFlightBar(), "take-off seen by polling")
+  now = now + 60
+  taxi = false
+  ns.Flights.Poll()
+  check(not ns.UI.GetFlightBar() and ns.Flights.Get(3242, 52) == 60, "landing seen by polling")
+  ns.Flights.OnTakeTaxi(2)
+  now = now + 11
+  ns.Flights.Poll()
+  taxi = true
+  ns.Flights.Poll()
+  check(not ns.UI.GetFlightBar(), "no take-off within 10 s: click forgotten")
+  taxi = false
+  IsiStatsDB.flights.Alliance[3242][52] = 80
+
   -- landing announced LANDING_LEAD seconds before a known arrival
   local landingTimers = {}
   local timerAfter = C_Timer.After
@@ -1937,8 +1984,8 @@ do
   }
   local pin = {
     taxiNodeData = { slotIndex = 2 },
-    HookScript = function(self, _, fn)
-      self.onEnter = fn
+    HookScript = function(self, script, fn)
+      self[script] = fn
     end,
   }
   local pool = {
@@ -1955,11 +2002,19 @@ do
   }
   FlightMapFrame = { pinPools = { FlightMap_FlightPointPinTemplate = pool } }
   ev.scripts.OnEvent(ev, "TAXIMAP_OPENED")
-  pin.onEnter(pin)
+  pin.OnEnter(pin)
   check(tipLines[1] and tipLines[1]:find("1:20", 1, true), "flight map tooltip: saved time")
   pin.taxiNodeData.slotIndex = 3
-  pin.onEnter(pin)
+  pin.OnEnter(pin)
   check(tipLines[2] and tipLines[2]:find("~2:00", 1, true), "flight map tooltip: estimate")
+  pin.taxiNodeData.slotIndex = 2
+  pin.OnClick(pin, "LeftButton")
+  now = now + 1
+  taxi = true
+  ns.Flights.Poll()
+  check(ns.UI.GetFlightBar(), "click on a flight map pin starts the measurement")
+  ns.Flights.Abort()
+  taxi = false
   FlightMapFrame, GameTooltip, GetNumRoutes, TaxiGetNodeSlot = nil, nil, nil, nil
   C_TaxiMap.GetAllTaxiNodes = nodes
   IsiStatsDB.flights.Alliance[52] = nil
@@ -2021,6 +2076,103 @@ do
   check(ns.Session.Values().kills == 5, "session kept across /reload")
   ev.scripts.OnEvent(ev, "PLAYER_ENTERING_WORLD", true, false)
   check(ns.Session.Values().kills == 0, "session new on login")
+
+  -- gold per hour from 10 minutes on
+  check(ns.Session.GoldPerHour({ seconds = 300, gold = 1000 }) == nil, "gold per hour: not before 10 minutes")
+  check(ns.Session.GoldPerHour({ seconds = 1800, gold = 5000 }) == 10000, "gold per hour")
+
+  -- weapon skill-ups: time to the maximum at their pace
+  local rank = 50
+  local skillInfo = C_SkillInfo
+  C_SkillInfo = {
+    GetSkillLineInfoByID = function(id)
+      if id == ns.Skills.SKILL.BOWS then
+        return { name = "Bogen", rank = rank, maxRank = 150, modifier = 0 }
+      end
+    end,
+  }
+  ns.Session.OnSkillsChanged()
+  for _ = 1, 3 do
+    now = now + 60
+    rank = rank + 1
+    ev.scripts.OnEvent(ev, "SKILL_LINES_CHANGED")
+  end
+  check(ns.Session.SkillEta(ns.Skills.SKILL.BOWS, rank, 150) == 97 * 60, "skill time to the maximum")
+  now = now + 3600
+  rank = rank + 1
+  ns.Session.OnSkillsChanged()
+  check(ns.Session.SkillEta(ns.Skills.SKILL.BOWS, rank, 150) == 96 * 480 / 4, "a long break counts as 5 minutes")
+  C_SkillInfo = skillInfo
+
+  -- time per level, kept on the level-up
+  ns.LevelTime.OnTimePlayed(0, 100)
+  ns.LevelTime.OnLevelUp(13)
+  check(IsiStatsCharDB.levelTimes[12] == 100, "level time kept on the level-up")
+  SlashCmdList.ISISTATS("levels")
+
+  -- repair costs and automatic repair at a vendor
+  local repaired, lines = 0, {}
+  local saved = { n = 4, CanMerchantRepair, GetRepairAllCost, RepairAllItems, print }
+  print = function(msg)
+    lines[#lines + 1] = msg
+  end
+  CanMerchantRepair = function()
+    return true
+  end
+  GetRepairAllCost = function()
+    return 12345, true
+  end
+  RepairAllItems = function()
+    repaired = repaired + 1
+  end
+  ev.scripts.OnEvent(ev, "MERCHANT_SHOW")
+  check(
+    repaired == 0 and lines[#lines] and lines[#lines]:find("1|cffffd700g|r 23|cffc7c7cfs|r 45", 1, true),
+    "repair costs in the chat"
+  )
+  ns.SetAutoRepair(true)
+  copper = 20000
+  ev.scripts.OnEvent(ev, "MERCHANT_SHOW")
+  check(repaired == 1, "automatic repair")
+  copper = 100
+  ev.scripts.OnEvent(ev, "MERCHANT_SHOW")
+  check(repaired == 1, "automatic repair: not without the gold")
+  ns.SetAutoRepair(false)
+  CanMerchantRepair, GetRepairAllCost, RepairAllItems, print = (table.unpack or unpack)(saved, 1, saved.n)
+
+  -- hearthstone: cooldown and place
+  local hearthBackup = { n = 3, C_Item, C_Container, GetBindLocation }
+  C_Item = {
+    GetItemCount = function(id)
+      return id == 6948 and 1 or 0
+    end,
+  }
+  C_Container = {
+    GetItemCooldown = function()
+      return now - 600, 3600, 1
+    end,
+  }
+  GetBindLocation = function()
+    return "Goldhain"
+  end
+  ns.SetRowEnabled("hearth", true)
+  local hearth = findRow(ns.Data.Collect(), ns.L.HEARTH)
+  check(hearth and hearth.value == "50m" and hearth.tip:find("Goldhain", 1, true), "hearthstone cooldown and place")
+  C_Container = {
+    GetItemCooldown = function()
+      return 0, 0, 1
+    end,
+  }
+  hearth = findRow(ns.Data.Collect(), ns.L.HEARTH)
+  check(hearth and hearth.value == ns.L.HEARTH_READY, "hearthstone ready")
+  C_Item = {
+    GetItemCount = function()
+      return 0
+    end,
+  }
+  check(not findRow(ns.Data.Collect(), ns.L.HEARTH), "no hearthstone: no row")
+  ns.SetRowEnabled("hearth", false)
+  C_Item, C_Container, GetBindLocation = (table.unpack or unpack)(hearthBackup, 1, hearthBackup.n)
   SlashCmdList.ISISTATS("session reset")
   GetTime, GetMoney = (table.unpack or unpack)(backup, 1, backup.n)
 end

@@ -149,6 +149,10 @@ function Options.Sync()
   if panel.combatBanner then
     panel.combatBanner:SetChecked(ns.GetCombatBanner())
   end
+  if panel.repairCost then
+    panel.repairCost:SetChecked(ns.GetRepairCost())
+    panel.autoRepair:SetChecked(ns.GetAutoRepair())
+  end
   if panel.flightTimes then
     panel.flightTimes:SetChecked(ns.GetFlightTimes())
     panel.flightBar:SetChecked(ns.GetFlightBar())
@@ -248,6 +252,14 @@ local function build()
   end)
   panel.flightBarUnknown = checkbox(content, 16 + COL_W, y, L.OPT_FLIGHT_BAR_UNKNOWN, function(checked)
     ns.SetFlightBarUnknown(checked)
+  end)
+  y = y - ROW_H - 4
+
+  panel.repairCost = checkbox(content, 16, y, L.OPT_REPAIR_COST, function(checked)
+    ns.SetRepairCost(checked)
+  end)
+  panel.autoRepair = checkbox(content, 16 + COL_W, y, L.OPT_AUTO_REPAIR, function(checked)
+    ns.SetAutoRepair(checked)
   end)
   y = y - ROW_H - 4
 

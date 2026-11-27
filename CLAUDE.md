@@ -60,14 +60,21 @@ class defaults - `Data.lua` collects the sections - `CombatCache.lua` last value
   `/reload` inside a group (user request 2026-11-22: clear once per group join).
 - Flight times (`Flights.lua`, user request 2026-11-27): only own measurements. Click = post-hook on
   `TakeTaxiNode(slot)`, node IDs from `C_TaxiMap.GetAllTaxiNodes(GetTaxiMapID())` (cached on
-  `TAXIMAP_OPENED`, `slotIndex` -> `nodeID`, state `Enum.FlightPathState.Current` = start), take-off
-  `PLAYER_CONTROL_LOST` + `UnitOnTaxi`, landing `PLAYER_CONTROL_GAINED`. Dropped: `TaxiRequestEarlyLanding`,
+  `TAXIMAP_OPENED`, `slotIndex` -> `nodeID`, state `Enum.FlightPathState.Current` = start), plus
+  `HookScript("OnClick")` on the buttons and pins (another addon may replace the `TakeTaxiNode` global).
+  `UnitOnTaxi` turns true only a moment after `PLAYER_CONTROL_LOST`: take-off and landing are polled
+  every 0.2 s (`Flights.Poll`), the events only check once more (bug 2026-11-27: no bar, no times). Dropped: `TaxiRequestEarlyLanding`,
   `C_SummonInfo.ConfirmSummon`, `AcceptBattlefieldPort(_, true)`, `LFG_PROPOSAL_SUCCEEDED`,
   `PLAYER_LEAVING_WORLD`. Estimate (user decision 2026-11-27, exception to no-guess): sum of saved
   times along the game's hops (`GetNumRoutes`, `TaxiGetNodeSlot(slot, hop, true)`), always shown with
   `~`, never saved. Tooltip: `HookScript("OnEnter")` on `TaxiButton<slot>` and the
   `FlightMap_FlightPointPinTemplate` pins. Never name other flight addons in repo files. Landing notice:
   `C_Timer.After(total - 5)`, cancelled by a run counter.
+- Professions: skill line IDs through `Data.GetSkill`; a rank cap of 75 / 150 / 225 warns from level
+  10 / 20 / 35 (classic trainer rules, not checked in game data). Repair: `CanMerchantRepair`,
+  `GetRepairAllCost`, `RepairAllItems` on `MERCHANT_SHOW` (as MerchantFrame does). Hearthstone item 6948:
+  `C_Container.GetItemCooldown`, `GetBindLocation`. Level times in `IsiStatsCharDB.levelTimes` (only
+  when the played time was in at the level-up).
 - Talents: Forever ("Camelot" in Blizzard's source) uses the trait trees; unspent points come from
   `C_ClassTalents.HasUnspentTalentPoints()` (bool, class points, spec points).
 - Kills (`Session.lua`): a `CHAT_MSG_COMBAT_XP_GAIN` event counts, its text is never read (may be

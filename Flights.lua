@@ -6,9 +6,10 @@ local call, num, str, isSecret = U.call, U.num, U.str, U.isSecret
 -- Flight times, measured by this game install: taking a flight at a flight
 -- master notes where from and where to (the game's flight point IDs), the
 -- flight starts when the character is on the taxi and ends when it is off it
--- again. Only whole flights are kept: an early landing, a summon, a battleground
--- or dungeon finder port, a loading screen or a /reload on the way drops the
--- measurement. Saved account-wide per faction in
+-- again. UnitOnTaxi turns true only a moment after PLAYER_CONTROL_LOST, so
+-- take-off and landing are polled (POLL) besides the events. Only whole
+-- flights are kept: an early landing, a summon, a battleground or dungeon
+-- finder port, a loading screen or a /reload on the way drops the measurement. Saved account-wide per faction in
 -- IsiStatsDB.flights[faction][fromID][toID] = seconds (the last flight counts),
 -- the names in IsiStatsDB.flightNames[nodeID]. Nothing comes from elsewhere.
 --
@@ -25,12 +26,15 @@ ns.Flights = Flights
 local START_WINDOW = 10 -- s: the taxi has to start this soon after the click
 local LANDING_LEAD = 5 -- s: "Landing" this long before the known arrival
 local MIN_SECONDS = 5 -- shorter: not a real flight
+local POLL = 0.2 -- s between UnitOnTaxi checks while waiting or flying
+local SAME_CLICK = 1 -- s: the click hook and the TakeTaxiNode hook report one click
 
 local db
 local pending -- { from, to, at, estimate } from the click
 local flight -- { from, to, start, estimate } while on the taxi
 local opened -- { bySlot, current } of the open flight map (read when it opens)
 local hookedButtons = setmetatable({}, { __mode = "k" })
+local watcher -- frame polling UnitOnTaxi while a flight is pending or running
 local landingRun = 0
 
 Flights.EVENTS = {
@@ -183,22 +187,36 @@ local function onPinEnter(pin)
   addTooltipLine(data and num(data.slotIndex))
 end
 
-local function hookButton(button, fn)
+-- The clicks themselves, in case another addon replaces the TakeTaxiNode
+-- global after this hook was placed.
+local function onTaxiButtonClick(button)
+  Flights.OnTakeTaxi(num(call(button.GetID, button)))
+end
+
+local function onPinClick(pin, mouse)
+  local data = type(pin.taxiNodeData) == "table" and pin.taxiNodeData or nil
+  if mouse == "LeftButton" and data and not pin.isMapLayerTransition then
+    Flights.OnTakeTaxi(num(data.slotIndex))
+  end
+end
+
+local function hookButton(button, enter, click)
   if type(button) == "table" and not hookedButtons[button] and button.HookScript then
     hookedButtons[button] = true
-    button:HookScript("OnEnter", fn)
+    button:HookScript("OnEnter", enter)
+    button:HookScript("OnClick", click)
   end
 end
 
 function Flights.HookMap()
   for slot in pairs(opened and opened.bySlot or {}) do
-    hookButton(_G["TaxiButton" .. slot], onTaxiButtonEnter)
+    hookButton(_G["TaxiButton" .. slot], onTaxiButtonEnter, onTaxiButtonClick)
   end
   local map = _G.FlightMapFrame
   local pool = type(map) == "table" and type(map.pinPools) == "table" and map.pinPools.FlightMap_FlightPointPinTemplate
   if type(pool) == "table" and pool.EnumerateActive then
     for pin in pool:EnumerateActive() do
-      hookButton(pin, onPinEnter)
+      hookButton(pin, onPinEnter, onPinClick)
     end
   end
 end
@@ -217,6 +235,9 @@ function Flights.OnTakeTaxi(slot)
     pending = nil
     return
   end
+  if pending and pending.to == target.id and GetTime() - pending.at <= SAME_CLICK then
+    return -- the same click, reported by both hooks
+  end
   remember(current)
   remember(target)
   pending = { from = current.id, to = target.id, at = GetTime() }
@@ -226,6 +247,7 @@ function Flights.OnTakeTaxi(slot)
   else
     pending.estimate = Flights.Estimate(slot, bySlot, current)
   end
+  Flights.Watch()
 end
 
 -- "Landing" in the middle shortly before a known or estimated arrival.
@@ -260,6 +282,67 @@ local function showBar()
   end
 end
 
+-- On the taxi now: the flight starts.
+local function takeOff()
+  flight = { from = pending.from, to = pending.to, start = GetTime(), estimate = pending.estimate }
+  pending = nil
+  showBar()
+  scheduleLanding(Flights.Get(flight.from, flight.to) or flight.estimate)
+end
+
+-- Off the taxi again: the flight is over, its time saved.
+local function land()
+  local done = flight
+  flight = nil
+  landingRun = landingRun + 1
+  ns.UI.HideFlightBar()
+  local seconds = math.floor(GetTime() - done.start + 0.5)
+  local side = faction()
+  if not (db and db.flightTimes and side) or seconds < MIN_SECONDS then
+    return
+  end
+  db.flights[side] = db.flights[side] or {}
+  local list = db.flights[side]
+  list[done.from] = list[done.from] or {}
+  list[done.from][done.to] = seconds
+  ns.Print(string.format(L.FLIGHT_SAVED_FMT, Flights.Name(done.from), Flights.Name(done.to), clock(seconds)))
+end
+
+-- One check: waiting for the take-off or for the landing.
+function Flights.Poll()
+  if flight then
+    if not onTaxi() then
+      land()
+    end
+  elseif pending then
+    if onTaxi() then
+      takeOff()
+    elseif GetTime() - pending.at > START_WINDOW then
+      pending = nil -- clicked, but never took off
+    end
+  end
+  if watcher and not (flight or pending) then
+    watcher:Hide()
+  end
+end
+
+function Flights.Watch()
+  if not watcher and type(CreateFrame) == "function" then
+    watcher = CreateFrame("Frame")
+    local wait = 0
+    watcher:SetScript("OnUpdate", function(_, elapsed)
+      wait = wait + (num(elapsed) or 0)
+      if wait >= POLL then
+        wait = 0
+        Flights.Poll()
+      end
+    end)
+  end
+  if watcher then
+    watcher:Show()
+  end
+end
+
 function Flights.OnEvent(event)
   if event == "TAXIMAP_OPENED" then
     local bySlot, current = nodesBySlot()
@@ -281,30 +364,8 @@ function Flights.OnEvent(event)
       C_Timer.After(0, Flights.HookMap)
     end
     Flights.HookMap()
-  elseif event == "PLAYER_CONTROL_LOST" then
-    if pending and GetTime() - pending.at <= START_WINDOW and onTaxi() then
-      flight = { from = pending.from, to = pending.to, start = GetTime(), estimate = pending.estimate }
-      showBar()
-      scheduleLanding(Flights.Get(flight.from, flight.to) or flight.estimate)
-    end
-    pending = nil
-  elseif event == "PLAYER_CONTROL_GAINED" then
-    local done = flight
-    if not done or onTaxi() then
-      return
-    end
-    flight = nil
-    ns.UI.HideFlightBar()
-    local seconds = math.floor(GetTime() - done.start + 0.5)
-    local side = faction()
-    if not (db and db.flightTimes and side) or seconds < MIN_SECONDS then
-      return
-    end
-    db.flights[side] = db.flights[side] or {}
-    local list = db.flights[side]
-    list[done.from] = list[done.from] or {}
-    list[done.from][done.to] = seconds
-    ns.Print(string.format(L.FLIGHT_SAVED_FMT, Flights.Name(done.from), Flights.Name(done.to), clock(seconds)))
+  elseif event == "PLAYER_CONTROL_LOST" or event == "PLAYER_CONTROL_GAINED" then
+    Flights.Poll()
   elseif event == "PLAYER_LEAVING_WORLD" or event == "LFG_PROPOSAL_SUCCEEDED" then
     Flights.Abort()
   end

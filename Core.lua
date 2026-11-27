@@ -14,6 +14,8 @@ local DEFAULTS = {
   chatHistory = {}, -- sent chat lines, oldest first (ChatHistory.lua)
   resetMeterOnJoin = true, -- clear Blizzard's damage meter when joining a group
   combatBanner = true, -- big fading text in the middle on combat start and end
+  repairCost = true, -- repair costs as a chat line at a vendor that repairs
+  autoRepair = false, -- repair everything at such a vendor (own gold)
   flightTimes = true, -- measure and keep flight times (Flights.lua)
   flightBar = true, -- bar during a flight with a known or estimated time
   flightBarUnknown = true, -- also for an unknown time (counting up)
@@ -234,6 +236,51 @@ end
 
 function ns.SetCombatBanner(value)
   db.combatBanner = value and true or false
+end
+
+function ns.GetRepairCost()
+  return db and db.repairCost and true or false
+end
+
+function ns.SetRepairCost(value)
+  db.repairCost = value and true or false
+end
+
+function ns.GetAutoRepair()
+  return db and db.autoRepair and true or false
+end
+
+function ns.SetAutoRepair(value)
+  db.autoRepair = value and true or false
+end
+
+-- MERCHANT_SHOW: the repair costs in the chat, or repaired right away.
+local function onMerchantShow()
+  local U = ns.Util
+  if not (db.repairCost or db.autoRepair) then
+    return
+  end
+  local canHere = U.call(CanMerchantRepair)
+  if U.isSecret(canHere) or not canHere then
+    return
+  end
+  local cost, canRepair = U.call(GetRepairAllCost)
+  cost = U.num(cost)
+  if not cost or cost <= 0 or U.isSecret(canRepair) then
+    return
+  end
+  local price = ns.Session.FormatMoney(cost, true)
+  if db.autoRepair and canRepair then
+    local money = U.num(U.call(GetMoney))
+    if money and money >= cost then
+      U.call(RepairAllItems)
+      ns.Print(string.format(L.REPAIR_DONE_FMT, price))
+    else
+      ns.Print(string.format(L.REPAIR_NO_MONEY_FMT, price))
+    end
+  elseif db.repairCost then
+    ns.Print(string.format(L.REPAIR_COST_FMT, price))
+  end
 end
 
 local function resetMeterOnJoin(partyGUID)
@@ -583,6 +630,7 @@ events:SetScript("OnEvent", function(self, event, arg1, arg2)
     pcall(self.RegisterEvent, self, "GROUP_JOINED")
     pcall(self.RegisterEvent, self, "GROUP_FORMED")
     pcall(self.RegisterEvent, self, "ITEM_DATA_LOAD_RESULT")
+    pcall(self.RegisterEvent, self, "MERCHANT_SHOW")
     ns.Buffs.SetLoading(false)
     ns.Tracking.Schedule()
     ns.SetInFight(inCombat()) -- a reload during a fight
@@ -608,11 +656,14 @@ events:SetScript("OnEvent", function(self, event, arg1, arg2)
     elseif event == "ITEM_DATA_LOAD_RESULT" then
       ns.Warnings.OnItemLoaded(arg1)
       return
+    elseif event == "MERCHANT_SHOW" then
+      onMerchantShow()
+      return
     end
     if event == "TIME_PLAYED_MSG" then
       ns.LevelTime.OnTimePlayed(arg1, arg2)
     elseif event == "PLAYER_LEVEL_UP" then
-      ns.LevelTime.OnLevelUp()
+      ns.LevelTime.OnLevelUp(arg1)
     elseif event == "PLAYER_XP_UPDATE" then
       ns.LevelTime.OnXPUpdate()
     end
@@ -724,6 +775,8 @@ SlashCmdList.ISISTATS = function(msg)
     ns.Session.Reset()
     ns.RequestRefresh()
     out(L.SESSION_RESET)
+  elseif cmd == "levels" then
+    ns.LevelTime.PrintLevels(out)
   elseif cmd == "flights" then
     if arg == "clear" then
       ns.Flights.Clear()

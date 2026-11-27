@@ -77,6 +77,13 @@ local RIGHTEOUS_FURY = { 25780, 407627 }
 local REAGENT_LOW = 5
 local BAGS_LOW = 2 -- free slots in the normal bags
 local BAG_FIRST, BAG_LAST = 0, 4 -- backpack and the four bag slots
+-- Professions and secondary skills (skill line IDs): alchemy, blacksmithing,
+-- enchanting, engineering, herbalism, leatherworking, mining, skinning,
+-- tailoring, cooking, first aid, fishing.
+local PROFESSIONS = { 171, 164, 333, 202, 182, 165, 186, 393, 197, 185, 129, 356 }
+-- Rank caps below the last rank -> the level the next rank needs at the
+-- trainer (classic rules: Journeyman 10, Expert 20, Artisan 35).
+local PROFESSION_TRAIN_LEVEL = { [75] = 10, [150] = 20, [225] = 35 }
 
 -- Reagents: per spell family { spell, reagent item } by rank, lowest level
 -- first; only the highest known rank's reagent counts. Situational spells
@@ -780,6 +787,25 @@ Warnings.LIST = {
         end
       end
       return #parts > 0 and string.format(L.WARN_SKILLUP_FMT, table.concat(parts, ", "))
+    end,
+  },
+  {
+    key = "profession",
+    calm = true,
+    check = function()
+      local level = num(call(UnitLevel, "player"))
+      if not level then
+        return nil
+      end
+      local full = {}
+      for _, id in ipairs(PROFESSIONS) do
+        local s = ns.Data.GetSkill(id)
+        local need = s and s.max and PROFESSION_TRAIN_LEVEL[s.max]
+        if need and s.rank >= s.max and level >= need then
+          full[#full + 1] = string.format("%s %d/%d", s.name, s.rank, s.max)
+        end
+      end
+      return #full > 0 and string.format(L.WARN_PROFESSION_FMT, table.concat(full, ", "))
     end,
   },
   {

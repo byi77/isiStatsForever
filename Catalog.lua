@@ -63,7 +63,15 @@ function Data.GetCatalog()
         { id = "session_time", label = L.SESSION_TIME },
         { id = "session_xp", label = L.SESSION_XP },
         { id = "session_gold", label = L.SESSION_GOLD },
+        { id = "session_gold_rate", label = L.SESSION_GOLD_RATE },
         { id = "session_kills", label = L.SESSION_KILLS },
+      },
+    },
+    {
+      key = "travel",
+      title = L.TRAVEL_SECTION,
+      rows = {
+        { id = "hearth", label = L.HEARTH },
       },
     },
     {

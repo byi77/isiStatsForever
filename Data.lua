@@ -157,10 +157,60 @@ local function sessionSection()
       tip = L.SESSION_TIP,
     }
   end
+  if enabled("session_gold_rate") then
+    local perHour = ns.Session.GoldPerHour(v)
+    rows[#rows + 1] = {
+      key = "session_gold_rate",
+      label = L.SESSION_GOLD_RATE,
+      value = perHour and ns.Session.FormatMoney(perHour) or "-",
+      color = perHour and (perHour < 0 and "bad" or "good") or "dim",
+      tip = L.SESSION_GOLD_RATE_TIP,
+    }
+  end
   if enabled("session_kills") then
     rows[#rows + 1] = { key = "session_kills", label = L.SESSION_KILLS, value = tostring(v.kills), tip = L.SESSION_TIP }
   end
   return { key = "session", title = L.SESSION_SECTION, rows = rows }
+end
+
+-- Hearthstone: cooldown left and where it is bound. Hidden without one in the bags.
+local HEARTHSTONE = 6948
+
+local function travelSection()
+  if not enabled("hearth") then
+    return nil
+  end
+  local item = type(C_Item) == "table" and C_Item or {}
+  local count = num(call(item.GetItemCount, HEARTHSTONE))
+  if count == 0 then
+    return nil
+  end
+  local container = type(C_Container) == "table" and C_Container or {}
+  local start, duration = call(container.GetItemCooldown, HEARTHSTONE)
+  start, duration = num(start), num(duration)
+  local value, color = "-", "dim"
+  if count and start and duration then
+    local left = (start > 0 and duration > 0) and (start + duration - GetTime()) or 0
+    if left > 0 then
+      value, color = ns.LevelTime.Format(left), "warn"
+    else
+      value, color = L.HEARTH_READY, "good"
+    end
+  end
+  local place = str(call(GetBindLocation))
+  return {
+    key = "travel",
+    title = L.TRAVEL_SECTION,
+    rows = {
+      {
+        key = "hearth",
+        label = L.HEARTH,
+        value = value,
+        color = color,
+        tip = place and string.format(L.HEARTH_TIP_FMT, place) or nil,
+      },
+    },
+  }
 end
 
 local function baseSection()
@@ -492,6 +542,9 @@ local function skillRow(key, label, s, opts)
       if opts.equipped and opts.weapon then
         lines[#lines + 1] = L.SKILL_RISES
       end
+      if opts.eta then
+        lines[#lines + 1] = string.format(L.SKILL_ETA_FMT, ns.LevelTime.Format(opts.eta))
+      end
     else
       lines[#lines + 1] = L.AT_CAP
     end
@@ -643,6 +696,7 @@ local function weaponSkillSection(skills, classicList, level, hit, expertise)
     rows[#rows + 1] = skillRow("w:" .. s.name, s.name, s, {
       equipped = isEquipped,
       weapon = true,
+      eta = ns.Session.SkillEta(id, s.rank, s.max),
       pct = pctText,
       pctColor = pctColor,
       partial = foeHidden or nil,
@@ -787,6 +841,7 @@ function Data.Collect()
   push(warningSection())
   push(xpSection(level))
   push(sessionSection())
+  push(travelSection())
   push(baseSection())
   push(meleeSection(level, skills, hit))
   push(rangedSection(hit))
