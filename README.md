@@ -12,6 +12,9 @@ Character stats for **WoW Forever** (client 1.60.x, interface 16001): attributes
 - **Class and gear warnings**: red texts in the middle of the screen that stay while the cause lasts, each switchable. Warlock: 5 soul shards or fewer. Hunter: 200 ammo or less, Cheetah / Pack aspect in combat, pet not happy, no pet in combat. Warrior: Battle Shout missing in combat, Defensive Stance without a shield. Rogue: no poison. Shaman: no weapon imbue in combat. Mage, Priest, Druid, Paladin, Shaman: missing self buffs out of combat; Paladin tank: Righteous Fury. Reagents at 5 or fewer. Everyone: gear almost broken. All on by default. More warnings: one entry in `Warnings.lua`.
 - **Flight times**: measures every whole flight and saves it on your own install; the time (or a "~" estimate from saved stretches) in the flight map tooltip and in chat when you take a flight; `/isistats flights [clear]`; on by default, switchable.
 - **Flight bar**: during a flight, start -> destination with a bar that fills up and the time left, or counting up for an unknown time; Shift + drag moves it, Ctrl + click closes it; on by default, switchable.
+- **Warnings** also for almost full bags, unspent talent points and (in combat, yellow, silent) an equipped weapon skill below its maximum.
+- **XP per hour, kills to the next level and session values** (time, XP, gold, kills since the login): optional rows, off by default; `/isistats session reset`.
+- **Landing notice** 5 seconds before a known arrival; `/isistats flights` also lists routes from the last flight master you never flew.
 - **Combat banner**: a big fading text in the middle of the screen when combat starts and ends; on by default, switchable.
 - **Damage meter reset**: Blizzard's damage meter is cleared once each time you join a group (not on /reload); switchable.
 - **Chat history**: Up / Down in the chat input step through the lines you sent, kept across /reload and restarts (last 100; `/isistats chat clear`).

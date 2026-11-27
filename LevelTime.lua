@@ -159,6 +159,9 @@ function LevelTime.OnXPUpdate()
   if not gain then
     return
   end
+  if ns.Session then
+    ns.Session.OnXPGain(gain)
+  end
   local t = now()
   local dt = math.min(math.max(0, t - (lastGainAt or t)), IDLE_CAP)
   lastGainAt = t

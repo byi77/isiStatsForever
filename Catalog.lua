@@ -52,6 +52,18 @@ function Data.GetCatalog()
         { id = "xp_next", label = L.XP_OPT },
         { id = "xp_time", label = L.XP_TIME },
         { id = "xp_eta", label = L.XP_ETA_OPT },
+        { id = "xp_rate", label = L.XP_RATE },
+        { id = "xp_kills", label = L.XP_KILLS_OPT },
+      },
+    },
+    {
+      key = "session",
+      title = L.SESSION_SECTION,
+      rows = {
+        { id = "session_time", label = L.SESSION_TIME },
+        { id = "session_xp", label = L.SESSION_XP },
+        { id = "session_gold", label = L.SESSION_GOLD },
+        { id = "session_kills", label = L.SESSION_KILLS },
       },
     },
     {

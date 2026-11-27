@@ -75,6 +75,8 @@ local POISONS = { 2842 } -- the rogue's Poisons skill spell
 local ROCKBITER = { 8017, 8018, 8019, 10399, 16314, 16315, 16316 } -- the shaman's first imbue
 local RIGHTEOUS_FURY = { 25780, 407627 }
 local REAGENT_LOW = 5
+local BAGS_LOW = 2 -- free slots in the normal bags
+local BAG_FIRST, BAG_LAST = 0, 4 -- backpack and the four bag slots
 
 -- Reagents: per spell family { spell, reagent item } by rank, lowest level
 -- first; only the highest known rank's reagent counts. Situational spells
@@ -515,6 +517,8 @@ end
 --   alive    true: not while dead or a ghost
 --   delay    seconds the cause must last before the text appears (default 3;
 --            the bags and auras are empty for a moment after loading screens)
+--   silent   true: no warning sound when it appears
+--   color    palette key of the text (default "bad")
 --   check()  text to show, false for none, nil when the game does not say
 Warnings.LIST = {
   {
@@ -714,6 +718,71 @@ Warnings.LIST = {
     end,
   },
   {
+    key = "bags",
+    check = function()
+      local api = type(C_Container) == "table" and C_Container or {}
+      local free, known = 0, false
+      for bag = BAG_FIRST, BAG_LAST do
+        local slots = num(call(api.GetContainerNumSlots, bag))
+        if slots and slots > 0 then
+          local count, family = call(api.GetContainerNumFreeSlots, bag)
+          count, family = num(count), num(family)
+          if not count then
+            return nil
+          end
+          if (family or 0) == 0 then -- profession bags take only their own goods
+            free, known = free + count, true
+          end
+        end
+      end
+      if not known then
+        return nil
+      end
+      return free <= BAGS_LOW and (free == 0 and L.WARN_BAGS_FULL or string.format(L.WARN_BAGS_FMT, free))
+    end,
+  },
+  {
+    key = "talents",
+    calm = true,
+    check = function()
+      local api = type(C_ClassTalents) == "table" and C_ClassTalents.HasUnspentTalentPoints
+      local has, classPoints, specPoints = call(api)
+      if type(has) ~= "boolean" or isSecret(has) then
+        return nil
+      end
+      if not has then
+        return false
+      end
+      local count = (num(classPoints) or 0) + (num(specPoints) or 0)
+      return count > 0 and string.format(L.WARN_TALENTS_FMT, count) or L.WARN_TALENTS_TEXT
+    end,
+  },
+  {
+    key = "skillup",
+    combat = true,
+    delay = 0,
+    silent = true,
+    color = "warn",
+    check = function()
+      local Skills = ns.Skills
+      local seen, parts = {}, {}
+      for _, slot in ipairs({ Skills.SLOT_MAIN, Skills.SLOT_OFF, Skills.SLOT_RANGED }) do
+        local id = Skills.skillForSlot(slot)
+        if id and not seen[id] then
+          seen[id] = true
+          local s = ns.Data.GetSkill(id)
+          if not s or not s.max then
+            return nil
+          end
+          if s.rank < s.max then
+            parts[#parts + 1] = string.format("%s %d/%d", s.name, s.rank, s.max)
+          end
+        end
+      end
+      return #parts > 0 and string.format(L.WARN_SKILLUP_FMT, table.concat(parts, ", "))
+    end,
+  },
+  {
     key = "durability",
     check = function()
       local worst = 0
@@ -747,6 +816,10 @@ Warnings.EVENTS = {
   PET_UI_UPDATE = true,
   UNIT_AURA = true,
   WEAPON_ENCHANT_CHANGED = true,
+  TRAIT_CONFIG_UPDATED = true,
+  PLAYER_LEVEL_UP = true,
+  CHARACTER_POINTS_CHANGED = true,
+  SKILL_LINES_CHANGED = true,
 }
 Warnings.UNIT_EVENTS = {
   UNIT_PET = "player",
@@ -826,7 +899,7 @@ function Warnings.Update(now)
       ns.UI.SetAlert(key, nil)
     elseif ns.UI.GetAlert(key) or now or (warning.delay or DEFAULT_DELAY) == 0 then
       pending[key] = nil
-      ns.UI.SetAlert(key, result, false, "bad")
+      ns.UI.SetAlert(key, result, warning.silent, warning.color or "bad")
     elseif not pending[key] and type(C_Timer) == "table" and C_Timer.After then
       runs = runs + 1
       local run = runs
@@ -838,7 +911,7 @@ function Warnings.Update(now)
         pending[key] = nil
         local text = ns.IsRowEnabled(Warnings.OptionId(warning)) and Warnings.Check(warning, playerClass())
         if text then
-          ns.UI.SetAlert(key, text, false, "bad")
+          ns.UI.SetAlert(key, text, warning.silent, warning.color or "bad")
         end
       end)
     end

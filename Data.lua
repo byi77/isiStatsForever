@@ -106,7 +106,61 @@ local function xpSection(level)
       tip = source == "window" and L.XP_ETA_TIP_ACTIVE or eta and L.XP_ETA_TIP or L.XP_ETA_NONE,
     }
   end
+  if enabled("xp_rate") then
+    local perSecond = LevelTime and LevelTime.Rate()
+    rows[#rows + 1] = {
+      key = "xp_rate",
+      label = L.XP_RATE,
+      value = perSecond and string.format("%.1fk", perSecond * 3600 / 1000) or "-",
+      color = perSecond and nil or "dim",
+      tip = perSecond and L.XP_RATE_TIP or L.XP_ETA_NONE,
+    }
+  end
+  if enabled("xp_kills") then
+    local kills, average = ns.Session.KillsToLevel(remaining)
+    rows[#rows + 1] = {
+      key = "xp_kills",
+      label = level and string.format(L.XP_KILLS_FMT, level + 1) or L.XP_KILLS_OPT,
+      value = kills and ("~" .. kills) or "-",
+      color = kills and nil or "dim",
+      tip = kills and string.format(L.XP_KILLS_TIP_FMT, math.floor(average + 0.5)) or L.XP_KILLS_NONE,
+    }
+  end
   return { key = "xp", title = L.XP_SECTION, rows = rows }
+end
+
+-- Since the login: time, XP, gold won or spent, kills that gave XP.
+local function sessionSection()
+  local v = ns.Session.Values()
+  if not v then
+    return nil
+  end
+  local rows = {}
+  if enabled("session_time") then
+    rows[#rows + 1] =
+      { key = "session_time", label = L.SESSION_TIME, value = ns.LevelTime.Format(v.seconds), tip = L.SESSION_TIP }
+  end
+  if enabled("session_xp") then
+    rows[#rows + 1] = {
+      key = "session_xp",
+      label = L.SESSION_XP,
+      value = string.format("%.1fk", v.xp / 1000),
+      tip = L.SESSION_TIP,
+    }
+  end
+  if enabled("session_gold") then
+    rows[#rows + 1] = {
+      key = "session_gold",
+      label = L.SESSION_GOLD,
+      value = v.gold and ns.Session.FormatMoney(v.gold) or "-",
+      color = v.gold and (v.gold < 0 and "bad" or "good") or "dim",
+      tip = L.SESSION_TIP,
+    }
+  end
+  if enabled("session_kills") then
+    rows[#rows + 1] = { key = "session_kills", label = L.SESSION_KILLS, value = tostring(v.kills), tip = L.SESSION_TIP }
+  end
+  return { key = "session", title = L.SESSION_SECTION, rows = rows }
 end
 
 local function baseSection()
@@ -732,6 +786,7 @@ function Data.Collect()
   push(ns.Buffs.Section())
   push(warningSection())
   push(xpSection(level))
+  push(sessionSection())
   push(baseSection())
   push(meleeSection(level, skills, hit))
   push(rangedSection(hit))

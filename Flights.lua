@@ -23,6 +23,7 @@ local Flights = {}
 ns.Flights = Flights
 
 local START_WINDOW = 10 -- s: the taxi has to start this soon after the click
+local LANDING_LEAD = 5 -- s: "Landing" this long before the known arrival
 local MIN_SECONDS = 5 -- shorter: not a real flight
 
 local db
@@ -30,6 +31,7 @@ local pending -- { from, to, at, estimate } from the click
 local flight -- { from, to, start, estimate } while on the taxi
 local opened -- { bySlot, current } of the open flight map (read when it opens)
 local hookedButtons = setmetatable({}, { __mode = "k" })
+local landingRun = 0
 
 Flights.EVENTS = {
   TAXIMAP_OPENED = true,
@@ -226,6 +228,20 @@ function Flights.OnTakeTaxi(slot)
   end
 end
 
+-- "Landing" in the middle shortly before a known or estimated arrival.
+local function scheduleLanding(total)
+  landingRun = landingRun + 1
+  local run = landingRun
+  if not (total and total > LANDING_LEAD * 2) or type(C_Timer) ~= "table" or not C_Timer.After then
+    return
+  end
+  C_Timer.After(total - LANDING_LEAD, function()
+    if run == landingRun and flight and db.flightLanding then
+      ns.UI.ShowCombatBanner(L.FLIGHT_LANDING, "accent")
+    end
+  end)
+end
+
 local function showBar()
   if not (flight and db.flightBar) then
     ns.UI.HideFlightBar()
@@ -248,6 +264,18 @@ function Flights.OnEvent(event)
   if event == "TAXIMAP_OPENED" then
     local bySlot, current = nodesBySlot()
     opened = { bySlot = bySlot, current = current }
+    -- the flight points known here, for "never flown" in /isistats flights
+    if current and db then
+      local targets = {}
+      remember(current)
+      for _, node in pairs(bySlot) do
+        if node.id ~= current.id then
+          remember(node)
+          targets[#targets + 1] = node.id
+        end
+      end
+      db.lastFlightMaster = { faction = faction(), from = current.id, targets = targets }
+    end
     -- pins are placed after the event
     if type(C_Timer) == "table" and C_Timer.After then
       C_Timer.After(0, Flights.HookMap)
@@ -257,6 +285,7 @@ function Flights.OnEvent(event)
     if pending and GetTime() - pending.at <= START_WINDOW and onTaxi() then
       flight = { from = pending.from, to = pending.to, start = GetTime(), estimate = pending.estimate }
       showBar()
+      scheduleLanding(Flights.Get(flight.from, flight.to) or flight.estimate)
     end
     pending = nil
   elseif event == "PLAYER_CONTROL_GAINED" then
@@ -284,6 +313,7 @@ end
 -- An early landing, a summon or a port: not the whole route.
 function Flights.Abort()
   pending, flight = nil, nil
+  landingRun = landingRun + 1
   ns.UI.HideFlightBar()
 end
 
@@ -312,22 +342,40 @@ function Flights.Print(out)
   table.sort(lines)
   if #lines == 0 then
     out(L.FLIGHT_NONE)
-    return
+  else
+    out(string.format(L.FLIGHT_LIST_FMT, #lines))
+    for _, line in ipairs(lines) do
+      out(line)
+    end
   end
-  out(string.format(L.FLIGHT_LIST_FMT, #lines))
-  for _, line in ipairs(lines) do
-    out(line)
+  -- routes from the last flight master that were never flown
+  local master = db.lastFlightMaster
+  if type(master) == "table" and master.faction == side and type(master.targets) == "table" then
+    local never = {}
+    for _, toID in ipairs(master.targets) do
+      if not Flights.Get(master.from, toID) then
+        never[#never + 1] = Flights.Name(toID)
+      end
+    end
+    table.sort(never)
+    if #never > 0 then
+      out(string.format(L.FLIGHT_NEVER_FMT, Flights.Name(master.from), #never, table.concat(never, ", ")))
+    end
   end
 end
 
 function Flights.Clear()
-  db.flights, db.flightNames = {}, {}
+  db.flights, db.flightNames, db.lastFlightMaster = {}, {}, nil
 end
 
 function Flights.Init(saved)
   db = saved
   db.flights = type(db.flights) == "table" and db.flights or {}
   db.flightNames = type(db.flightNames) == "table" and db.flightNames or {}
+  if Flights.hooked then
+    return -- a settings reset hands over the new table only
+  end
+  Flights.hooked = true
   if type(hooksecurefunc) == "function" then
     if type(TakeTaxiNode) == "function" then
       hooksecurefunc("TakeTaxiNode", Flights.OnTakeTaxi)

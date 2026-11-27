@@ -466,6 +466,58 @@ do
   after3s("UPDATE_INVENTORY_ALERTS")
   check(shown("durability") == nil, "repaired: gone")
 
+  -- Bags almost full; profession bags do not count.
+  local freeSlots = { [0] = 1, [1] = 1, [2] = 5 }
+  C_Container = {
+    GetContainerNumSlots = function(bag)
+      return freeSlots[bag] and 16 or 0
+    end,
+    GetContainerNumFreeSlots = function(bag)
+      return freeSlots[bag], bag == 2 and 8 or 0
+    end,
+  }
+  after3s("BAG_UPDATE_DELAYED")
+  check(shown("bags") == string.format(ns.L.WARN_BAGS_FMT, 2), "bags: 2 free slots, herb bag left out")
+  freeSlots[0], freeSlots[1] = 0, 0
+  after3s("BAG_UPDATE_DELAYED")
+  check(shown("bags") == ns.L.WARN_BAGS_FULL, "bags full")
+  freeSlots[0] = 10
+  after3s("BAG_UPDATE_DELAYED")
+  check(shown("bags") == nil, "bags: room again")
+  C_Container = nil
+
+  -- Unspent talent points, out of combat only.
+  local unspent = { true, 2, 0 }
+  C_ClassTalents = {
+    HasUnspentTalentPoints = function()
+      return unspent[1], unspent[2], unspent[3]
+    end,
+  }
+  after3s("TRAIT_CONFIG_UPDATED")
+  check(shown("talents") == string.format(ns.L.WARN_TALENTS_FMT, 2), "talents: 2 points unspent")
+  unspent = { false, 0, 0 }
+  after3s("TRAIT_CONFIG_UPDATED")
+  check(shown("talents") == nil, "talents spent: gone")
+  C_ClassTalents = nil
+
+  -- Weapon skill below max: shown in combat only.
+  local skillInfo = C_SkillInfo
+  C_SkillInfo = {
+    GetSkillLineInfoByID = function(id)
+      if id == ns.Skills.SUBCLASS_SKILL[2] then
+        return { name = "Bogen", rank = 100, maxRank = 150, modifier = 0 }
+      end
+      return skillInfo.GetSkillLineInfoByID(id)
+    end,
+  }
+  after3s()
+  check(shown("skillup") == nil, "skill below max: nothing out of combat")
+  fight(true)
+  check(shown("skillup") == string.format(ns.L.WARN_SKILLUP_FMT, "Bogen 100/150"), "skill below max in combat")
+  fight(false)
+  check(shown("skillup") == nil, "skill text gone after the fight")
+  C_SkillInfo = skillInfo
+
   -- Rogue: poison; Shaman: imbue in combat; self buffs; reagents.
   local enchanted, items = { [0] = false, [1] = false }, {}
   C_Item.GetWeaponEnchantInfo = function(slot)
@@ -1815,8 +1867,28 @@ do
   taxi = false
   fly(80)
   check(not ns.UI.GetFlightBar(), "bar gone after landing")
+  check(printed[#printed - 1]:find("1:15", 1, true), "known time shown at departure")
   check(ns.Flights.Get(3242, 52) == 80, "last flight counts")
   check(ns.UI.GetFlightBar() == false, "no bar on the ground")
+
+  -- landing announced LANDING_LEAD seconds before a known arrival
+  local landingTimers = {}
+  local timerAfter = C_Timer.After
+  C_Timer.After = function(delay, fn)
+    landingTimers[#landingTimers + 1] = { delay = delay, fn = fn }
+  end
+  ev.scripts.OnEvent(ev, "TAXIMAP_OPENED")
+  ns.Flights.OnTakeTaxi(2)
+  taxi = true
+  ev.scripts.OnEvent(ev, "PLAYER_CONTROL_LOST")
+  local landing = landingTimers[#landingTimers]
+  check(landing and landing.delay == 75, "landing timer 5 s before arrival")
+  landing.fn()
+  check(ns.UI.GetCombatBanner() == ns.L.FLIGHT_LANDING, "landing shown in the middle")
+  ns.Flights.Abort()
+  taxi = false
+  C_Timer.After = timerAfter
+  check(IsiStatsDB.lastFlightMaster and IsiStatsDB.lastFlightMaster.from == 3242, "last flight master kept")
 
   -- a route over hops: 3242 -> 52 -> 7, only 52 -> 7 measured on its own
   IsiStatsDB.flights.Alliance[52] = { [7] = 40 }
@@ -1891,7 +1963,6 @@ do
   FlightMapFrame, GameTooltip, GetNumRoutes, TaxiGetNodeSlot = nil, nil, nil, nil
   C_TaxiMap.GetAllTaxiNodes = nodes
   IsiStatsDB.flights.Alliance[52] = nil
-  check(printed[#printed - 1]:find("1:15", 1, true), "known time shown at departure")
   ev.scripts.OnEvent(ev, "TAXIMAP_OPENED")
   ns.Flights.OnTakeTaxi(2)
   taxi = true
@@ -1907,11 +1978,51 @@ do
   ns.SetFlightTimes(true)
   SlashCmdList.ISISTATS("reset")
   check(ns.Flights.Get(3242, 52) == 80, "flight times survive a settings reset")
+  IsiStatsDB.lastFlightMaster = { faction = "Alliance", from = 3242, targets = { 52, 99 } }
+  IsiStatsDB.flightNames[99] = "Neu"
   SlashCmdList.ISISTATS("flights")
-  check(printed[#printed]:find("1:20", 1, true), "flights command lists the time")
+  check(printed[#printed - 1]:find("1:20", 1, true), "flights command lists the time")
+  check(printed[#printed]:find("Neu", 1, true) and not printed[#printed]:find("Hafen", 1, true), "never flown listed")
   SlashCmdList.ISISTATS("flights clear")
   check(ns.Flights.Count() == 0, "flights clear")
   GetTime, GetTaxiMapID, C_TaxiMap, UnitOnTaxi, UnitFactionGroup, print = (table.unpack or unpack)(backup, 1, backup.n)
+end
+
+-- Session values and kills to the next level.
+do
+  local now, copper = 5000, 10000
+  local backup = { n = 2, GetTime, GetMoney }
+  GetTime = function()
+    return now
+  end
+  GetMoney = function()
+    return copper
+  end
+  ns.Session.Reset()
+  for i = 1, 4 do
+    now = now + 10
+    ev.scripts.OnEvent(ev, "CHAT_MSG_COMBAT_XP_GAIN")
+    ns.Session.OnXPGain(i % 2 == 0 and 100 or 50) -- the kill message first, then the gain
+  end
+  now = now + 10
+  ns.Session.OnXPGain(300) -- quest XP: no kill message
+  local kills, average = ns.Session.KillsToLevel(750)
+  check(kills == 10 and average == 75, "kills to level from the kills' XP only")
+  now = now + 10
+  ns.Session.OnXPGain(100)
+  ev.scripts.OnEvent(ev, "CHAT_MSG_COMBAT_XP_GAIN") -- the gain first, then the message
+  local _, average2 = ns.Session.KillsToLevel(750)
+  check(average2 == 80, "kill message after its XP gain")
+  copper = 7500
+  local v = ns.Session.Values()
+  check(v.xp == 700 and v.kills == 5 and v.gold == -2500, "session XP, kills and gold")
+  check(ns.Session.FormatMoney(-2500) == "-25|cffc7c7cfs|r 0|cffeda55fc|r", "gold text")
+  ev.scripts.OnEvent(ev, "PLAYER_ENTERING_WORLD", false, true)
+  check(ns.Session.Values().kills == 5, "session kept across /reload")
+  ev.scripts.OnEvent(ev, "PLAYER_ENTERING_WORLD", true, false)
+  check(ns.Session.Values().kills == 0, "session new on login")
+  SlashCmdList.ISISTATS("session reset")
+  GetTime, GetMoney = (table.unpack or unpack)(backup, 1, backup.n)
 end
 
 -- Debug output is kept for reading from the SavedVariables file.

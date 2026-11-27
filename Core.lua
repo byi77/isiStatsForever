@@ -17,6 +17,7 @@ local DEFAULTS = {
   flightTimes = true, -- measure and keep flight times (Flights.lua)
   flightBar = true, -- bar during a flight with a known or estimated time
   flightBarUnknown = true, -- also for an unknown time (counting up)
+  flightLanding = true, -- "Landing" in the middle a few seconds before arrival
   flightBarPos = false, -- { point, relativePoint, x, y } after Shift + drag
   flights = {}, -- flights[faction][fromNodeID][toNodeID] = seconds
   flightNames = {}, -- flight point names by node ID
@@ -209,6 +210,14 @@ end
 
 function ns.SetFlightBar(value)
   ns.Flights.SetBar(value)
+end
+
+function ns.GetFlightLanding()
+  return db and db.flightLanding and true or false
+end
+
+function ns.SetFlightLanding(value)
+  db.flightLanding = value and true or false
 end
 
 function ns.GetFlightBarUnknown()
@@ -537,6 +546,7 @@ events:SetScript("OnEvent", function(self, event, arg1, arg2)
     charDB.rows = charDB.rows or {}
     charDB.swings = nil -- left over from test builds that counted swings
     ns.LevelTime.Init(charDB)
+    ns.Session.Init(charDB)
     ns.Buffs.Init(charDB)
     ns.PruneRows()
     self:UnregisterEvent("ADDON_LOADED")
@@ -555,6 +565,9 @@ events:SetScript("OnEvent", function(self, event, arg1, arg2)
       pcall(self.RegisterEvent, self, e)
     end
     for e in pairs(ns.Flights.EVENTS) do
+      pcall(self.RegisterEvent, self, e)
+    end
+    for e in pairs(ns.Session.EVENTS) do
       pcall(self.RegisterEvent, self, e)
     end
     for e in pairs(ns.Warnings.EVENTS) do
@@ -605,6 +618,9 @@ events:SetScript("OnEvent", function(self, event, arg1, arg2)
     end
     if ns.Flights.EVENTS[event] then
       ns.Flights.OnEvent(event)
+    end
+    if ns.Session.EVENTS[event] then
+      ns.Session.OnEvent(event, arg1)
     end
     if PRIME_EVENTS[event] then
       ns.Data.Prime()
@@ -682,7 +698,7 @@ SlashCmdList.ISISTATS = function(msg)
   elseif cmd == "reset" then
     local errors = db.errors -- the error log survives a settings reset
     local chatHistory = db.chatHistory -- so do the sent chat lines
-    local flights, flightNames = db.flights, db.flightNames -- and the measured flight times
+    local flights, flightNames, master = db.flights, db.flightNames, db.lastFlightMaster -- and the flight times
     IsiStatsDB = {}
     db = IsiStatsDB
     for k, v in pairs(DEFAULTS) do
@@ -690,8 +706,9 @@ SlashCmdList.ISISTATS = function(msg)
     end
     db.errors = errors
     db.chatHistory = chatHistory
-    db.flights, db.flightNames = flights, flightNames
+    db.flights, db.flightNames, db.lastFlightMaster = flights, flightNames, master
     ns.ErrorLog.Install(db)
+    ns.Flights.Init(db)
     ns.ChatHistory.Setup(db)
     ns.ApplyPosition()
     ns.ResetRows()
@@ -703,6 +720,10 @@ SlashCmdList.ISISTATS = function(msg)
   elseif cmd == "chat" and arg == "clear" then
     ns.ChatHistory.Clear()
     out(L.CHAT_CLEARED)
+  elseif cmd == "session" and arg == "reset" then
+    ns.Session.Reset()
+    ns.RequestRefresh()
+    out(L.SESSION_RESET)
   elseif cmd == "flights" then
     if arg == "clear" then
       ns.Flights.Clear()

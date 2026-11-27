@@ -4,6 +4,13 @@
 
 ## 0.12.0 - 2026-11-27
 
+- Added: warning when your bags are almost full (2 free slots or less, profession bags not counted) and when they are full.
+- Added: warning while talent points are unspent (out of combat).
+- Added: in combat, a yellow text without sound while an equipped weapon's skill is below its maximum (the skill can still rise).
+- Added: XP section rows "XP per hour" (from your recent active play) and "Kills to level X" (from the XP of your recent kills; quest XP is left out). Off by default.
+- Added: session section (off by default): time, XP, gold won or spent and kills with XP since the login, kept across /reload; `/isistats session reset` starts again.
+- Added: "Landing" in the middle of the screen 5 seconds before a known or estimated arrival (own switch, on by default).
+- Added: `/isistats flights` also lists the routes from the last flight master you visited that you have never flown.
 - Added: flight times. Every whole flight you take is measured and saved account-wide per faction. An early landing, a summon, a battleground or dungeon finder port, a loading screen or a /reload on the way drops the measurement. When you take a flight whose time is known, the chat says how long it takes; `/isistats flights` lists the saved times, `/isistats flights clear` deletes them. On by default, switchable in the settings.
 - Added: flight times on the flight map. The tooltip of every flight point shows the saved time, an estimate with "~" when the route is made of stretches whose times are all saved (the sum of them, never saved as a measured time), or "unknown".
 - Added: flight bar. While you are on a flight, a bar shows start -> destination: it fills as the flight goes on with the time still to go ("~" for an estimate), or, for an unknown time, counts up from take-off. Shift + drag moves it, Ctrl + click closes it for this flight. On by default; the bar for unknown times has its own switch in the settings.

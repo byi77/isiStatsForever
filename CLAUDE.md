@@ -15,7 +15,7 @@ isiStatsForever is a character stats addon for **WoW Forever** only. The repo li
 ## Files
 
 `Locale.lua` texts - `ErrorLog.lua` own error log - `Util.lua` guarded calls, secret values,
-formatting, formulas - `Skills.lua` skill lines and weapon slots - `Tracking.lua` gathering tracking warning - `Warnings.lua` class and gear warnings - `Buffs.lua` buff reminder - `Flights.lua` measured flight times - `Catalog.lua` value rows and
+formatting, formulas - `Skills.lua` skill lines and weapon slots - `Tracking.lua` gathering tracking warning - `Warnings.lua` class and gear warnings - `Buffs.lua` buff reminder - `Flights.lua` measured flight times - `Session.lua` session values and XP per kill - `Catalog.lua` value rows and
 class defaults - `Data.lua` collects the sections - `CombatCache.lua` last values in combat -
 `UI.lua` window - `Options.lua` settings page - `Core.lua` saved variables, events, slash commands.
 
@@ -66,7 +66,13 @@ class defaults - `Data.lua` collects the sections - `CombatCache.lua` last value
   `PLAYER_LEAVING_WORLD`. Estimate (user decision 2026-11-27, exception to no-guess): sum of saved
   times along the game's hops (`GetNumRoutes`, `TaxiGetNodeSlot(slot, hop, true)`), always shown with
   `~`, never saved. Tooltip: `HookScript("OnEnter")` on `TaxiButton<slot>` and the
-  `FlightMap_FlightPointPinTemplate` pins. Never name other flight addons in repo files.
+  `FlightMap_FlightPointPinTemplate` pins. Never name other flight addons in repo files. Landing notice:
+  `C_Timer.After(total - 5)`, cancelled by a run counter.
+- Talents: Forever ("Camelot" in Blizzard's source) uses the trait trees; unspent points come from
+  `C_ClassTalents.HasUnspentTalentPoints()` (bool, class points, spec points).
+- Kills (`Session.lua`): a `CHAT_MSG_COMBAT_XP_GAIN` event counts, its text is never read (may be
+  secret); its XP is the `PLAYER_XP_UPDATE` gain within 1 s, in either order. Session = since
+  `PLAYER_ENTERING_WORLD(isInitialLogin = true)`, kept in `IsiStatsCharDB.session`.
 - When a feature stops producing data without an error, check the API member first
   (`/isistats debug` prints what exists).
 
