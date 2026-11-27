@@ -1,7 +1,7 @@
 ## Interface: 16001
 ## Title: isi|cff1e90ffStats|r|cff8a96a8Forever|r
 ## Notes: Character stats, weapon skills and defense for WoW Forever
-## Notes-deDE: Charakterwerte, Waffenfertigkeiten und Verteidigung fÃ¼r WoW Forever
+## Notes-deDE: Charakterwerte, Waffenfertigkeiten und Verteidigung für WoW Forever
 ## Author: mematiWoW
 ## Version: 0.13.0
 ## Category: Character
