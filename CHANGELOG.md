@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.13.0 - 2026-11-28
+
 - Added: gear section with the durability of all equipped items, the weakest one in the tooltip (off by default).
 - Added: chat line on a level-up with what the level gave (attributes, health, mana), as the game reports it.
 - Added: out of combat a short yellow hint when the equipped weapons are (nearly) at their maximum and a weapon in the bags can still rise (5 s, each weapon only once per session, not again after a fight).
