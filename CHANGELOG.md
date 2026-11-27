@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.12.2 - 2026-11-27
+
 - Changed: the flight bar shows only the destination without its zone (smaller font if it still does not fit); the whole route is in its tooltip.
 - Changed: the weapon skill text in combat only comes when the skill is more than 10 points below its maximum.
 - Fixed: singular texts for 1 free bag slot, 1 unspent talent point and 1 saved flight time; German level texts say "Stufe" like the game.
