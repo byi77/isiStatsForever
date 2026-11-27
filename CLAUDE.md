@@ -75,6 +75,10 @@ class defaults - `Data.lua` collects the sections - `CombatCache.lua` last value
   `GetRepairAllCost`, `RepairAllItems` on `MERCHANT_SHOW` (as MerchantFrame does). Hearthstone item 6948:
   `C_Container.GetItemCooldown`, `GetBindLocation`. Level times in `IsiStatsCharDB.levelTimes` (only
   when the played time was in at the level-up).
+- Level-up gains: straight from the `PLAYER_LEVEL_UP` payload (level, health, power, talents, PvP
+  talents, strength .. spirit), no stat diff. Durability: `GetInventoryItemDurability(slot)` 1-19 (used
+  by EquipmentManager). Repairs in the session: `GetRepairAllCost` drop between `MERCHANT_SHOW` and
+  `UPDATE_INVENTORY_DURABILITY` while the vendor is open (Core hands MERCHANT_SHOW to Session first).
 - Talents: Forever ("Camelot" in Blizzard's source) uses the trait trees; unspent points come from
   `C_ClassTalents.HasUnspentTalentPoints()` (bool, class points, spec points).
 - Kills (`Session.lua`): a `CHAT_MSG_COMBAT_XP_GAIN` event counts, its text is never read (may be

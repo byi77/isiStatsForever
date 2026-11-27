@@ -104,6 +104,7 @@ read_globals = {
   "UnitXPMax",
   "geterrorhandler",
   "hooksecurefunc",
+  "GetInventoryItemDurability",
   "RepairAllItems",
   "GetRepairAllCost",
   "CanMerchantRepair",

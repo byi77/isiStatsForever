@@ -145,7 +145,11 @@ local function sessionSection()
       key = "session_xp",
       label = L.SESSION_XP,
       value = string.format("%.1fk", v.xp / 1000),
-      tip = L.SESSION_TIP,
+      tip = string.format(
+        L.SESSION_XP_TIP_FMT,
+        string.format("%.1fk", v.killXP / 1000),
+        string.format("%.1fk", math.max(0, v.xp - v.killXP) / 1000)
+      ) .. "\n" .. L.SESSION_TIP,
     }
   end
   if enabled("session_gold") then
@@ -167,10 +171,59 @@ local function sessionSection()
       tip = L.SESSION_GOLD_RATE_TIP,
     }
   end
+  if enabled("session_deaths") then
+    rows[#rows + 1] = {
+      key = "session_deaths",
+      label = L.SESSION_DEATHS,
+      value = tostring(v.deaths),
+      color = v.deaths > 0 and "bad" or nil,
+      tip = string.format(L.SESSION_DEATHS_TIP_FMT, ns.Session.FormatMoney(v.repairs, true)) .. "\n" .. L.SESSION_TIP,
+    }
+  end
   if enabled("session_kills") then
     rows[#rows + 1] = { key = "session_kills", label = L.SESSION_KILLS, value = tostring(v.kills), tip = L.SESSION_TIP }
   end
   return { key = "session", title = L.SESSION_SECTION, rows = rows }
+end
+
+-- Durability of the equipped gear: the whole share, the weakest item in the tooltip.
+local DURABILITY_SLOTS = 19
+
+local function gearSection()
+  if not enabled("gear_durability") then
+    return nil
+  end
+  local cur, max, worst, worstSlot = 0, 0, nil, nil
+  for slot = 1, DURABILITY_SLOTS do
+    local c, m = call(GetInventoryItemDurability, slot)
+    c, m = num(c), num(m)
+    if c and m and m > 0 then
+      cur, max = cur + c, max + m
+      if not worst or c / m < worst then
+        worst, worstSlot = c / m, slot
+      end
+    end
+  end
+  if max == 0 then
+    return nil
+  end
+  local item = type(C_Item) == "table" and C_Item or {}
+  local itemID = num(call(GetInventoryItemID, "player", worstSlot))
+  local name = itemID and str(call(item.GetItemNameByID, itemID))
+  return {
+    key = "gear",
+    title = L.GEAR_SECTION,
+    rows = {
+      {
+        key = "gear_durability",
+        label = L.GEAR_DURABILITY,
+        value = string.format("%d%%", math.floor(cur / max * 100 + 0.5)),
+        color = worst < 0.25 and "bad" or worst < 0.5 and "warn" or nil,
+        progress = cur / max,
+        tip = string.format(L.GEAR_DURABILITY_TIP_FMT, name or "?", math.floor(worst * 100 + 0.5)),
+      },
+    },
+  }
 end
 
 -- Hearthstone: cooldown left and where it is bound. Hidden without one in the bags.
@@ -842,6 +895,7 @@ function Data.Collect()
   push(xpSection(level))
   push(sessionSection())
   push(travelSection())
+  push(gearSection())
   push(baseSection())
   push(meleeSection(level, skills, hit))
   push(rangedSection(hit))

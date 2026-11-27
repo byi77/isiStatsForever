@@ -822,6 +822,55 @@ Warnings.LIST = {
     end,
   },
   {
+    key = "skill_bag",
+    calm = true,
+    silent = true,
+    color = "warn",
+    notice = 8,
+    renotice = true,
+    check = function()
+      local Skills = ns.Skills
+      local equipped = false
+      for _, slot in ipairs({ Skills.SLOT_MAIN, Skills.SLOT_OFF, Skills.SLOT_RANGED }) do
+        local id = Skills.skillForSlot(slot)
+        if id then
+          local s = ns.Data.GetSkill(id)
+          if not s or not s.max then
+            return nil
+          end
+          if s.max - s.rank > SKILL_GAP then
+            return false -- an equipped weapon still rises
+          end
+          equipped = true
+        end
+      end
+      if not equipped then
+        return false
+      end
+      local api = type(C_Container) == "table" and C_Container or {}
+      local item = type(C_Item) == "table" and C_Item or {}
+      local seen, parts = {}, {}
+      for bag = BAG_FIRST, BAG_LAST do
+        for slot = 1, num(call(api.GetContainerNumSlots, bag)) or 0 do
+          local info = call(api.GetContainerItemInfo, bag, slot)
+          local itemID = type(info) == "table" and num(info.itemID)
+          if itemID then
+            local _, _, _, _, _, classID, subclassID = call(item.GetItemInfoInstant or GetItemInfoInstant, itemID)
+            local id = num(classID) == 2 and Skills.SUBCLASS_SKILL[num(subclassID)]
+            if id and not seen[id] then
+              seen[id] = true
+              local s = ns.Data.GetSkill(id)
+              if s and s.max and s.max - s.rank > SKILL_GAP then
+                parts[#parts + 1] = string.format("%s %d/%d", s.name, s.rank, s.max)
+              end
+            end
+          end
+        end
+      end
+      return #parts > 0 and string.format(L.WARN_SKILL_BAG_FMT, table.concat(parts, ", "))
+    end,
+  },
+  {
     key = "durability",
     check = function()
       local worst = 0

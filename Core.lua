@@ -23,6 +23,7 @@ local DEFAULTS = {
   flightBarPos = false, -- { point, relativePoint, x, y } after Shift + drag
   flights = {}, -- flights[faction][fromNodeID][toNodeID] = seconds
   flightNames = {}, -- flight point names by node ID
+  flightStats = {}, -- { count, seconds } of all measured flights
   errors = {}, -- own Lua errors (ErrorLog.lua)
   pos = nil, -- { point, relativePoint, x, y }
   collapsed = {},
@@ -574,7 +575,7 @@ local UNIT_EVENTS = {
 local events = CreateFrame("Frame")
 events:RegisterEvent("ADDON_LOADED")
 events:RegisterEvent("PLAYER_LOGIN")
-events:SetScript("OnEvent", function(self, event, arg1, arg2)
+events:SetScript("OnEvent", function(self, event, arg1, arg2, ...)
   if event == "ADDON_LOADED" then
     if arg1 ~= addonName then
       return
@@ -657,13 +658,14 @@ events:SetScript("OnEvent", function(self, event, arg1, arg2)
       ns.Warnings.OnItemLoaded(arg1)
       return
     elseif event == "MERCHANT_SHOW" then
+      ns.Session.OnEvent(event) -- the costs before an automatic repair
       onMerchantShow()
       return
     end
     if event == "TIME_PLAYED_MSG" then
       ns.LevelTime.OnTimePlayed(arg1, arg2)
     elseif event == "PLAYER_LEVEL_UP" then
-      ns.LevelTime.OnLevelUp(arg1)
+      ns.LevelTime.OnLevelUp(arg1, arg2, ...)
     elseif event == "PLAYER_XP_UPDATE" then
       ns.LevelTime.OnXPUpdate()
     end
@@ -749,7 +751,8 @@ SlashCmdList.ISISTATS = function(msg)
   elseif cmd == "reset" then
     local errors = db.errors -- the error log survives a settings reset
     local chatHistory = db.chatHistory -- so do the sent chat lines
-    local flights, flightNames, master = db.flights, db.flightNames, db.lastFlightMaster -- and the flight times
+    -- and the flight times
+    local flights, flightNames, master, stats = db.flights, db.flightNames, db.lastFlightMaster, db.flightStats
     IsiStatsDB = {}
     db = IsiStatsDB
     for k, v in pairs(DEFAULTS) do
@@ -757,7 +760,7 @@ SlashCmdList.ISISTATS = function(msg)
     end
     db.errors = errors
     db.chatHistory = chatHistory
-    db.flights, db.flightNames, db.lastFlightMaster = flights, flightNames, master
+    db.flights, db.flightNames, db.lastFlightMaster, db.flightStats = flights, flightNames, master, stats
     ns.ErrorLog.Install(db)
     ns.Flights.Init(db)
     ns.ChatHistory.Setup(db)

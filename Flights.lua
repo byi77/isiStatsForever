@@ -308,6 +308,8 @@ local function land()
   local list = db.flights[side]
   list[done.from] = list[done.from] or {}
   list[done.from][done.to] = seconds
+  local stats = db.flightStats
+  stats.count, stats.seconds = (stats.count or 0) + 1, (stats.seconds or 0) + seconds
   ns.Print(string.format(L.FLIGHT_SAVED_FMT, Flights.Name(done.from), Flights.Name(done.to), clock(seconds)))
 end
 
@@ -412,6 +414,14 @@ function Flights.Print(out)
       out(line)
     end
   end
+  local stats = db.flightStats
+  if stats and (stats.count or 0) > 0 then
+    local total = ns.LevelTime.Format(stats.seconds or 0)
+    out(
+      stats.count == 1 and string.format(L.FLIGHT_STATS_ONE_FMT, total)
+        or string.format(L.FLIGHT_STATS_FMT, stats.count, total)
+    )
+  end
   -- routes from the last flight master that were never flown
   local master = db.lastFlightMaster
   if type(master) == "table" and master.faction == side and type(master.targets) == "table" then
@@ -429,13 +439,14 @@ function Flights.Print(out)
 end
 
 function Flights.Clear()
-  db.flights, db.flightNames, db.lastFlightMaster = {}, {}, nil
+  db.flights, db.flightNames, db.lastFlightMaster, db.flightStats = {}, {}, nil, {}
 end
 
 function Flights.Init(saved)
   db = saved
   db.flights = type(db.flights) == "table" and db.flights or {}
   db.flightNames = type(db.flightNames) == "table" and db.flightNames or {}
+  db.flightStats = type(db.flightStats) == "table" and db.flightStats or {}
   if Flights.hooked then
     return -- a settings reset hands over the new table only
   end

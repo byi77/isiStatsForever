@@ -561,6 +561,37 @@ do
     fight(false)
   end
 
+  -- Weapon to train in the bags: only while the equipped ones are (nearly) at their maximum.
+  local bowRank = 150
+  C_SkillInfo = {
+    GetSkillLineInfoByID = function(id)
+      if id == ns.Skills.SUBCLASS_SKILL[2] then
+        return { name = "Bogen", rank = bowRank, maxRank = 150, modifier = 0 }
+      elseif id == ns.Skills.SKILL.DAGGERS then
+        return { name = "Dolche", rank = 120, maxRank = 200, modifier = 0 }
+      end
+      return skillInfo.GetSkillLineInfoByID(id)
+    end,
+  }
+  inv[3] = { 2, 15 } -- a dagger in the backpack
+  C_Container = {
+    GetContainerNumSlots = function(bag)
+      return bag == 0 and 2 or 0
+    end,
+    GetContainerNumFreeSlots = function()
+      return 10, 0
+    end,
+    GetContainerItemInfo = function(bag, slot)
+      return bag == 0 and slot == 2 and { itemID = 3 } or nil
+    end,
+  }
+  after3s("BAG_UPDATE_DELAYED")
+  check(shown("skill_bag") == string.format(ns.L.WARN_SKILL_BAG_FMT, "Dolche 120/200"), "weapon to train in the bags")
+  bowRank = 120
+  StubFrames[1].scripts.OnEvent(StubFrames[1], "SKILL_LINES_CHANGED")
+  check(shown("skill_bag") == nil, "equipped weapon still rises: no bag hint")
+  C_Container, inv[3] = nil, nil
+
   -- Profession at its rank's cap, only from the level the next rank needs.
   C_SkillInfo = {
     GetSkillLineInfoByID = function(id)
@@ -2085,7 +2116,19 @@ do
   IsiStatsDB.lastFlightMaster = { faction = "Alliance", from = 3242, targets = { 52, 99 } }
   IsiStatsDB.flightNames[99] = "Neu"
   SlashCmdList.ISISTATS("flights")
-  check(printed[#printed - 1]:find("1:20", 1, true), "flights command lists the time")
+  check(printed[#printed - 2]:find("1:20", 1, true), "flights command lists the time")
+  local stats = IsiStatsDB.flightStats
+  check(
+    stats.count
+      and stats.count >= 3
+      and printed[#printed - 1]
+        == string.format(
+          "|cff1e90ffisiStatsForever|r: " .. ns.L.FLIGHT_STATS_FMT,
+          stats.count,
+          ns.LevelTime.Format(stats.seconds)
+        ),
+    "flights command: number of flights and the time flown"
+  )
   check(printed[#printed]:find("Neu", 1, true) and not printed[#printed]:find("Hafen", 1, true), "never flown listed")
   SlashCmdList.ISISTATS("flights clear")
   check(ns.Flights.Count() == 0, "flights clear")
@@ -2120,6 +2163,9 @@ do
   copper = 7500
   local v = ns.Session.Values()
   check(v.xp == 700 and v.kills == 5 and v.gold == -2500, "session XP, kills and gold")
+  check(v.killXP == 400, "session XP from kills, quest XP apart")
+  ev.scripts.OnEvent(ev, "PLAYER_DEAD")
+  check(ns.Session.Values().deaths == 1, "session deaths")
   check(ns.Session.FormatMoney(-2500) == "-25|cffc7c7cfs|r 0|cffeda55fc|r", "gold text")
   ev.scripts.OnEvent(ev, "PLAYER_ENTERING_WORLD", false, true)
   check(ns.Session.Values().kills == 5, "session kept across /reload")
@@ -2168,8 +2214,9 @@ do
   CanMerchantRepair = function()
     return true
   end
+  local repairCostNow = 12345
   GetRepairAllCost = function()
-    return 12345, true
+    return repairCostNow, true
   end
   RepairAllItems = function()
     repaired = repaired + 1
@@ -2179,6 +2226,26 @@ do
     repaired == 0 and lines[#lines] and lines[#lines]:find("1|cffffd700g|r 23|cffc7c7cfs|r 45", 1, true),
     "repair costs in the chat"
   )
+  local repairsBefore = ns.Session.Values().repairs
+  repairCostNow = 0
+  ev.scripts.OnEvent(ev, "UPDATE_INVENTORY_DURABILITY")
+  ev.scripts.OnEvent(ev, "MERCHANT_CLOSED")
+  check(ns.Session.Values().repairs == repairsBefore + 12345, "repairs at the vendor counted")
+  repairCostNow = 12345
+
+  -- level-up: what the level gave, from the event
+  local statNames = { SPELL_STAT1_NAME, SPELL_STAT3_NAME, SPELL_STAT5_NAME }
+  SPELL_STAT1_NAME, SPELL_STAT3_NAME, SPELL_STAT5_NAME = "Stärke", "Ausdauer", "Willenskraft"
+  ev.scripts.OnEvent(ev, "PLAYER_LEVEL_UP", 14, 18, 0, 1, 0, 3, 0, 2, 0, 1)
+  local gains = "+3 Stärke, +2 Ausdauer, +1 Willenskraft, +18 " .. ns.L.HEALTH
+  local found = false
+  for _, line in ipairs(lines) do
+    if line == "|cff1e90ffisiStatsForever|r: " .. string.format(ns.L.LEVEL_GAINS_FMT, 14, gains) then
+      found = true
+    end
+  end
+  check(found, "level-up gains in the chat")
+  SPELL_STAT1_NAME, SPELL_STAT3_NAME, SPELL_STAT5_NAME = statNames[1], statNames[2], statNames[3]
   ns.SetAutoRepair(true)
   copper = 20000
   ev.scripts.OnEvent(ev, "MERCHANT_SHOW")
@@ -2221,6 +2288,22 @@ do
   }
   check(not findRow(ns.Data.Collect(), ns.L.HEARTH), "no hearthstone: no row")
   ns.SetRowEnabled("hearth", false)
+
+  -- durability of the gear: the whole share, the weakest in the tooltip
+  local durability = GetInventoryItemDurability
+  GetInventoryItemDurability = function(slot)
+    if slot == 1 then
+      return 50, 100
+    elseif slot == 5 then
+      return 20, 100
+    end
+  end
+  ns.SetRowEnabled("gear_durability", true)
+  local dur = findRow(ns.Data.Collect(), ns.L.GEAR_DURABILITY)
+  check(dur and dur.value == "35%" and dur.color == "bad", "durability: share of all, colour of the weakest")
+  check(dur and dur.tip:find("20%", 1, true), "durability tooltip: the weakest item")
+  ns.SetRowEnabled("gear_durability", false)
+  GetInventoryItemDurability = durability
   C_Item, C_Container, GetBindLocation = (table.unpack or unpack)(hearthBackup, 1, hearthBackup.n)
   SlashCmdList.ISISTATS("session reset")
   GetTime, GetMoney = (table.unpack or unpack)(backup, 1, backup.n)

@@ -26,6 +26,7 @@ local lastGain, lastGainAt -- an XP gain still waiting for a kill message
 local killGains = {}
 -- Weapon skill-ups of this session (not saved): id -> { rank, at, ups = { { dt, gain } } }
 local skillSeen = {}
+local merchantCost -- repair costs at the open vendor, nil without one
 
 Session.EVENTS = {
   PLAYER_ENTERING_WORLD = true,
@@ -33,6 +34,10 @@ Session.EVENTS = {
   CHAT_MSG_COMBAT_XP_GAIN = true,
   SKILL_LINES_CHANGED = true,
   PLAYER_REGEN_ENABLED = true, -- skill ranks may be hidden in combat: catch up
+  PLAYER_DEAD = true,
+  MERCHANT_SHOW = true, -- dispatched by Core before its repair line
+  MERCHANT_CLOSED = true,
+  UPDATE_INVENTORY_DURABILITY = true,
 }
 
 local function money()
@@ -41,7 +46,7 @@ local function money()
 end
 
 function Session.Reset()
-  charDB.session = { start = time(), money = money(), xp = 0, kills = 0 }
+  charDB.session = { start = time(), money = money(), xp = 0, kills = 0, killXP = 0, deaths = 0, repairs = 0 }
   killGains = {}
   killAt, lastGain, lastGainAt = nil, nil, nil
 end
@@ -70,6 +75,7 @@ function Session.OnXPGain(gain)
   local t = GetTime()
   if killAt and t - killAt <= PAIR_WINDOW then
     addKillGain(gain)
+    s.killXP = (s.killXP or 0) + gain
     killAt = nil
   else
     lastGain, lastGainAt = gain, t
@@ -109,9 +115,31 @@ function Session.SkillEta(id, rank, max)
   return dt > 0 and gain > 0 and (max - rank) * dt / gain or nil
 end
 
+-- Repair costs at the open vendor, or nil.
+local function repairCost()
+  if not merchantCost and call(CanMerchantRepair) ~= true then
+    return nil
+  end
+  local cost = call(GetRepairAllCost)
+  return not isSecret(cost) and num(cost) or nil
+end
+
 function Session.OnEvent(event, isInitialLogin)
   local s = charDB and charDB.session
-  if event == "SKILL_LINES_CHANGED" or event == "PLAYER_REGEN_ENABLED" then
+  if event == "PLAYER_DEAD" and s then
+    s.deaths = (s.deaths or 0) + 1
+  elseif event == "MERCHANT_SHOW" then
+    merchantCost = repairCost()
+  elseif event == "MERCHANT_CLOSED" then
+    merchantCost = nil
+  elseif event == "UPDATE_INVENTORY_DURABILITY" and merchantCost and s then
+    -- repaired at the vendor: the costs went down by what was paid
+    local now = repairCost()
+    if now and now < merchantCost then
+      s.repairs = (s.repairs or 0) + merchantCost - now
+    end
+    merchantCost = now or merchantCost
+  elseif event == "SKILL_LINES_CHANGED" or event == "PLAYER_REGEN_ENABLED" then
     Session.OnSkillsChanged()
   elseif event == "PLAYER_ENTERING_WORLD" then
     if isInitialLogin == true then
@@ -125,6 +153,7 @@ function Session.OnEvent(event, isInitialLogin)
     local t = GetTime()
     if lastGain and t - lastGainAt <= PAIR_WINDOW then
       addKillGain(lastGain)
+      s.killXP = (s.killXP or 0) + lastGain
       lastGain = nil
     else
       killAt = t
@@ -157,6 +186,9 @@ function Session.Values()
     xp = s.xp or 0,
     gold = now and s.money and (now - s.money) or nil,
     kills = s.kills or 0,
+    killXP = s.killXP or 0,
+    deaths = s.deaths or 0,
+    repairs = s.repairs or 0,
   }
 end
 

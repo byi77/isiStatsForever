@@ -91,7 +91,8 @@ end
 
 -- A new level starts at zero; the finished level's time is kept (only when
 -- the game's played time was in, so the whole level was measured).
-function LevelTime.OnLevelUp(newLevel)
+function LevelTime.OnLevelUp(newLevel, ...)
+  LevelTime.PrintGains(newLevel, ...)
   local finished = ns.Util.num(newLevel)
   finished = finished and finished - 1
   if levelSeconds and finished and saved then
@@ -210,6 +211,31 @@ function LevelTime.Estimate(currentXP, remainingXP)
     return nil
   end
   return remainingXP / (currentXP / seconds), "level"
+end
+
+-- PLAYER_LEVEL_UP hands over what the level gave: health, power, talent and
+-- PvP talent points, then strength, agility, stamina, intellect, spirit.
+function LevelTime.PrintGains(level, health, power, _, _, ...)
+  local U, L = ns.Util, ns.L
+  level = U.num(level)
+  if not level then
+    return
+  end
+  local parts = {}
+  local function add(delta, name)
+    delta = U.num(delta)
+    if delta and delta > 0 and name then
+      parts[#parts + 1] = string.format("+%d %s", delta, name)
+    end
+  end
+  for i = 1, 5 do
+    add((select(i, ...)), U.str(_G["SPELL_STAT" .. i .. "_NAME"]))
+  end
+  add(health, L.HEALTH)
+  add(power, L.MANA)
+  if #parts > 0 then
+    ns.Print(string.format(L.LEVEL_GAINS_FMT, level, table.concat(parts, ", ")))
+  end
 end
 
 -- /isistats levels: the kept time of every level, lowest first.

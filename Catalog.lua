@@ -65,6 +65,7 @@ function Data.GetCatalog()
         { id = "session_gold", label = L.SESSION_GOLD },
         { id = "session_gold_rate", label = L.SESSION_GOLD_RATE },
         { id = "session_kills", label = L.SESSION_KILLS },
+        { id = "session_deaths", label = L.SESSION_DEATHS },
       },
     },
     {
@@ -72,6 +73,13 @@ function Data.GetCatalog()
       title = L.TRAVEL_SECTION,
       rows = {
         { id = "hearth", label = L.HEARTH },
+      },
+    },
+    {
+      key = "gear",
+      title = L.GEAR_SECTION,
+      rows = {
+        { id = "gear_durability", label = L.GEAR_DURABILITY },
       },
     },
     {
