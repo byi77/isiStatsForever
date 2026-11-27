@@ -577,6 +577,108 @@ function UI.ShowCombatBanner(text, color)
   banner:Show()
 end
 
+-- ---------------------------------------------------------------- flight bar
+
+-- While on a flight whose time is known (Flights.lua): a bar that fills as
+-- the flight goes on, the destination on the left, the time still to go on
+-- the right. Shift + left drag moves it (saved in IsiStatsDB.flightBarPos).
+local FBAR_W, FBAR_H = 320, 20
+local FBAR_Y = -200
+local flightBar
+
+local function flightBarUpdate(self)
+  local total = self.total
+  local passed = math.max(0, GetTime() - self.start)
+  local share = math.min(1, passed / total)
+  self.fill:SetWidth(math.max(1, (FBAR_W - 2) * share))
+  local left = math.max(0, math.floor(total - passed + 0.5))
+  self.time:SetText(string.format("%d:%02d", math.floor(left / 60), left % 60))
+  self.share = share
+end
+
+local function createFlightBar()
+  local f = CreateFrame("Frame", nil, UIParent)
+  f:SetSize(FBAR_W, FBAR_H)
+  f:SetFrameStrata("MEDIUM")
+  f:SetClampedToScreen(true)
+  local edge = f:CreateTexture(nil, "BACKGROUND", nil, 0)
+  edge:SetTexture(WHITE)
+  edge:SetPoint("TOPLEFT", -1, 1)
+  edge:SetPoint("BOTTOMRIGHT", 1, -1)
+  edge:SetVertexColor(rgba(C.border, 1))
+  local bg = f:CreateTexture(nil, "BACKGROUND", nil, 1)
+  bg:SetTexture(WHITE)
+  bg:SetAllPoints()
+  bg:SetVertexColor(rgba(C.bg, 1))
+  local track = f:CreateTexture(nil, "ARTWORK", nil, 0)
+  track:SetTexture(WHITE)
+  track:SetPoint("TOPLEFT", 1, -1)
+  track:SetPoint("BOTTOMRIGHT", -1, 1)
+  track:SetVertexColor(rgba(C.barTrack, 1))
+  f.fill = f:CreateTexture(nil, "ARTWORK", nil, 1)
+  f.fill:SetTexture(WHITE)
+  f.fill:SetPoint("TOPLEFT", 1, -1)
+  f.fill:SetPoint("BOTTOMLEFT", 1, 1)
+  f.fill:SetWidth(1)
+  f.fill:SetVertexColor(rgba(C.bar, 1))
+  f.label = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+  f.label:SetPoint("LEFT", 8, 0)
+  f.label:SetPoint("RIGHT", -52, 0)
+  f.label:SetJustifyH("LEFT")
+  f.label:SetWordWrap(false)
+  setColor(f.label, "value")
+  f.time = f:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+  f.time:SetPoint("RIGHT", -8, 0)
+  setColor(f.time, "value")
+  f:EnableMouse(true)
+  f:SetMovable(true)
+  f:RegisterForDrag("LeftButton")
+  f:SetScript("OnDragStart", function(self)
+    if IsShiftKeyDown() then
+      self:StartMoving()
+    end
+  end)
+  f:SetScript("OnDragStop", function(self)
+    self:StopMovingOrSizing()
+    local point, _, relativePoint, x, y = self:GetPoint()
+    if point then
+      IsiStatsDB.flightBarPos = { point, relativePoint, x, y }
+    end
+  end)
+  f:SetScript("OnUpdate", flightBarUpdate)
+  f:Hide()
+  return f
+end
+
+function UI.ShowFlightBar(destination, total, start)
+  if type(total) ~= "number" or total <= 0 then
+    return
+  end
+  flightBar = flightBar or createFlightBar()
+  flightBar:ClearAllPoints()
+  local pos = IsiStatsDB and IsiStatsDB.flightBarPos
+  if type(pos) == "table" and pos[1] then
+    flightBar:SetPoint(pos[1], UIParent, pos[2], pos[3], pos[4])
+  else
+    flightBar:SetPoint("CENTER", UIParent, "CENTER", 0, FBAR_Y)
+  end
+  flightBar.label:SetText(destination or "")
+  flightBar.total, flightBar.start = total, start or GetTime()
+  flightBarUpdate(flightBar)
+  flightBar:Show()
+end
+
+function UI.HideFlightBar()
+  if flightBar then
+    flightBar:Hide()
+  end
+end
+
+-- Shown or not, how full (0..1), and the frame (for the load test).
+function UI.GetFlightBar()
+  return flightBar and flightBar:IsShown() or false, flightBar and flightBar.share, flightBar
+end
+
 -- The text on screen (nil: none) and the frame (for the load test).
 function UI.GetCombatBanner()
   return banner and banner:IsShown() and banner.shownText or nil, banner

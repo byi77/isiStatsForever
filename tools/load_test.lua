@@ -1784,12 +1784,33 @@ do
     taxi = false
     ev.scripts.OnEvent(ev, "PLAYER_CONTROL_GAINED")
   end
-  check(IsiStatsDB.flightTimes == true, "flight times on by default")
+  check(IsiStatsDB.flightTimes == true and IsiStatsDB.flightBar == true, "flight times and bar on by default")
+  ev.scripts.OnEvent(ev, "TAXIMAP_OPENED")
+  ns.Flights.OnTakeTaxi(2)
+  taxi = true
+  ev.scripts.OnEvent(ev, "PLAYER_CONTROL_LOST")
+  check(not ns.UI.GetFlightBar(), "unknown flight time: no bar")
+  ns.Flights.Abort()
+  taxi = false
   fly(75)
   check(ns.Flights.Get(3242, 52) == 75, "flight time saved")
   check(IsiStatsDB.flightNames[52] == "Hafen", "flight point name saved")
   check(printed[#printed]:find("1:15", 1, true), "saved time printed")
+  ev.scripts.OnEvent(ev, "TAXIMAP_OPENED")
+  ns.Flights.OnTakeTaxi(2)
+  taxi = true
+  ev.scripts.OnEvent(ev, "PLAYER_CONTROL_LOST")
+  local barShown, _, bar = ns.UI.GetFlightBar()
+  check(barShown, "known flight time: bar during the flight")
+  now = now + 30
+  bar.scripts.OnUpdate(bar)
+  local _, share = ns.UI.GetFlightBar()
+  check(share and math.abs(share - 0.4) < 0.001, "bar fills with the time passed")
+  ns.Flights.Abort()
+  check(not ns.UI.GetFlightBar(), "bar gone when the flight ends early")
+  taxi = false
   fly(80)
+  check(not ns.UI.GetFlightBar(), "bar gone after landing")
   check(ns.Flights.Get(3242, 52) == 80, "last flight counts")
   check(printed[#printed - 1]:find("1:15", 1, true), "known time shown at departure")
   ev.scripts.OnEvent(ev, "TAXIMAP_OPENED")

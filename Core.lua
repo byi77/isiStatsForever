@@ -15,6 +15,8 @@ local DEFAULTS = {
   resetMeterOnJoin = true, -- clear Blizzard's damage meter when joining a group
   combatBanner = true, -- big fading text in the middle on combat start and end
   flightTimes = true, -- measure and keep flight times (Flights.lua)
+  flightBar = true, -- bar during a flight whose time is known
+  flightBarPos = false, -- { point, relativePoint, x, y } after Shift + drag
   flights = {}, -- flights[faction][fromNodeID][toNodeID] = seconds
   flightNames = {}, -- flight point names by node ID
   errors = {}, -- own Lua errors (ErrorLog.lua)
@@ -198,6 +200,14 @@ end
 
 function ns.SetFlightTimes(value)
   ns.Flights.SetEnabled(value)
+end
+
+function ns.GetFlightBar()
+  return db and db.flightBar and true or false
+end
+
+function ns.SetFlightBar(value)
+  ns.Flights.SetBar(value)
 end
 
 function ns.GetCombatBanner()

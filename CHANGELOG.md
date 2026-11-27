@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Added: flight times. Every whole flight you take is measured and saved account-wide per faction (an early landing or a loading screen on the way is not saved). When you take a flight whose time is known, the chat says how long it takes; `/isistats flights` lists the saved times, `/isistats flights clear` deletes them. On by default, switchable in the settings.
+- Added: flight bar. Only while you are on a flight whose time is saved, a bar fills as the flight goes on, with the destination and the time still to go (Shift + drag moves it). On by default, switchable in the settings.
 - Added: combat start and combat end show as a big text in the middle of the screen that rises while it fades in and out (red "Combat started", green "Combat over"). On by default, switchable in the settings.
 - Fixed: API audit against the Forever client source (1.60.1.70938). The chat window count now comes from the client constant `Constants.ChatFrameConstants.MaxChatWindows`; `NUM_CHAT_WINDOWS` only exists as a deprecation shim, and the hard-coded 10 is gone. The window subtitle and the class defaults no longer use a class or level value that could be secret without checking it first.
 

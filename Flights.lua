@@ -10,6 +10,7 @@ local call, num, str, isSecret = U.call, U.num, U.str, U.isSecret
 -- /reload on the way drops the measurement. Saved account-wide per faction in
 -- IsiStatsDB.flights[faction][fromID][toID] = seconds (the last flight counts),
 -- the names in IsiStatsDB.flightNames[nodeID]. Nothing comes from elsewhere.
+-- Only while on a flight whose time is known, a bar shows it (UI.lua).
 local Flights = {}
 ns.Flights = Flights
 
@@ -110,6 +111,10 @@ function Flights.OnEvent(event)
   elseif event == "PLAYER_CONTROL_LOST" then
     if pending and GetTime() - pending.at <= START_WINDOW and onTaxi() then
       flight = { from = pending.from, to = pending.to, start = GetTime() }
+      local known = Flights.Get(flight.from, flight.to)
+      if known and db.flightBar then
+        ns.UI.ShowFlightBar(Flights.Name(flight.to), known, flight.start)
+      end
     end
     pending = nil
   elseif event == "PLAYER_CONTROL_GAINED" then
@@ -118,6 +123,7 @@ function Flights.OnEvent(event)
       return
     end
     flight = nil
+    ns.UI.HideFlightBar()
     local seconds = math.floor(GetTime() - done.start + 0.5)
     local side = faction()
     if not (db and db.flightTimes and side) or seconds < MIN_SECONDS then
@@ -129,13 +135,14 @@ function Flights.OnEvent(event)
     list[done.from][done.to] = seconds
     ns.Print(string.format(L.FLIGHT_SAVED_FMT, Flights.Name(done.from), Flights.Name(done.to), clock(seconds)))
   elseif event == "PLAYER_LEAVING_WORLD" then
-    pending, flight = nil, nil
+    Flights.Abort()
   end
 end
 
 -- An early landing is not the whole route.
 function Flights.Abort()
   pending, flight = nil, nil
+  ns.UI.HideFlightBar()
 end
 
 function Flights.Count()
@@ -194,6 +201,18 @@ end
 function Flights.SetEnabled(value)
   db.flightTimes = value and true or false
   if not db.flightTimes then
-    pending, flight = nil, nil
+    Flights.Abort()
+  end
+end
+
+function Flights.SetBar(value)
+  db.flightBar = value and true or false
+  if not db.flightBar then
+    ns.UI.HideFlightBar()
+  elseif flight then
+    local known = Flights.Get(flight.from, flight.to)
+    if known then
+      ns.UI.ShowFlightBar(Flights.Name(flight.to), known, flight.start)
+    end
   end
 end

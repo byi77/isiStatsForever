@@ -104,6 +104,7 @@ read_globals = {
   "UnitXPMax",
   "geterrorhandler",
   "hooksecurefunc",
+  "IsShiftKeyDown",
   "Enum",
   "TaxiRequestEarlyLanding",
   "TakeTaxiNode",
