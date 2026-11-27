@@ -1907,8 +1907,13 @@ do
   ns.Flights.OnTakeTaxi(2)
   taxi = true
   ev.scripts.OnEvent(ev, "PLAYER_CONTROL_LOST")
-  local shown, _, _, mode = ns.UI.GetFlightBar()
+  local shown, _, unknownBar, mode = ns.UI.GetFlightBar()
   check(shown and mode == "unknown", "unknown flight time: bar counting up")
+  check(unknownBar.text == string.format(ns.L.FLIGHT_BAR_DEST_FMT, "Hafen"), "bar: the destination only")
+  check(
+    unknownBar.route == string.format(ns.L.FLIGHT_ROUTE_FMT, "Besudeltes Vorgebirge", "Hafen"),
+    "bar tooltip: the whole route"
+  )
   ns.SetFlightBarUnknown(false)
   check(not ns.UI.GetFlightBar(), "unknown flight time: bar switchable")
   ns.SetFlightBarUnknown(true)

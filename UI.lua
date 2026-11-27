@@ -664,7 +664,12 @@ local function createFlightBar()
   f:SetScript("OnEnter", function(self)
     if type(GameTooltip) == "table" then
       GameTooltip:SetOwner(self, "ANCHOR_TOP")
-      GameTooltip:SetText(L.FLIGHT_BAR_TIP, 1, 1, 1, 1, true)
+      if self.route then
+        GameTooltip:SetText(self.route, 1, 1, 1, 1, true)
+        GameTooltip:AddLine(L.FLIGHT_BAR_TIP, 0.7, 0.7, 0.7, true)
+      else
+        GameTooltip:SetText(L.FLIGHT_BAR_TIP, 1, 1, 1, 1, true)
+      end
       GameTooltip:Show()
     end
   end)
@@ -679,7 +684,9 @@ local function createFlightBar()
 end
 
 -- mode: "known" | "estimate" (total = seconds) | "unknown" (total nil).
-function UI.ShowFlightBar(destination, total, start, mode)
+-- destination: the text in the bar (a smaller font when it does not fit);
+-- route: the whole route for the tooltip.
+function UI.ShowFlightBar(destination, total, start, mode, route)
   mode = mode or "known"
   if mode ~= "unknown" and (type(total) ~= "number" or total <= 0) then
     return
@@ -692,7 +699,14 @@ function UI.ShowFlightBar(destination, total, start, mode)
   else
     flightBar:SetPoint("CENTER", UIParent, "CENTER", 0, FBAR_Y)
   end
-  flightBar.label:SetText(destination or "")
+  local label = flightBar.label
+  label:SetFontObject("GameFontHighlight")
+  label:SetText(destination or "")
+  if label:IsTruncated() then
+    label:SetFontObject("GameFontHighlightSmall")
+  end
+  setColor(label, "value")
+  flightBar.text, flightBar.route = destination, route
   flightBar.total, flightBar.start, flightBar.mode = total, start or GetTime(), mode
   flightBar.fill:SetVertexColor(rgba(mode == "unknown" and C.dim or C.bar, mode == "unknown" and 0.5 or 1))
   flightBarUpdate(flightBar)

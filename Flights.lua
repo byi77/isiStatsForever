@@ -269,14 +269,17 @@ local function showBar()
     ns.UI.HideFlightBar()
     return
   end
-  local name = string.format(L.FLIGHT_ROUTE_FMT, Flights.Name(flight.from), Flights.Name(flight.to))
+  -- in the bar only the destination without its zone ("Name, Zone"), the whole route in the tooltip
+  local to = Flights.Name(flight.to)
+  local name = string.format(L.FLIGHT_BAR_DEST_FMT, to:match("^(.-),") or to)
+  local route = string.format(L.FLIGHT_ROUTE_FMT, Flights.Name(flight.from), to)
   local known = Flights.Get(flight.from, flight.to)
   if known then
-    ns.UI.ShowFlightBar(name, known, flight.start, "known")
+    ns.UI.ShowFlightBar(name, known, flight.start, "known", route)
   elseif flight.estimate then
-    ns.UI.ShowFlightBar(name, flight.estimate, flight.start, "estimate")
+    ns.UI.ShowFlightBar(name, flight.estimate, flight.start, "estimate", route)
   elseif db.flightBarUnknown then
-    ns.UI.ShowFlightBar(name, nil, flight.start, "unknown")
+    ns.UI.ShowFlightBar(name, nil, flight.start, "unknown", route)
   else
     ns.UI.HideFlightBar()
   end
