@@ -579,20 +579,31 @@ end
 
 -- ---------------------------------------------------------------- flight bar
 
--- While on a flight whose time is known (Flights.lua): a bar that fills as
--- the flight goes on, the destination on the left, the time still to go on
--- the right. Shift + left drag moves it (saved in IsiStatsDB.flightBarPos).
+-- While on a flight (Flights.lua): a bar with start -> destination on the left.
+-- mode "known": fills as the flight goes on, the time still to go on the
+-- right; "estimate": the same with "~" before the time; "unknown": full and
+-- dimmed, the time since take-off counting up ("+"). Shift + left drag moves it
+-- (saved in IsiStatsDB.flightBarPos), Ctrl + click closes it for this flight.
 local FBAR_W, FBAR_H = 320, 20
 local FBAR_Y = -200
 local flightBar
 
+local function mmss(seconds)
+  seconds = math.max(0, math.floor(seconds + 0.5))
+  return string.format("%d:%02d", math.floor(seconds / 60), seconds % 60)
+end
+
 local function flightBarUpdate(self)
-  local total = self.total
   local passed = math.max(0, GetTime() - self.start)
-  local share = math.min(1, passed / total)
+  if self.mode == "unknown" then
+    self.fill:SetWidth(FBAR_W - 2)
+    self.time:SetText("+" .. mmss(passed))
+    self.share = 1
+    return
+  end
+  local share = math.min(1, passed / self.total)
   self.fill:SetWidth(math.max(1, (FBAR_W - 2) * share))
-  local left = math.max(0, math.floor(total - passed + 0.5))
-  self.time:SetText(string.format("%d:%02d", math.floor(left / 60), left % 60))
+  self.time:SetText((self.mode == "estimate" and "~" or "") .. mmss(self.total - passed))
   self.share = share
 end
 
@@ -645,13 +656,32 @@ local function createFlightBar()
       IsiStatsDB.flightBarPos = { point, relativePoint, x, y }
     end
   end)
+  f:SetScript("OnMouseUp", function(self, button)
+    if button == "LeftButton" and IsControlKeyDown() then
+      self:Hide()
+    end
+  end)
+  f:SetScript("OnEnter", function(self)
+    if type(GameTooltip) == "table" then
+      GameTooltip:SetOwner(self, "ANCHOR_TOP")
+      GameTooltip:SetText(L.FLIGHT_BAR_TIP, 1, 1, 1, 1, true)
+      GameTooltip:Show()
+    end
+  end)
+  f:SetScript("OnLeave", function()
+    if type(GameTooltip) == "table" then
+      GameTooltip:Hide()
+    end
+  end)
   f:SetScript("OnUpdate", flightBarUpdate)
   f:Hide()
   return f
 end
 
-function UI.ShowFlightBar(destination, total, start)
-  if type(total) ~= "number" or total <= 0 then
+-- mode: "known" | "estimate" (total = seconds) | "unknown" (total nil).
+function UI.ShowFlightBar(destination, total, start, mode)
+  mode = mode or "known"
+  if mode ~= "unknown" and (type(total) ~= "number" or total <= 0) then
     return
   end
   flightBar = flightBar or createFlightBar()
@@ -663,7 +693,8 @@ function UI.ShowFlightBar(destination, total, start)
     flightBar:SetPoint("CENTER", UIParent, "CENTER", 0, FBAR_Y)
   end
   flightBar.label:SetText(destination or "")
-  flightBar.total, flightBar.start = total, start or GetTime()
+  flightBar.total, flightBar.start, flightBar.mode = total, start or GetTime(), mode
+  flightBar.fill:SetVertexColor(rgba(mode == "unknown" and C.dim or C.bar, mode == "unknown" and 0.5 or 1))
   flightBarUpdate(flightBar)
   flightBar:Show()
 end
@@ -674,9 +705,12 @@ function UI.HideFlightBar()
   end
 end
 
--- Shown or not, how full (0..1), and the frame (for the load test).
+-- Shown or not, how full (0..1), the frame and the mode (for the load test).
 function UI.GetFlightBar()
-  return flightBar and flightBar:IsShown() or false, flightBar and flightBar.share, flightBar
+  return flightBar and flightBar:IsShown() or false,
+    flightBar and flightBar.share,
+    flightBar,
+    flightBar and flightBar.mode
 end
 
 -- The text on screen (nil: none) and the frame (for the load test).

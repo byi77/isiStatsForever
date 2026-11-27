@@ -152,6 +152,7 @@ function Options.Sync()
   if panel.flightTimes then
     panel.flightTimes:SetChecked(ns.GetFlightTimes())
     panel.flightBar:SetChecked(ns.GetFlightBar())
+    panel.flightBarUnknown:SetChecked(ns.GetFlightBarUnknown())
   end
   if panel.combatHide then
     panel.combatHide:SetChecked(ns.GetCombatMode() == "hide")
@@ -239,6 +240,10 @@ local function build()
   end)
   panel.flightBar = checkbox(content, 16 + COL_W, y, L.OPT_FLIGHT_BAR, function(checked)
     ns.SetFlightBar(checked)
+  end)
+  y = y - ROW_H - 4
+  panel.flightBarUnknown = checkbox(content, 16 + COL_W, y, L.OPT_FLIGHT_BAR_UNKNOWN, function(checked)
+    ns.SetFlightBarUnknown(checked)
   end)
   y = y - ROW_H - 4
 

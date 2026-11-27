@@ -15,6 +15,8 @@
 - **Fishing pole warning**: red row while a fishing pole is equipped; when combat starts with it, a text stays on screen until you take it off, with a warning sound every 2 seconds during the fight.
 - **Gathering tracking warning**: a text stays on screen while you have herbalism or mining and Find Herbs / Find Minerals is off, with a warning sound when it appears.
 - **Class and gear warnings**: lasting screen warnings for low soul shards, low ammo, Cheetah / Pack aspect in combat, an unhappy or missing pet, missing Battle Shout, Defensive Stance without a shield, missing poisons, imbues and self buffs, low reagents and broken gear.
+- **Flight times**: every whole flight you take is measured and saved on your own install. The flight map tooltip shows the time of each flight point (or a ~ estimate from saved stretches), and during the flight a bar shows start -> destination with the time left (counting up when the time is not known yet).
+- **Combat banner**: a big text in the middle of the screen when combat starts and ends.
 - **Damage meter reset**: Blizzard's damage meter starts empty in every group you join.
 - **Chat history**: Up / Down in the chat input step through your sent lines, also after a restart.
 - **Leveling**: XP to the next level in thousands, time on this level and the estimated time to the next level.
@@ -40,6 +42,7 @@ Rounded, compact window that floats freely (open from the start) or docks to the
 - `/isistats config` - settings
 - `/isistats scale 0.5-2`, `/isistats alpha 0-100`
 - `/isistats dock` / `free` / `reset`, `/isistats lock` / `unlock`
+- `/isistats flights` - saved flight times (`flights clear` deletes them)
 - `/isistats errors` - error log for bug reports
 
 Bug reports and ideas: https://github.com/byi77/isiStatsForever/issues

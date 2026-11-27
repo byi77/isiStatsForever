@@ -58,6 +58,15 @@ class defaults - `Data.lua` collects the sections - `CombatCache.lua` last value
 - Damage meter: `C_DamageMeter.ResetAllCombatSessions()` (Blizzard's own "reset all sessions"
   menu entry) on `GROUP_JOINED` / `GROUP_FORMED`, once per `partyGUID`. Neither fires on a login or
   `/reload` inside a group (user request 2026-11-22: clear once per group join).
+- Flight times (`Flights.lua`, user request 2026-11-27): only own measurements. Click = post-hook on
+  `TakeTaxiNode(slot)`, node IDs from `C_TaxiMap.GetAllTaxiNodes(GetTaxiMapID())` (cached on
+  `TAXIMAP_OPENED`, `slotIndex` -> `nodeID`, state `Enum.FlightPathState.Current` = start), take-off
+  `PLAYER_CONTROL_LOST` + `UnitOnTaxi`, landing `PLAYER_CONTROL_GAINED`. Dropped: `TaxiRequestEarlyLanding`,
+  `C_SummonInfo.ConfirmSummon`, `AcceptBattlefieldPort(_, true)`, `LFG_PROPOSAL_SUCCEEDED`,
+  `PLAYER_LEAVING_WORLD`. Estimate (user decision 2026-11-27, exception to no-guess): sum of saved
+  times along the game's hops (`GetNumRoutes`, `TaxiGetNodeSlot(slot, hop, true)`), always shown with
+  `~`, never saved. Tooltip: `HookScript("OnEnter")` on `TaxiButton<slot>` and the
+  `FlightMap_FlightPointPinTemplate` pins. Never name other flight addons in repo files.
 - When a feature stops producing data without an error, check the API member first
   (`/isistats debug` prints what exists).
 

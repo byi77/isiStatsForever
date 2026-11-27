@@ -249,6 +249,7 @@ ChatFrame1EditBox = {
     self.altArrow = value
   end,
 }
+C_SummonInfo = { ConfirmSummon = function() end }
 hooksecurefunc = hooksecurefunc
   or function(tbl, name, fn)
     local orig = tbl[name]

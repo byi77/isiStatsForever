@@ -37,7 +37,7 @@ local failures = 0
 local function check(cond, msg)
   if not cond then
     failures = failures + 1
-    print("FAIL " .. msg)
+    io.write("FAIL " .. msg .. "\n")
   end
 end
 
@@ -1789,7 +1789,11 @@ do
   ns.Flights.OnTakeTaxi(2)
   taxi = true
   ev.scripts.OnEvent(ev, "PLAYER_CONTROL_LOST")
-  check(not ns.UI.GetFlightBar(), "unknown flight time: no bar")
+  local shown, _, _, mode = ns.UI.GetFlightBar()
+  check(shown and mode == "unknown", "unknown flight time: bar counting up")
+  ns.SetFlightBarUnknown(false)
+  check(not ns.UI.GetFlightBar(), "unknown flight time: bar switchable")
+  ns.SetFlightBarUnknown(true)
   ns.Flights.Abort()
   taxi = false
   fly(75)
@@ -1812,6 +1816,81 @@ do
   fly(80)
   check(not ns.UI.GetFlightBar(), "bar gone after landing")
   check(ns.Flights.Get(3242, 52) == 80, "last flight counts")
+  check(ns.UI.GetFlightBar() == false, "no bar on the ground")
+
+  -- a route over hops: 3242 -> 52 -> 7, only 52 -> 7 measured on its own
+  IsiStatsDB.flights.Alliance[52] = { [7] = 40 }
+  local nodes = C_TaxiMap.GetAllTaxiNodes
+  C_TaxiMap.GetAllTaxiNodes = function()
+    local list = nodes()
+    list[#list + 1] = { nodeID = 7, slotIndex = 3, name = "Weit weg", state = 1 }
+    return list
+  end
+  GetNumRoutes = function(slot)
+    return slot == 3 and 2 or 1
+  end
+  TaxiGetNodeSlot = function(_, hop)
+    return hop == 2 and 2 or nil
+  end
+  check(ns.Flights.Estimate(
+    3,
+    (function()
+      ev.scripts.OnEvent(ev, "TAXIMAP_OPENED")
+      local bySlot = {}
+      for _, n in ipairs(C_TaxiMap.GetAllTaxiNodes()) do
+        bySlot[n.slotIndex] = { id = n.nodeID, name = n.name }
+      end
+      return bySlot
+    end)(),
+    { id = 3242 }
+  ) == 120, "estimate = sum of the saved hops")
+  ns.Flights.OnTakeTaxi(3)
+  taxi = true
+  ev.scripts.OnEvent(ev, "PLAYER_CONTROL_LOST")
+  local _, _, _, estMode = ns.UI.GetFlightBar()
+  check(estMode == "estimate", "estimated time: bar with ~")
+  C_SummonInfo.ConfirmSummon()
+  check(not ns.UI.GetFlightBar(), "summon ends the flight")
+  taxi = false
+  ev.scripts.OnEvent(ev, "PLAYER_CONTROL_GAINED")
+  check(ns.Flights.Get(3242, 7) == nil, "summoned away: nothing saved")
+
+  -- tooltip on the flight map
+  local tipLines = {}
+  GameTooltip = {
+    AddLine = function(_, text)
+      tipLines[#tipLines + 1] = text
+    end,
+    Show = function() end,
+  }
+  local pin = {
+    taxiNodeData = { slotIndex = 2 },
+    HookScript = function(self, _, fn)
+      self.onEnter = fn
+    end,
+  }
+  local pool = {
+    EnumerateActive = function()
+      local done = false
+      return function()
+        if done then
+          return nil
+        end
+        done = true
+        return pin
+      end
+    end,
+  }
+  FlightMapFrame = { pinPools = { FlightMap_FlightPointPinTemplate = pool } }
+  ev.scripts.OnEvent(ev, "TAXIMAP_OPENED")
+  pin.onEnter(pin)
+  check(tipLines[1] and tipLines[1]:find("1:20", 1, true), "flight map tooltip: saved time")
+  pin.taxiNodeData.slotIndex = 3
+  pin.onEnter(pin)
+  check(tipLines[2] and tipLines[2]:find("~2:00", 1, true), "flight map tooltip: estimate")
+  FlightMapFrame, GameTooltip, GetNumRoutes, TaxiGetNodeSlot = nil, nil, nil, nil
+  C_TaxiMap.GetAllTaxiNodes = nodes
+  IsiStatsDB.flights.Alliance[52] = nil
   check(printed[#printed - 1]:find("1:15", 1, true), "known time shown at departure")
   ev.scripts.OnEvent(ev, "TAXIMAP_OPENED")
   ns.Flights.OnTakeTaxi(2)
