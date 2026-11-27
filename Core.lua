@@ -14,6 +14,9 @@ local DEFAULTS = {
   chatHistory = {}, -- sent chat lines, oldest first (ChatHistory.lua)
   resetMeterOnJoin = true, -- clear Blizzard's damage meter when joining a group
   combatBanner = true, -- big fading text in the middle on combat start and end
+  flightTimes = true, -- measure and keep flight times (Flights.lua)
+  flights = {}, -- flights[faction][fromNodeID][toNodeID] = seconds
+  flightNames = {}, -- flight point names by node ID
   errors = {}, -- own Lua errors (ErrorLog.lua)
   pos = nil, -- { point, relativePoint, x, y }
   collapsed = {},
@@ -189,6 +192,14 @@ function ns.SetResetMeterOnJoin(value)
   db.resetMeterOnJoin = value and true or false
 end
 
+function ns.GetFlightTimes()
+  return db and db.flightTimes and true or false
+end
+
+function ns.SetFlightTimes(value)
+  ns.Flights.SetEnabled(value)
+end
+
 function ns.GetCombatBanner()
   return db and db.combatBanner and true or false
 end
@@ -284,6 +295,7 @@ end
 local function out(msg)
   print("|cff1e90ffisiStatsForever|r: " .. tostring(msg))
 end
+ns.Print = out
 
 local function characterFrame()
   return _G.CharacterFrame
@@ -500,6 +512,7 @@ events:SetScript("OnEvent", function(self, event, arg1, arg2)
       end
     end
     ns.ErrorLog.Install(db)
+    ns.Flights.Init(db)
     IsiStatsCharDB = IsiStatsCharDB or {}
     charDB = IsiStatsCharDB
     charDB.rows = charDB.rows or {}
@@ -520,6 +533,9 @@ events:SetScript("OnEvent", function(self, event, arg1, arg2)
       pcall(self.RegisterUnitEvent, self, e, "player")
     end
     for e in pairs(ns.Tracking.EVENTS) do
+      pcall(self.RegisterEvent, self, e)
+    end
+    for e in pairs(ns.Flights.EVENTS) do
       pcall(self.RegisterEvent, self, e)
     end
     for e in pairs(ns.Warnings.EVENTS) do
@@ -567,6 +583,9 @@ events:SetScript("OnEvent", function(self, event, arg1, arg2)
       ns.LevelTime.OnLevelUp()
     elseif event == "PLAYER_XP_UPDATE" then
       ns.LevelTime.OnXPUpdate()
+    end
+    if ns.Flights.EVENTS[event] then
+      ns.Flights.OnEvent(event)
     end
     if PRIME_EVENTS[event] then
       ns.Data.Prime()
@@ -644,6 +663,7 @@ SlashCmdList.ISISTATS = function(msg)
   elseif cmd == "reset" then
     local errors = db.errors -- the error log survives a settings reset
     local chatHistory = db.chatHistory -- so do the sent chat lines
+    local flights, flightNames = db.flights, db.flightNames -- and the measured flight times
     IsiStatsDB = {}
     db = IsiStatsDB
     for k, v in pairs(DEFAULTS) do
@@ -651,6 +671,7 @@ SlashCmdList.ISISTATS = function(msg)
     end
     db.errors = errors
     db.chatHistory = chatHistory
+    db.flights, db.flightNames = flights, flightNames
     ns.ErrorLog.Install(db)
     ns.ChatHistory.Setup(db)
     ns.ApplyPosition()
@@ -663,6 +684,13 @@ SlashCmdList.ISISTATS = function(msg)
   elseif cmd == "chat" and arg == "clear" then
     ns.ChatHistory.Clear()
     out(L.CHAT_CLEARED)
+  elseif cmd == "flights" then
+    if arg == "clear" then
+      ns.Flights.Clear()
+      out(L.FLIGHT_CLEARED)
+    else
+      ns.Flights.Print(out)
+    end
   elseif cmd == "errors" then
     if arg == "clear" then
       ns.ErrorLog.Clear()

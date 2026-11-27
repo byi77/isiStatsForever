@@ -149,6 +149,9 @@ function Options.Sync()
   if panel.combatBanner then
     panel.combatBanner:SetChecked(ns.GetCombatBanner())
   end
+  if panel.flightTimes then
+    panel.flightTimes:SetChecked(ns.GetFlightTimes())
+  end
   if panel.combatHide then
     panel.combatHide:SetChecked(ns.GetCombatMode() == "hide")
     panel.combatOnly:SetChecked(ns.GetCombatMode() == "only")
@@ -227,6 +230,11 @@ local function build()
   end)
   panel.combatBanner = checkbox(content, 16 + COL_W, y, L.OPT_COMBAT_BANNER, function(checked)
     ns.SetCombatBanner(checked)
+  end)
+  y = y - ROW_H - 4
+
+  panel.flightTimes = checkbox(content, 16, y, L.OPT_FLIGHT_TIMES, function(checked)
+    ns.SetFlightTimes(checked)
   end)
   y = y - ROW_H - 4
 

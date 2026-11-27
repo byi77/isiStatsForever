@@ -15,7 +15,7 @@ isiStatsForever is a character stats addon for **WoW Forever** only. The repo li
 ## Files
 
 `Locale.lua` texts - `ErrorLog.lua` own error log - `Util.lua` guarded calls, secret values,
-formatting, formulas - `Skills.lua` skill lines and weapon slots - `Tracking.lua` gathering tracking warning - `Warnings.lua` class and gear warnings - `Buffs.lua` buff reminder - `Catalog.lua` value rows and
+formatting, formulas - `Skills.lua` skill lines and weapon slots - `Tracking.lua` gathering tracking warning - `Warnings.lua` class and gear warnings - `Buffs.lua` buff reminder - `Flights.lua` measured flight times - `Catalog.lua` value rows and
 class defaults - `Data.lua` collects the sections - `CombatCache.lua` last values in combat -
 `UI.lua` window - `Options.lua` settings page - `Core.lua` saved variables, events, slash commands.
 

@@ -21,6 +21,7 @@ Skills.lua
 Tracking.lua
 Warnings.lua
 Buffs.lua
+Flights.lua
 Catalog.lua
 Data.lua
 CombatCache.lua

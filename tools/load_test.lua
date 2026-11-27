@@ -1744,6 +1744,76 @@ check(ns.UI.GetCombatBanner() == nil, "combat banner switchable")
 ev.scripts.OnEvent(ev, "PLAYER_REGEN_ENABLED")
 ns.SetCombatBanner(true)
 
+-- Flight times: click on a flight point, taxi start, landing.
+do
+  local now, taxi = 1000, false
+  local backup = { n = 6, GetTime, GetTaxiMapID, C_TaxiMap, UnitOnTaxi, UnitFactionGroup, print }
+  local printed = {}
+  GetTime = function()
+    return now
+  end
+  GetTaxiMapID = function()
+    return 1415
+  end
+  C_TaxiMap = {
+    GetAllTaxiNodes = function()
+      return {
+        { nodeID = 3242, slotIndex = 1, name = "Besudeltes Vorgebirge", state = 0 },
+        { nodeID = 52, slotIndex = 2, name = "Hafen", state = 1 },
+      }
+    end,
+  }
+  UnitOnTaxi = function()
+    return taxi
+  end
+  UnitFactionGroup = function()
+    return "Alliance"
+  end
+  print = function(msg)
+    printed[#printed + 1] = msg
+  end
+  Enum = Enum or {}
+  Enum.FlightPathState = { Current = 0, Reachable = 1, Unreachable = 2 }
+  local function fly(seconds)
+    ev.scripts.OnEvent(ev, "TAXIMAP_OPENED")
+    ns.Flights.OnTakeTaxi(2)
+    now = now + 1
+    taxi = true
+    ev.scripts.OnEvent(ev, "PLAYER_CONTROL_LOST")
+    now = now + seconds
+    taxi = false
+    ev.scripts.OnEvent(ev, "PLAYER_CONTROL_GAINED")
+  end
+  check(IsiStatsDB.flightTimes == true, "flight times on by default")
+  fly(75)
+  check(ns.Flights.Get(3242, 52) == 75, "flight time saved")
+  check(IsiStatsDB.flightNames[52] == "Hafen", "flight point name saved")
+  check(printed[#printed]:find("1:15", 1, true), "saved time printed")
+  fly(80)
+  check(ns.Flights.Get(3242, 52) == 80, "last flight counts")
+  check(printed[#printed - 1]:find("1:15", 1, true), "known time shown at departure")
+  ev.scripts.OnEvent(ev, "TAXIMAP_OPENED")
+  ns.Flights.OnTakeTaxi(2)
+  taxi = true
+  ev.scripts.OnEvent(ev, "PLAYER_CONTROL_LOST")
+  ns.Flights.Abort()
+  now = now + 30
+  taxi = false
+  ev.scripts.OnEvent(ev, "PLAYER_CONTROL_GAINED")
+  check(ns.Flights.Get(3242, 52) == 80, "early landing not saved")
+  ns.SetFlightTimes(false)
+  fly(90)
+  check(ns.Flights.Get(3242, 52) == 80, "flight times switchable")
+  ns.SetFlightTimes(true)
+  SlashCmdList.ISISTATS("reset")
+  check(ns.Flights.Get(3242, 52) == 80, "flight times survive a settings reset")
+  SlashCmdList.ISISTATS("flights")
+  check(printed[#printed]:find("1:20", 1, true), "flights command lists the time")
+  SlashCmdList.ISISTATS("flights clear")
+  check(ns.Flights.Count() == 0, "flights clear")
+  GetTime, GetTaxiMapID, C_TaxiMap, UnitOnTaxi, UnitFactionGroup, print = (table.unpack or unpack)(backup, 1, backup.n)
+end
+
 -- Debug output is kept for reading from the SavedVariables file.
 SlashCmdList.ISISTATS("debug")
 check(type(IsiStatsDB.lastDebug) == "table" and #IsiStatsDB.lastDebug.lines > 3, "debug dump saved")
