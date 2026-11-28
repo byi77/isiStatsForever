@@ -29,7 +29,12 @@
 ## UI
 
 - Farben nur ueber die Palette `C` in `UI.lua` (isiLive-Modern-Stil: Graphit, feine Linien,
-  kuehles Blau). Kein Gold-Glow, keine Skalierungs-Animationen.
+  kuehles Blau). Kein Gold-Glow, keine Skalierungs-Animationen. Einzige Ausnahme: die Klassenfarbe
+  (`RAID_CLASS_COLORS`) in der Titelleiste.
+- Aufbau des Fensters (Layout 1, Reihenfolge, Kacheln, Kombi-Zeilen, Schrift): siehe `CLAUDE.md`,
+  Abschnitt "UI style". Jedes neue Gestaltungselement bekommt einen Schalter in den Einstellungen.
+- Werte in Kombi-Zeilen und Zusammenfassungen nur mit `string.format` verbinden, nie mit `..`
+  (geheime Werte).
 - Hintergrund-Transparenz betrifft nur Flaechen, nie die Schrift.
 - Status nicht nur ueber Farbe vermitteln, wo es um Entscheidungen geht (Tooltip ergaenzt).
 

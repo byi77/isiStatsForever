@@ -24,6 +24,7 @@ allgemeine Coding-Regeln in `docs/RULES.md`.
 - `docs/RULES.md` - allgemeine Coding-, Doku- und UI-Regeln
 - `docs/curseforge.md` - Vorlage fuer die CurseForge-Projektseite
 - `docs/logo.svg`, `docs/logo.png` - Logo; `media/icon.tga` - Icon in der Addon-Liste
+- `media/fonts/` - Roboto (SIL OFL 1.1, Lizenz in `OFL.txt`) fuer das Fenster
 - `tools/` - Pruefwerkzeuge (nicht im Release-Zip)
 
 ## Sprachregel

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.15.0 - 2026-11-28
+
 - Changed: new window look. Buffs and warnings are small colored pills at the top, then the level bar, then key values as tiles (main stat, attack power or spell damage, DPS or spell crit by class). Section headers have a chevron, a small icon and a hairline instead of a filled band; a collapsed section shows its first values in the header. Progress bars are thicker and colored by state (yellow below the maximum, green at it). The equipped weapon has a dot before its name, the value vs. your target sits in a small pill. The class name and level badge in the title bar are in the class color.
 - Changed: values sorted by what belongs together: attributes, melee / ranged / spell, weapon skills, defense (now with the defense skill and the resistances), gear, session (now with XP per hour, kills to the next level and the hearthstone).
 - Added: related values share a row (Damage · Speed, Crit · Hit, Armor · Reduction, Dodge · Parry, Block · Block value), resistances in one colored row; switchable.
