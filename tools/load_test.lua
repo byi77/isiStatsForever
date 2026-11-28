@@ -1911,6 +1911,23 @@ do
   local now, taxi = 1000, false
   local backup = { n = 6, GetTime, GetTaxiMapID, C_TaxiMap, UnitOnTaxi, UnitFactionGroup, print }
   local printed = {}
+  -- Shipped times: only for a route never flown here, an own measurement wins.
+  local shipped = ns.FlightSeeds
+  check(type(shipped) == "table" and next(shipped) ~= nil, "flight times shipped")
+  ns.FlightSeeds = { Alliance = { [3242] = { [52] = 90, [559] = 37 } } }
+  UnitFactionGroup = function()
+    return "Alliance"
+  end
+  check(ns.Flights.Get(3242, 559) == 37, "shipped flight time for a route never flown")
+  check(ns.Flights.Get(52, 3242) == nil, "no shipped time: unknown")
+  IsiStatsDB.flights.Alliance = { [3242] = { [559] = 40 } }
+  check(ns.Flights.Get(3242, 559) == 40, "own flight time before the shipped one")
+  UnitFactionGroup = function()
+    return "Horde"
+  end
+  check(ns.Flights.Get(3242, 52) == nil, "shipped times per faction")
+  IsiStatsDB.flights.Alliance = nil
+  ns.FlightSeeds = {} -- the flights below start unknown
   GetTime = function()
     return now
   end
@@ -2146,6 +2163,7 @@ do
   SlashCmdList.ISISTATS("flights clear")
   check(ns.Flights.Count() == 0, "flights clear")
   GetTime, GetTaxiMapID, C_TaxiMap, UnitOnTaxi, UnitFactionGroup, print = (table.unpack or unpack)(backup, 1, backup.n)
+  ns.FlightSeeds = shipped
 end
 
 -- Session values and kills to the next level.

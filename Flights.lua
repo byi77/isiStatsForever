@@ -11,7 +11,9 @@ local call, num, str, isSecret = U.call, U.num, U.str, U.isSecret
 -- flights are kept: an early landing, a summon, a battleground or dungeon
 -- finder port, a loading screen or a /reload on the way drops the measurement. Saved account-wide per faction in
 -- IsiStatsDB.flights[faction][fromID][toID] = seconds (the last flight counts),
--- the names in IsiStatsDB.flightNames[nodeID]. Nothing comes from elsewhere.
+-- the names in IsiStatsDB.flightNames[nodeID]. A route never flown here takes
+-- the time shipped in FlightSeeds.lua (measured the same way in game, user
+-- decision 2026-11-28); an own measurement always wins.
 --
 -- A route never flown as a whole but made of hops whose times are all saved
 -- gets an estimate: the sum of those saved times (user decision 2026-11-27),
@@ -95,9 +97,15 @@ function Flights.Name(id)
   return db and db.flightNames[id] or ("#" .. tostring(id))
 end
 
-function Flights.Get(fromID, toID)
-  local list = db and db.flights[faction() or ""]
+local function lookup(byFaction, side, fromID, toID)
+  local list = type(byFaction) == "table" and byFaction[side]
   return list and list[fromID] and list[fromID][toID] or nil
+end
+
+-- Seconds for a route: measured here, else shipped (FlightSeeds.lua).
+function Flights.Get(fromID, toID)
+  local side = faction() or ""
+  return lookup(db and db.flights, side, fromID, toID) or lookup(ns.FlightSeeds, side, fromID, toID)
 end
 
 local function clock(seconds)

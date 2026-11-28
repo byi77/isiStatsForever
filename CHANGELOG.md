@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added: flight times measured in game ship with the addon (11 Alliance routes so far); a route you never flew yourself uses them, your own measurement always wins.
+
 - Added: item levels, each with its own option in the settings: a line in item tooltips (only when the game does not show one), a number on the character window's slots and on the bag slots (on by default), and an "Item level" row in the gear section with the lowest item in its tooltip (off by default).
 
 ## 0.13.1 - 2026-11-28
