@@ -44,31 +44,59 @@ local function itemApi()
   return type(C_Item) == "table" and C_Item or {}
 end
 
--- The item level of a gear link, nil for anything else or when unknown.
-function ItemLevel.Of(link)
-  link = str(link)
-  if not link then
-    return nil
+-- Per item link (a link names one item with its bonuses, so its level never
+-- changes): { level, name, r, g, b }, false for anything that is not gear.
+-- Only complete answers are kept; an item the client has not loaded yet is
+-- asked again next time. The bags ask for every slot on every bag update.
+local known, knownCount = {}, 0
+local KNOWN_MAX = 2000 -- then start over (tooltips of many different items)
+
+local function lookup(link)
+  local hit = known[link]
+  if hit ~= nil then
+    return hit
   end
   local item = itemApi()
   local _, _, _, equipLoc, _, classID = call(item.GetItemInfoInstant or GetItemInfoInstant, link)
-  if not GEAR_CLASS[num(classID)] or NO_LEVEL_SLOT[str(equipLoc)] then
-    return nil
+  classID = num(classID)
+  if not classID then
+    return nil -- not loaded: ask again
   end
-  local level = num(call(item.GetDetailedItemLevelInfo or GetDetailedItemLevelInfo, link))
-  if not level then
-    local _, _, _, base = call(item.GetItemInfo or GetItemInfo, link)
-    level = num(base)
+  local result = false
+  if GEAR_CLASS[classID] and not NO_LEVEL_SLOT[str(equipLoc)] then
+    local level = num(call(item.GetDetailedItemLevelInfo or GetDetailedItemLevelInfo, link))
+    local name, _, quality, base = call(item.GetItemInfo or GetItemInfo, link)
+    level = level or num(base)
+    quality = num(quality)
+    if not (level and level > 0 and quality) then
+      return nil -- level or quality not loaded yet: ask again
+    end
+    local colors = type(ITEM_QUALITY_COLORS) == "table" and ITEM_QUALITY_COLORS
+    local c = colors and colors[quality]
+    local r, g, b = 1, 1, 1
+    if type(c) == "table" and c.r then
+      r, g, b = c.r, c.g, c.b
+    end
+    result = { math.floor(level), str(name), r, g, b }
   end
-  return level and level > 0 and math.floor(level) or nil
+  if knownCount >= KNOWN_MAX then
+    known, knownCount = {}, 0
+  end
+  known[link], knownCount = result, knownCount + 1
+  return result
+end
+
+-- The item level of a gear link, nil for anything else or when unknown.
+function ItemLevel.Of(link)
+  link = str(link)
+  local hit = link and lookup(link)
+  return hit and hit[1] or nil
 end
 
 local function qualityColor(link)
-  local _, _, quality = call(itemApi().GetItemInfo or GetItemInfo, link)
-  local colors = type(ITEM_QUALITY_COLORS) == "table" and ITEM_QUALITY_COLORS
-  local c = colors and colors[num(quality)]
-  if type(c) == "table" and c.r then
-    return c.r, c.g, c.b
+  local hit = lookup(link)
+  if hit then
+    return hit[3], hit[4], hit[5]
   end
   return 1, 1, 1
 end
@@ -221,8 +249,8 @@ function ItemLevel.Equipped()
   if not average or average <= 0 then
     return nil
   end
-  local name = lowestLink and str(call(itemApi().GetItemInfo or GetItemInfo, lowestLink))
-  return math.floor(average), lowest, name
+  local hit = lowestLink and lookup(lowestLink)
+  return math.floor(average), lowest, hit and hit[2]
 end
 
 function ItemLevel.Get(key)

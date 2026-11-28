@@ -115,6 +115,11 @@ Forever has the Midnight-style addon restrictions: in combat some API returns ar
 - Rows that only show when a value is > 0 (mana, parry, block value) decide in combat from the last
   plain value (`positive()`), never by comparing a secret.
 - `/isistats debug` lists the API functions that returned secrets.
+- Performance (review 2026-11-28): refresh gathered 0.15 s, 0.5 s in a fight (`REFRESH_*` in Core);
+  `UI.placeRow` sets height, points and font only on change, but texts every time (a value may be a
+  secret and must never be compared); item levels cached per link (only complete answers);
+  unit events only for the player (`RegisterUnitEvent`). `/isistats perf` = `C_AddOnProfiler` with
+  Blizzard's AddonList formula addon / (application - overall + addon).
 
 ## Error log
 

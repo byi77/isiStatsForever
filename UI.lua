@@ -352,16 +352,29 @@ local function layoutProgress(row, progress)
   row.bar:Show()
 end
 
+-- Height, position and font only when they change: each SetPoint and
+-- SetFontObject makes the game lay the row out again, on every refresh.
+-- (Texts are set every time: a value may be secret and must not be compared.)
+local function placeRow(row, height, y, font)
+  if row.placedY ~= y or row.placedH ~= height then
+    row:SetHeight(height)
+    row:ClearAllPoints()
+    row:SetPoint("TOPLEFT", frame, "TOPLEFT", PAD, y)
+    row:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -PAD, y)
+    row.placedY, row.placedH = y, height
+  end
+  if row.font ~= font then
+    row.label:SetFontObject(font)
+    row.value:SetFontObject(font)
+    row.font = font
+  end
+end
+
 local function layoutHeader(row, section, collapsed, y)
-  row:SetHeight(HEADER_H)
-  row:ClearAllPoints()
-  row:SetPoint("TOPLEFT", frame, "TOPLEFT", PAD, y)
-  row:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -PAD, y)
+  placeRow(row, HEADER_H, y, "GameFontNormalSmall")
   row.bg:SetVertexColor(rgba(C.sectionBg, bgAlpha))
-  row.label:SetFontObject("GameFontNormalSmall")
   row.label:SetText(string.upper(section.title))
   setColor(row.label, "section")
-  row.value:SetFontObject("GameFontNormalSmall")
   row.value:SetText(collapsed and "+" or "-")
   setColor(row.value, "dim")
   anchorColumns(row, false)
@@ -372,20 +385,15 @@ local function layoutHeader(row, section, collapsed, y)
 end
 
 local function layoutRow(row, data, alt, y)
-  row:SetHeight(ROW_H)
-  row:ClearAllPoints()
-  row:SetPoint("TOPLEFT", frame, "TOPLEFT", PAD, y)
-  row:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -PAD, y)
+  placeRow(row, ROW_H, y, "GameFontHighlightSmall")
   row.alt = alt
   if alt then
     row.bg:SetVertexColor(rgba(C.alt, bgAlpha))
   else
     row.bg:SetVertexColor(0, 0, 0, 0)
   end
-  row.label:SetFontObject("GameFontHighlightSmall")
   row.label:SetText(data.label or "")
   setColor(row.label, data.labelColor, "label")
-  row.value:SetFontObject("GameFontHighlightSmall")
   row.value:SetText(data.value or "")
   setColor(row.value, data.color, "value")
   anchorColumns(row, data.columns)
@@ -593,17 +601,27 @@ local function mmss(seconds)
   return string.format("%d:%02d", math.floor(seconds / 60), seconds % 60)
 end
 
+-- Every frame while flying: the fill moves smoothly, the time text is only
+-- built again when the shown second changes.
+local function setBarTime(self, prefix, seconds)
+  local whole = math.max(0, math.floor(seconds + 0.5))
+  if self.shownSecond ~= whole or self.shownPrefix ~= prefix then
+    self.shownSecond, self.shownPrefix = whole, prefix
+    self.time:SetText(prefix .. mmss(whole))
+  end
+end
+
 local function flightBarUpdate(self)
   local passed = math.max(0, GetTime() - self.start)
   if self.mode == "unknown" then
     self.fill:SetWidth(FBAR_W - 2)
-    self.time:SetText("+" .. mmss(passed))
+    setBarTime(self, "+", passed)
     self.share = 1
     return
   end
   local share = math.min(1, passed / self.total)
   self.fill:SetWidth(math.max(1, (FBAR_W - 2) * share))
-  self.time:SetText((self.mode == "estimate" and "~" or "") .. mmss(self.total - passed))
+  setBarTime(self, self.mode == "estimate" and "~" or "", self.total - passed)
   self.share = share
 end
 
@@ -708,6 +726,7 @@ function UI.ShowFlightBar(destination, total, start, mode, route)
   setColor(label, "value")
   flightBar.text, flightBar.route = destination, route
   flightBar.total, flightBar.start, flightBar.mode = total, start or GetTime(), mode
+  flightBar.shownSecond = nil -- a new flight: its first time text in any case
   flightBar.fill:SetVertexColor(rgba(mode == "unknown" and C.dim or C.bar, mode == "unknown" and 0.5 or 1))
   flightBarUpdate(flightBar)
   flightBar:Show()

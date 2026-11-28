@@ -51,5 +51,6 @@ Rounded, compact window that floats freely (open from the start) or docks to the
 - `/isistats session reset` - start the session values again
 - `/isistats levels` - time per level
 - `/isistats errors` - error log for bug reports
+- `/isistats perf` - CPU share and memory of the addon
 
 Bug reports and ideas: https://github.com/byi77/isiStatsForever/issues

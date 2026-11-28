@@ -1975,6 +1975,25 @@ do
     unknownBar.route == string.format(ns.L.FLIGHT_ROUTE_FMT, "Besudeltes Vorgebirge", "Hafen"),
     "bar tooltip: the whole route"
   )
+  local timeSets, setTime = 0, unknownBar.time.SetText
+  unknownBar.time.SetText = function(self, text)
+    timeSets = timeSets + 1
+    setTime(self, text)
+  end
+  now = now + 0.1
+  unknownBar.scripts.OnUpdate(unknownBar, 0.1)
+  now = now + 0.1
+  unknownBar.scripts.OnUpdate(unknownBar, 0.1)
+  check(timeSets == 0, "bar: no new time text within the same second")
+  now = now + 1
+  unknownBar.scripts.OnUpdate(unknownBar, 1)
+  check(timeSets == 1, "bar: new time text when the second changes")
+  unknownBar.time.SetText = setTime
+  ns.UI.ShowFlightBar("A", 60, now, "known")
+  unknownBar.time.text = "stale"
+  ns.UI.ShowFlightBar("B", 60, now, "known")
+  check(unknownBar.time.text == "1:00", "bar: a new flight sets its time text at once")
+  ns.UI.HideFlightBar()
   ns.SetFlightBarUnknown(false)
   check(not ns.UI.GetFlightBar(), "unknown flight time: bar switchable")
   ns.SetFlightBarUnknown(true)
@@ -2369,6 +2388,35 @@ do
   ITEM_LEVEL = "Gegenstandsstufe %d"
   check(ns.ItemLevel.Of(LINK.chest) == 45, "item level of a gear link")
   check(ns.ItemLevel.Of(LINK.potion) == nil, "no item level for a potion")
+  local asked = 0
+  local detailed = C_Item.GetDetailedItemLevelInfo
+  C_Item.GetDetailedItemLevelInfo = function(link)
+    asked = asked + 1
+    return detailed(link)
+  end
+  ns.ItemLevel.Of(LINK.chest)
+  ns.ItemLevel.Of(LINK.chest)
+  check(asked == 0, "item level kept per link")
+  local lateLink, loaded = "|Hitem:13|h[Helm]|h", false
+  ITEMS[lateLink] = { 4, "INVTYPE_HEAD", 50, "Helm" }
+  local itemInfo = C_Item.GetItemInfo
+  C_Item.GetItemInfo = function(link)
+    if link == lateLink and not loaded then
+      return nil -- the client has not loaded it yet
+    end
+    return itemInfo(link)
+  end
+  local counted = C_Item.GetDetailedItemLevelInfo
+  C_Item.GetDetailedItemLevelInfo = function(link)
+    if link == lateLink and not loaded then
+      return nil
+    end
+    return counted(link)
+  end
+  ns.ItemLevel.Of(lateLink)
+  loaded = true
+  check(ns.ItemLevel.Of(lateLink) == 50, "item not loaded yet: asked again later")
+  C_Item.GetDetailedItemLevelInfo, C_Item.GetItemInfo = detailed, itemInfo
 
   -- tooltip: one line, not twice, not when switched off
   local function tooltip(link)
@@ -2456,6 +2504,65 @@ do
     1,
     backup.n
   )
+end
+
+-- /isistats perf: CPU share as Blizzard's addon list computes it, and memory.
+do
+  local backup = { C_AddOnProfiler, GetAddOnMemoryUsage, UpdateAddOnMemoryUsage, print, n = 4 }
+  local lines = {}
+  print = function(msg)
+    lines[#lines + 1] = msg
+  end
+  local values = { [1] = { 10, 2, 0.5 }, [0] = { 10, 5, 0.01 }, [4] = { 50, 20, 5 } }
+  C_AddOnProfiler = {
+    IsEnabled = function()
+      return true
+    end,
+    GetApplicationMetric = function(metric)
+      return values[metric][1]
+    end,
+    GetOverallMetric = function(metric)
+      return values[metric][2]
+    end,
+    GetAddOnMetric = function(name, metric)
+      return name == "isiStatsForever" and values[metric][3] or 0
+    end,
+  }
+  GetAddOnMemoryUsage = function()
+    return 412.4
+  end
+  UpdateAddOnMemoryUsage = function() end
+  SlashCmdList.ISISTATS("perf")
+  local prefix = "|cff1e90ffisiStatsForever|r: "
+  -- recent: 0.5 / (10 - 2 + 0.5) = 5.9 %, of all addons 0.5 / 2 = 25 %
+  -- session: 0.01 / 5.01 = 0.2 %, of all addons 0.01 / 5 = 0.2 %; peak: 5 / 35 = 14 %
+  check(lines[1] == prefix .. string.format(ns.L.PERF_CPU_FMT, "6%", "0.2%", "14%"), "perf: CPU share of the game")
+  check(lines[2] == prefix .. string.format(ns.L.PERF_ADDONS_FMT, "25%", "0.2%"), "perf: share of all addons")
+  check(lines[3] == prefix .. string.format(ns.L.PERF_MEMORY_FMT, 412.4), "perf: memory")
+  C_AddOnProfiler.IsEnabled = function()
+    return false
+  end
+  lines = {}
+  SlashCmdList.ISISTATS("perf")
+  check(lines[1] == prefix .. ns.L.PERF_OFF, "perf: profiler off")
+  C_AddOnProfiler, GetAddOnMemoryUsage, UpdateAddOnMemoryUsage, print = (table.unpack or unpack)(backup, 1, backup.n)
+end
+
+-- Refresh pace: changes are gathered, less often in a fight.
+do
+  local after, delays = C_Timer.After, {}
+  C_Timer.After = function(delay, fn)
+    delays[#delays + 1] = delay
+    fn()
+  end
+  ns.Show()
+  ns.SetInFight(false)
+  ns.RequestRefresh()
+  ns.SetInFight(true)
+  ns.RequestRefresh()
+  ns.SetInFight(false)
+  check(delays[1] == 0.15 and delays[2] == 0.5, "refresh gathered, slower in a fight")
+  C_Timer.After = after
 end
 
 -- Debug output is kept for reading from the SavedVariables file.

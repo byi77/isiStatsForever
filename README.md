@@ -49,6 +49,7 @@ Character stats for **WoW Forever** (client 1.60.x, interface 16001): attributes
 | `/isistats reset` | Reset position and settings |
 | `/isistats chat clear` | Clear the saved chat history |
 | `/isistats errors` / `errors clear` | Show / clear the error log |
+| `/isistats perf` | CPU share and memory of the addon |
 | `/isistats debug` | Print raw API info (for bug reports) |
 
 ## Development

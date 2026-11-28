@@ -452,6 +452,8 @@ end
 -- ---------------------------------------------------------------- show / refresh
 
 local pending = false
+local REFRESH_CALM = 0.15 -- s: changes within this time make one refresh
+local REFRESH_FIGHT = 0.5 -- the same in a fight
 
 function ns.Refresh()
   pending = false
@@ -475,7 +477,8 @@ function ns.RequestRefresh()
     return
   end
   pending = true
-  C_Timer.After(0.15, ns.Refresh)
+  -- In a fight auras and stats change all the time: refresh less often.
+  C_Timer.After(ns.IsInFight() and REFRESH_FIGHT or REFRESH_CALM, ns.Refresh)
 end
 
 function ns.ToggleSection(key)
@@ -543,7 +546,6 @@ local REFRESH_EVENTS = {
   "UPDATE_EXHAUSTION",
   "PLAYER_REGEN_DISABLED",
   "PLAYER_REGEN_ENABLED",
-  "UNIT_LEVEL",
   "PLAYER_AVG_ITEM_LEVEL_UPDATE", -- the item level row
 }
 -- The game hides hit, expertise and glancing in combat: read them on these
@@ -574,6 +576,7 @@ local UNIT_EVENTS = {
   "UNIT_MAXHEALTH",
   "UNIT_MAXPOWER",
   "UNIT_DEFENSE",
+  "UNIT_LEVEL", -- player only: fires for every nameplate and group member otherwise
 }
 
 local events = CreateFrame("Frame")
@@ -718,6 +721,53 @@ events:SetScript("OnEvent", function(self, event, arg1, arg2, ...)
   end
 end)
 
+-- ---------------------------------------------------------------- performance
+
+-- Like Blizzard's addon list (AddonList.lua FormatProfilerPercent).
+local function profilerPercent(share)
+  local pct = share * 100
+  if pct >= 1 then
+    return string.format("%.0f%%", pct)
+  elseif pct >= 0.1 then
+    return string.format("%.1f%%", pct)
+  elseif pct >= 0.01 then
+    return string.format("%.2f%%", pct)
+  end
+  return "0%"
+end
+
+-- /isistats perf: this addon's CPU share of the game, computed as Blizzard's
+-- addon list does (addon / (game - all addons + addon)), its share of all
+-- addons, and its memory.
+local function printPerf()
+  local U = ns.Util
+  local profiler = type(C_AddOnProfiler) == "table" and C_AddOnProfiler or {}
+  local metrics = type(Enum) == "table" and Enum.AddOnProfilerMetric or {}
+  if U.call(profiler.IsEnabled) ~= true then
+    out(L.PERF_OFF)
+  else
+    local function share(metric)
+      local app = U.num(U.call(profiler.GetApplicationMetric, metric))
+      local all = U.num(U.call(profiler.GetOverallMetric, metric))
+      local own = U.num(U.call(profiler.GetAddOnMetric, addonName, metric))
+      if not (app and all and own) or app - all + own <= 0 then
+        return "?", "?"
+      end
+      return profilerPercent(own / (app - all + own)), all > 0 and profilerPercent(own / all) or "0%"
+    end
+    local recent, recentOfAddons = share(metrics.RecentAverageTime or 1)
+    local session, sessionOfAddons = share(metrics.SessionAverageTime or 0)
+    local peak = share(metrics.PeakTime or 4)
+    out(string.format(L.PERF_CPU_FMT, recent, session, peak))
+    out(string.format(L.PERF_ADDONS_FMT, recentOfAddons, sessionOfAddons))
+  end
+  U.call(UpdateAddOnMemoryUsage)
+  local kb = U.num(U.call(GetAddOnMemoryUsage, addonName))
+  if kb then
+    out(string.format(L.PERF_MEMORY_FMT, kb))
+  end
+end
+
 -- ---------------------------------------------------------------- slash
 
 SLASH_ISISTATS1 = "/isistats"
@@ -786,6 +836,8 @@ SlashCmdList.ISISTATS = function(msg)
     out(L.SESSION_RESET)
   elseif cmd == "levels" then
     ns.LevelTime.PrintLevels(out)
+  elseif cmd == "perf" then
+    printPerf()
   elseif cmd == "flights" then
     if arg == "clear" then
       ns.Flights.Clear()
