@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Added: `/isistats perf` shows the addon's CPU share of the game (as Blizzard's addon list computes it), its share of all addons and its memory.
+- Changed: several aura changes in one frame make one buff and warning check (raids); weapon skills are read once per refresh instead of twice.
 - Changed: less work per refresh: in a fight the window refreshes at most twice a second, rows are only laid out again when their place changes, item levels are kept per item, the flight bar builds its time text once a second, and level changes of other units no longer refresh the window.
 
 - Added: flight times measured in game ship with the addon (11 Alliance routes so far); a route you never flew yourself uses them, your own measurement always wins.

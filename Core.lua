@@ -579,6 +579,23 @@ local UNIT_EVENTS = {
   "UNIT_LEVEL", -- player only: fires for every nameplate and group member otherwise
 }
 
+-- UNIT_AURA often comes several times in one frame (raids, procs): the buff
+-- and warning checks run once at the next frame for all of them.
+local auraPending = false
+local function auraUpdate()
+  if not auraPending then
+    return -- already run by FlushAuras
+  end
+  auraPending = false
+  ns.Buffs.Update()
+  ns.Warnings.Update()
+end
+
+-- Runs a pending aura check now (the load test, after each UNIT_AURA).
+function ns.FlushAuras()
+  auraUpdate()
+end
+
 local events = CreateFrame("Frame")
 events:RegisterEvent("ADDON_LOADED")
 events:RegisterEvent("PLAYER_LOGIN")
@@ -669,6 +686,13 @@ events:SetScript("OnEvent", function(self, event, arg1, arg2, ...)
     elseif event == "MERCHANT_SHOW" then
       ns.Session.OnEvent(event) -- the costs before an automatic repair
       onMerchantShow()
+      return
+    elseif event == "UNIT_AURA" then
+      if not auraPending then
+        auraPending = true
+        C_Timer.After(0, auraUpdate)
+      end
+      ns.RequestRefresh()
       return
     end
     if event == "TIME_PLAYED_MSG" then

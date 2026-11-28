@@ -832,8 +832,7 @@ local PRIME_SKILL_POINTS = 5
 local PRIME_LEVELS_ABOVE = 5
 local primed = {}
 
-local function primeGlancing(level, id, isEquipped)
-  local s = Data.GetSkill(id)
+local function primeGlancing(level, s, isEquipped)
   if not s then
     return
   end
@@ -853,27 +852,40 @@ local function primeGlancing(level, id, isEquipped)
   end
 end
 
--- Reads what the game hides in combat.
-function Data.Prime()
-  if type(InCombatLockdown) == "function" and InCombatLockdown() then
-    return
-  end
-  readHit()
-  readExpertise()
-  local level = num(call(UnitLevel, "player"))
+local function inLockdown()
+  return type(InCombatLockdown) == "function" and InCombatLockdown()
+end
+
+-- Glancing values of the melee skills in `skills` (skill line -> GetSkill).
+local function primeSkills(level, skills)
   if not level or not enabled("w_vs") then
     return
   end
   local mainID, offID = mainHandSkill(), skillForSlot(SLOT_OFF)
   for _, id in ipairs(WEAPON_SKILL_ORDER) do
     if not RANGED_SKILLS[id] then
-      primeGlancing(level, id, id == mainID or id == offID)
+      primeGlancing(level, skills[id], id == mainID or id == offID)
     end
   end
 end
 
+-- Reads what the game hides in combat (events, also with the window hidden).
+function Data.Prime()
+  if inLockdown() then
+    return
+  end
+  readHit()
+  readExpertise()
+  local skills = {}
+  for _, id in ipairs(WEAPON_SKILL_ORDER) do
+    if not RANGED_SKILLS[id] then
+      skills[id] = Data.GetSkill(id)
+    end
+  end
+  primeSkills(num(call(UnitLevel, "player")), skills)
+end
+
 function Data.Collect()
-  Data.Prime()
   local level = num(call(UnitLevel, "player"))
   local hit, lastHit = readHit()
   local expertise = readExpertise()
@@ -883,6 +895,9 @@ function Data.Collect()
     skills[id] = Data.GetSkill(id)
   end
   skills[SKILL.DEFENSE] = Data.GetSkill(SKILL.DEFENSE)
+  if not inLockdown() then
+    primeSkills(level, skills) -- the skills just read, not a second time
+  end
 
   local classicList
   if not next(skills) then

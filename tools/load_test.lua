@@ -4,6 +4,19 @@ local dir = arg[1]
 -- Client language to simulate (second argument): deDE (default) or enUS.
 local clientLocale = arg[2] or "deDE"
 local ns = assert(loadfile(dir .. "/tools/wow_stub.lua"))(dir, clientLocale)
+-- The addon checks auras once per frame for all UNIT_AURA of that frame
+-- (Core.lua): here the check runs right after each one (own test below).
+do
+  local ev = StubFrames[1]
+  local onEvent = ev.scripts.OnEvent
+  StubOnEventUnflushed = onEvent -- the addon's own handler
+  ev.scripts.OnEvent = function(self, event, ...)
+    onEvent(self, event, ...)
+    if event == "UNIT_AURA" then
+      ns.FlushAuras()
+    end
+  end
+end
 assert(ns.UI.GetFrame():IsShown(), "fresh install: own window, open")
 assert(ns.UI.GetFrame().version, "version text in the title bar")
 C_AddOns = {
@@ -1191,6 +1204,17 @@ do
   gear[17] = 7
   expect("dual wielding: 19% more miss", "82%", "bad")
   gear[17] = nil
+
+  -- Primed by drawing the window alone (a skill-up without an event yet).
+  -- Matters for a target level the window never showed at this skill.
+  rank, targetLevel = 240, 45
+  byKey("w:S43") -- drawing the window out of combat
+  combat = true
+  targetLevel = 42
+  local primedPct = byKey("w:S43").pct
+  combat = false
+  local calmPct = byKey("w:S43").pct
+  check(calmPct and primedPct == calmPct, ("primed by the window alone (got %s, %s)"):format(primedPct, calmPct))
 
   -- Primed through the event, as with a hidden window: no Collect before combat.
   targetLevel = 45
@@ -2546,6 +2570,27 @@ do
   SlashCmdList.ISISTATS("perf")
   check(lines[1] == prefix .. ns.L.PERF_OFF, "perf: profiler off")
   C_AddOnProfiler, GetAddOnMemoryUsage, UpdateAddOnMemoryUsage, print = (table.unpack or unpack)(backup, 1, backup.n)
+end
+
+-- Several UNIT_AURA in one frame: one buff and warning check at the next frame.
+do
+  local after, queued, warned, update = C_Timer.After, {}, 0, ns.Warnings.Update
+  C_Timer.After = function(delay, fn)
+    if delay == 0 then
+      queued[#queued + 1] = fn
+    end
+  end
+  ns.Warnings.Update = function(...)
+    warned = warned + 1
+    return update(...)
+  end
+  for _ = 1, 3 do
+    StubOnEventUnflushed(StubFrames[1], "UNIT_AURA", "player") -- no flush
+  end
+  check(warned == 0 and #queued == 1, "UNIT_AURA: checks wait for the next frame, once")
+  queued[1]()
+  check(warned == 1, "UNIT_AURA: one check for the whole frame")
+  C_Timer.After, ns.Warnings.Update = after, update
 end
 
 -- Refresh pace: changes are gathered, less often in a fight.

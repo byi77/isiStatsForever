@@ -118,7 +118,9 @@ Forever has the Midnight-style addon restrictions: in combat some API returns ar
 - Performance (review 2026-11-28): refresh gathered 0.15 s, 0.5 s in a fight (`REFRESH_*` in Core);
   `UI.placeRow` sets height, points and font only on change, but texts every time (a value may be a
   secret and must never be compared); item levels cached per link (only complete answers);
-  unit events only for the player (`RegisterUnitEvent`). `/isistats perf` = `C_AddOnProfiler` with
+  unit events only for the player (`RegisterUnitEvent`); `UNIT_AURA` checks buffs and warnings once
+  at the next frame (`auraUpdate` in Core, the load test flushes via `ns.FlushAuras`); `Data.Collect`
+  primes the glancing cache from the skills it already read (`primeSkills`). `/isistats perf` = `C_AddOnProfiler` with
   Blizzard's AddonList formula addon / (application - overall + addon).
 
 ## Error log
