@@ -153,6 +153,11 @@ function Options.Sync()
     panel.repairCost:SetChecked(ns.GetRepairCost())
     panel.autoRepair:SetChecked(ns.GetAutoRepair())
   end
+  if panel.ilvlTooltip then
+    panel.ilvlTooltip:SetChecked(ns.ItemLevel.Get("ilvlTooltip"))
+    panel.ilvlCharacter:SetChecked(ns.ItemLevel.Get("ilvlCharacter"))
+    panel.ilvlBags:SetChecked(ns.ItemLevel.Get("ilvlBags"))
+  end
   if panel.flightTimes then
     panel.flightTimes:SetChecked(ns.GetFlightTimes())
     panel.flightBar:SetChecked(ns.GetFlightBar())
@@ -260,6 +265,18 @@ local function build()
   end)
   panel.autoRepair = checkbox(content, 16 + COL_W, y, L.OPT_AUTO_REPAIR, function(checked)
     ns.SetAutoRepair(checked)
+  end)
+  y = y - ROW_H - 4
+
+  panel.ilvlTooltip = checkbox(content, 16, y, L.OPT_ILVL_TOOLTIP, function(checked)
+    ns.ItemLevel.Set("ilvlTooltip", checked)
+  end)
+  panel.ilvlCharacter = checkbox(content, 16 + COL_W, y, L.OPT_ILVL_CHARACTER, function(checked)
+    ns.ItemLevel.Set("ilvlCharacter", checked)
+  end)
+  y = y - ROW_H - 4
+  panel.ilvlBags = checkbox(content, 16, y, L.OPT_ILVL_BAGS, function(checked)
+    ns.ItemLevel.Set("ilvlBags", checked)
   end)
   y = y - ROW_H - 4
 

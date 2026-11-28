@@ -16,6 +16,9 @@ local DEFAULTS = {
   combatBanner = true, -- big fading text in the middle on combat start and end
   repairCost = true, -- repair costs as a chat line at a vendor that repairs
   autoRepair = false, -- repair everything at such a vendor (own gold)
+  ilvlTooltip = true, -- item level line in item tooltips (ItemLevel.lua)
+  ilvlCharacter = true, -- item level on the character window's slots
+  ilvlBags = true, -- item level on the bag slots
   flightTimes = true, -- measure and keep flight times (Flights.lua)
   flightBar = true, -- bar during a flight with a known or estimated time
   flightBarUnknown = true, -- also for an unknown time (counting up)
@@ -541,6 +544,7 @@ local REFRESH_EVENTS = {
   "PLAYER_REGEN_DISABLED",
   "PLAYER_REGEN_ENABLED",
   "UNIT_LEVEL",
+  "PLAYER_AVG_ITEM_LEVEL_UPDATE", -- the item level row
 }
 -- The game hides hit, expertise and glancing in combat: read them on these
 -- events, also while the window is hidden (e.g. "show only in combat").
@@ -589,6 +593,7 @@ events:SetScript("OnEvent", function(self, event, arg1, arg2, ...)
     end
     ns.ErrorLog.Install(db)
     ns.Flights.Init(db)
+    ns.ItemLevel.Init(db)
     IsiStatsCharDB = IsiStatsCharDB or {}
     charDB = IsiStatsCharDB
     charDB.rows = charDB.rows or {}
@@ -602,6 +607,7 @@ events:SetScript("OnEvent", function(self, event, arg1, arg2, ...)
     ns.UI.Create()
     ns.Options.Register()
     hookCharacterFrame()
+    ns.ItemLevel.Setup()
     ns.ChatHistory.Setup(db)
     for _, e in ipairs(REFRESH_EVENTS) do
       pcall(self.RegisterEvent, self, e)

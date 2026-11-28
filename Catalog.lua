@@ -80,6 +80,7 @@ function Data.GetCatalog()
       title = L.GEAR_SECTION,
       rows = {
         { id = "gear_durability", label = L.GEAR_DURABILITY },
+        { id = "gear_ilvl", label = L.GEAR_ILVL },
       },
     },
     {

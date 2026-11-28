@@ -189,7 +189,7 @@ end
 -- Durability of the equipped gear: the whole share, the weakest item in the tooltip.
 local DURABILITY_SLOTS = 19
 
-local function gearSection()
+local function durabilityRow()
   if not enabled("gear_durability") then
     return nil
   end
@@ -211,19 +211,40 @@ local function gearSection()
   local itemID = num(call(GetInventoryItemID, "player", worstSlot))
   local name = itemID and str(call(item.GetItemNameByID, itemID))
   return {
-    key = "gear",
-    title = L.GEAR_SECTION,
-    rows = {
-      {
-        key = "gear_durability",
-        label = L.GEAR_DURABILITY,
-        value = string.format("%d%%", math.floor(cur / max * 100 + 0.5)),
-        color = worst < 0.25 and "bad" or worst < 0.5 and "warn" or nil,
-        progress = cur / max,
-        tip = string.format(L.GEAR_DURABILITY_TIP_FMT, name or "?", math.floor(worst * 100 + 0.5)),
-      },
-    },
+    key = "gear_durability",
+    label = L.GEAR_DURABILITY,
+    value = string.format("%d%%", math.floor(cur / max * 100 + 0.5)),
+    color = worst < 0.25 and "bad" or worst < 0.5 and "warn" or nil,
+    progress = cur / max,
+    tip = string.format(L.GEAR_DURABILITY_TIP_FMT, name or "?", math.floor(worst * 100 + 0.5)),
   }
+end
+
+-- Average item level as the game reports it, the lowest item in the tooltip.
+local function itemLevelRow()
+  if not enabled("gear_ilvl") then
+    return nil
+  end
+  local average, lowest, name = ns.ItemLevel.Equipped()
+  if not average then
+    return nil
+  end
+  return {
+    key = "gear_ilvl",
+    label = L.GEAR_ILVL,
+    value = tostring(average),
+    tip = lowest and string.format(L.GEAR_ILVL_TIP_FMT, name or "?", lowest) or nil,
+  }
+end
+
+local function gearSection()
+  local rows = {}
+  rows[#rows + 1] = durabilityRow()
+  rows[#rows + 1] = itemLevelRow()
+  if #rows == 0 then
+    return nil
+  end
+  return { key = "gear", title = L.GEAR_SECTION, rows = rows }
 end
 
 -- Hearthstone: cooldown left and where it is bound. Hidden without one in the bags.

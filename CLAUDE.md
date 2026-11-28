@@ -15,7 +15,7 @@ isiStatsForever is a character stats addon for **WoW Forever** only. The repo li
 ## Files
 
 `Locale.lua` texts - `ErrorLog.lua` own error log - `Util.lua` guarded calls, secret values,
-formatting, formulas - `Skills.lua` skill lines and weapon slots - `Tracking.lua` gathering tracking warning - `Warnings.lua` class and gear warnings - `Buffs.lua` buff reminder - `Flights.lua` measured flight times - `Session.lua` session values and XP per kill - `Catalog.lua` value rows and
+formatting, formulas - `Skills.lua` skill lines and weapon slots - `Tracking.lua` gathering tracking warning - `Warnings.lua` class and gear warnings - `Buffs.lua` buff reminder - `Flights.lua` measured flight times - `Session.lua` session values and XP per kill - `ItemLevel.lua` item levels (tooltip, slots, bags) - `Catalog.lua` value rows and
 class defaults - `Data.lua` collects the sections - `CombatCache.lua` last values in combat -
 `UI.lua` window - `Options.lua` settings page - `Core.lua` saved variables, events, slash commands.
 
@@ -77,6 +77,13 @@ class defaults - `Data.lua` collects the sections - `CombatCache.lua` last value
   `GetRepairAllCost`, `RepairAllItems` on `MERCHANT_SHOW` (as MerchantFrame does). Hearthstone item 6948:
   `C_Container.GetItemCooldown`, `GetBindLocation`. Level times in `IsiStatsCharDB.levelTimes` (only
   when the played time was in at the level-up).
+- Item levels (`ItemLevel.lua`): Forever has them but hides them (Camelot `PAPERDOLL_STATCATEGORIES`
+  leaves out the `ITEMLEVEL` stat). Tooltip via `TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item)`
+  (runs before the tooltip's `Show`), own line only when no line starts like `ITEM_LEVEL`, since the
+  C++ tooltip text is not in the Lua source. Slots: `hooksecurefunc("PaperDollItemSlotButton_Update")`;
+  bags: `hooksecurefunc(frame, "UpdateItems")` on `ContainerFrame1..13` + `ContainerFrameCombinedBags`
+  (Forever loads the Mainline ContainerFrame.lua). Row: `GetAverageItemLevel()` 2nd return (equipped),
+  as Blizzard's own Camelot `PaperDollFrame_SetItemLevel`; not in the generated API docs.
 - Level-up gains: straight from the `PLAYER_LEVEL_UP` payload (level, health, power, talents, PvP
   talents, strength .. spirit), no stat diff. Durability: `GetInventoryItemDurability(slot)` 1-19 (used
   by EquipmentManager). Repairs in the session: `GetRepairAllCost` drop between `MERCHANT_SHOW` and

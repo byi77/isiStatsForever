@@ -61,6 +61,15 @@ function CreateFrame(kind, name, parent, template)
   end
   f.CreateFontString = function()
     local fs = stub("fs")
+    fs.Show = function(self)
+      self.shown = true
+    end
+    fs.Hide = function(self)
+      self.shown = false
+    end
+    fs.SetText = function(self, text)
+      self.text = text
+    end
     fs.CreateAnimationGroup = function()
       local group = stub("anim")
       group.CreateAnimation = function()
@@ -252,6 +261,9 @@ ChatFrame1EditBox = {
 C_SummonInfo = { ConfirmSummon = function() end }
 hooksecurefunc = hooksecurefunc
   or function(tbl, name, fn)
+    if type(tbl) == "string" then -- hooksecurefunc("GlobalFunction", fn)
+      tbl, name, fn = _G, tbl, name
+    end
     local orig = tbl[name]
     tbl[name] = function(...)
       local r = { orig(...) }

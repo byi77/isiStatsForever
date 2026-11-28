@@ -2322,6 +2322,124 @@ do
   GetTime, GetMoney = (table.unpack or unpack)(backup, 1, backup.n)
 end
 
+-- Item levels: tooltip line, character slots, bag slots, average row.
+do
+  local backup = { C_Item, C_Container, GetInventoryItemLink, GetAverageItemLevel, ITEM_LEVEL, n = 5 }
+  local LINK = { chest = "|Hitem:10|h[Brust]|h", ring = "|Hitem:11|h[Ring]|h", potion = "|Hitem:12|h[Trank]|h" }
+  local ITEMS = { -- link -> class, equip slot, level, name
+    [LINK.chest] = { 4, "INVTYPE_CHEST", 45, "Brust" },
+    [LINK.ring] = { 4, "INVTYPE_FINGER", 30, "Ring" },
+    [LINK.potion] = { 0, "", 20, "Trank" },
+  }
+  C_Item = {
+    GetItemInfoInstant = function(link)
+      local i = ITEMS[link]
+      if i then
+        return 1, "", "", i[2], 0, i[1], 0
+      end
+    end,
+    GetDetailedItemLevelInfo = function(link)
+      return ITEMS[link] and ITEMS[link][3]
+    end,
+    GetItemInfo = function(link)
+      local i = ITEMS[link]
+      if i then
+        return i[4], link, 3, i[3]
+      end
+    end,
+  }
+  ITEM_LEVEL = "Gegenstandsstufe %d"
+  check(ns.ItemLevel.Of(LINK.chest) == 45, "item level of a gear link")
+  check(ns.ItemLevel.Of(LINK.potion) == nil, "no item level for a potion")
+
+  -- tooltip: one line, not twice, not when switched off
+  local function tooltip(link)
+    local tt = { lines = {} }
+    tt.GetItem = function()
+      return "x", link
+    end
+    tt.AddLine = function(self, text)
+      self.lines[#self.lines + 1] = text
+    end
+    return tt
+  end
+  local tt = tooltip(LINK.chest)
+  ns.ItemLevel.OnTooltip(tt, { lines = { { leftText = "Brust" } } })
+  check(tt.lines[1] == "Gegenstandsstufe 45", "tooltip: item level line")
+  tt = tooltip(LINK.chest)
+  ns.ItemLevel.OnTooltip(tt, { lines = { { leftText = "Brust" }, { leftText = "Gegenstandsstufe 45" } } })
+  check(#tt.lines == 0, "tooltip: no second line when the game shows it")
+  tt = tooltip(LINK.potion)
+  ns.ItemLevel.OnTooltip(tt, { lines = {} })
+  check(#tt.lines == 0, "tooltip: nothing for a potion")
+  ns.ItemLevel.Set("ilvlTooltip", false)
+  tt = tooltip(LINK.chest)
+  ns.ItemLevel.OnTooltip(tt, { lines = {} })
+  check(#tt.lines == 0, "tooltip: option off")
+  ns.ItemLevel.Set("ilvlTooltip", true)
+
+  -- character window: the number on the slot, gone when switched off
+  local equipped = { [5] = LINK.chest, [11] = LINK.ring }
+  GetInventoryItemLink = function(_, slot)
+    return equipped[slot]
+  end
+  PaperDollItemSlotButton_Update = function() end
+  local chestSlot = CreateFrame("Button", "CharacterChestSlot")
+  chestSlot.GetID = function()
+    return 5
+  end
+  ns.ItemLevel.Setup()
+  PaperDollItemSlotButton_Update(chestSlot)
+  local mark = chestSlot.isiItemLevel
+  check(mark and mark.shown and mark.text == 45, "character slot: item level shown")
+  ns.ItemLevel.Set("ilvlCharacter", false)
+  check(mark ~= nil and not mark.shown, "character slot: hidden with the option off")
+  ns.ItemLevel.Set("ilvlCharacter", true)
+
+  -- bags: the hooked UpdateItems of a bag frame
+  local bagButton = CreateFrame("Button")
+  bagButton.GetBagID = function()
+    return 0
+  end
+  bagButton.GetID = function()
+    return 1
+  end
+  local bagFrame = CreateFrame("Frame", "ContainerFrameCombinedBags")
+  bagFrame.UpdateItems = function() end
+  bagFrame.EnumerateValidItems = function()
+    return ipairs({ bagButton })
+  end
+  C_Container = {
+    GetContainerItemInfo = function(bag, slot)
+      return bag == 0 and slot == 1 and { hyperlink = LINK.ring } or nil
+    end,
+  }
+  ns.ItemLevel.Setup()
+  bagFrame:UpdateItems()
+  local bagMark = bagButton.isiItemLevel
+  check(bagMark and bagMark.shown and bagMark.text == 30, "bag slot: item level shown")
+  bagFrame:Show()
+  ns.ItemLevel.Set("ilvlBags", false)
+  check(not bagButton.isiItemLevel.shown, "bag slot: hidden with the option off")
+  ns.ItemLevel.Set("ilvlBags", true)
+
+  -- average row: the game's value, the lowest item in the tooltip
+  GetAverageItemLevel = function()
+    return 40.6, 37.5, 40
+  end
+  ns.SetRowEnabled("gear_ilvl", true)
+  local row = findRow(ns.Data.Collect(), ns.L.GEAR_ILVL)
+  check(row and row.value == "37", "item level row: equipped average")
+  check(row and row.tip == string.format(ns.L.GEAR_ILVL_TIP_FMT, "Ring", 30), "item level row: lowest item")
+  ns.SetRowEnabled("gear_ilvl", false)
+  _G.CharacterChestSlot, _G.ContainerFrameCombinedBags, PaperDollItemSlotButton_Update = nil, nil, nil
+  C_Item, C_Container, GetInventoryItemLink, GetAverageItemLevel, ITEM_LEVEL = (table.unpack or unpack)(
+    backup,
+    1,
+    backup.n
+  )
+end
+
 -- Debug output is kept for reading from the SavedVariables file.
 SlashCmdList.ISISTATS("debug")
 check(type(IsiStatsDB.lastDebug) == "table" and #IsiStatsDB.lastDebug.lines > 3, "debug dump saved")

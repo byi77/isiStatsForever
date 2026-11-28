@@ -23,6 +23,7 @@ Tracking.lua
 Warnings.lua
 Buffs.lua
 Flights.lua
+ItemLevel.lua
 Catalog.lua
 Data.lua
 CombatCache.lua

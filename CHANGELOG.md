@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Added: item levels, each with its own option in the settings: a line in item tooltips (only when the game does not show one), a number on the character window's slots and on the bag slots (on by default), and an "Item level" row in the gear section with the lowest item in its tooltip (off by default).
+
 ## 0.13.1 - 2026-11-28
 
 - Changed: the hint for a weapon to train in the bags names each weapon only once per character, also not again after a reload or a new login.

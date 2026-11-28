@@ -19,6 +19,7 @@
 - **More warnings**: almost full bags, unspent talent points, and briefly at the start of a fight a quiet yellow hint when an equipped weapon skill is more than 10 below its maximum.
 - **XP per hour, kills to the next level, session values** (time, XP, gold, kills since the login): optional rows.
 - **Professions** at their rank's maximum, time to the maximum weapon skill, gold per hour, hearthstone cooldown, repair costs (automatic repair optional), time per level.
+- **Item levels** in item tooltips, on the character window and in the bags (each switchable), the average as a row.
 - **Gear durability**, level-up gains in the chat, a short hint for a weapon to train in the bags (each weapon only once per character), deaths and repair costs per session, flight statistics.
 - **Combat banner**: a big text in the middle of the screen when combat starts and ends.
 - **Damage meter reset**: Blizzard's damage meter starts empty in every group you join.
