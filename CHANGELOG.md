@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.13.1 - 2026-11-28
+
 - Changed: the hint for a weapon to train in the bags names each weapon only once per character, also not again after a reload or a new login.
 
 ## 0.13.0 - 2026-11-28
