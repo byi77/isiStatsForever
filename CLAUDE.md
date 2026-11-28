@@ -197,7 +197,24 @@ do the slash commands `/isistats` and `/istats` - do not rename them.
 ## UI style
 
 isiLive "modern" look: graphite surfaces, hairline borders, cool blue accent (`C` palette in
-`UI.lua`), dimmed labels. No gold glow, no scale bouncing. Colors only via the palette tokens.
+`UI.lua`), dimmed labels. No gold glow, no scale bouncing. Colors only via the palette tokens
+(class color only from `RAID_CLASS_COLORS` in the title bar).
+
+Layout 1 (user decision 2026-11-28, mockup in the chat):
+
+- Order (`Data.Collect`): buffs + warnings (pills, no header) - XP (no header) - tiles - attributes -
+  melee / ranged / spell - weapon skills - defense (defense skill first, resistances last) - gear -
+  session (XP per hour, kills to the next level, hearthstone at the end). The settings catalog
+  (`Catalog.lua`) follows the same order.
+- Tiles: `CLASS_TILES` / `Data.GetTileIds()`; their rows are collected even when off as rows
+  (`tileOnly`) and shown only once. Combined rows (`PAIRS`, resistances) are built in `UI.lua` at
+  render time, after the combat cache, so the cache and the tests keep the single row keys. Values
+  are joined only with `string.format` (may be secret), never `..`.
+- Collapsed header = the first values of the section (`summary`). `db.layout` = layout version:
+  `applyLayoutDefaults` in Core turns headers on and collapses gear and session once per install.
+- Font: Roboto (SIL OFL 1.1, `media/fonts/OFL.txt`), digits all the same width; `CreateFont`
+  objects per role with the game fonts as fallback (`modernFont` off or file not loadable).
+- Rounded pieces (pills, tiles, badge, alert cards) via `newBox` from the corner textures.
 
 ## Releases and commits
 

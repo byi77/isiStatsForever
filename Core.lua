@@ -6,7 +6,12 @@ local DEFAULTS = {
   shown = true, -- free window open (only when not docked)
   scale = 1,
   alpha = 100, -- background opacity in percent
-  showHeaders = false, -- section headers (hidden by default)
+  showHeaders = true, -- section headers (collapsible, with a summary when collapsed)
+  tiles = true, -- key values as tiles under the level bar (Data.GetTileIds)
+  combineRows = true, -- related values share a row ("Crit · Hit"), resistances in one row
+  spacious = false, -- taller rows
+  classAccent = true, -- class color in the title bar
+  modernFont = true, -- shipped font with even digits (media/fonts) instead of the game font
   flashChanges = true, -- fade a value in when it changes
   combatMode = "always", -- "always" | "hide" (hidden in combat) | "only" (shown only in combat)
   locked = false, -- no moving / resizing
@@ -110,6 +115,49 @@ end
 function ns.SetShowHeaders(value)
   db.showHeaders = value and true or false
   ns.Refresh()
+end
+
+-- Layout switches (account-wide), each redraws the window.
+local LAYOUT_KEYS = { "tiles", "combineRows", "spacious", "classAccent", "modernFont" }
+
+function ns.GetLayout(key)
+  return db and db[key] and true or false
+end
+
+function ns.SetLayout(key, value)
+  db[key] = value and true or false
+  ns.Refresh()
+end
+
+function ns.GetTiles()
+  return ns.GetLayout("tiles")
+end
+
+-- Layout 1 (0.15.0, user decision 2026-11-28): headers on, gear and session
+-- collapsed (their summary stays in the header). Once per install, also for
+-- installs that had the headers off before.
+local LAYOUT_VERSION = 1
+
+local function applyLayoutDefaults()
+  if (db.layout or 0) >= LAYOUT_VERSION then
+    return
+  end
+  db.showHeaders = true
+  db.collapsed.gear = true
+  db.collapsed.session = true
+  db.layout = LAYOUT_VERSION
+end
+
+-- Everything the window needs to lay out the sections.
+local function layoutOptions()
+  local opts = { headers = db.showHeaders }
+  for _, key in ipairs(LAYOUT_KEYS) do
+    opts[key] = db[key] and true or false
+  end
+  if db.tiles then
+    opts.tileIds = ns.Data.GetTileIds()
+  end
+  return opts
 end
 
 -- Drops saved choices for rows that no longer exist (e.g. the removed
@@ -463,12 +511,10 @@ function ns.Refresh()
   end
   -- Through call() and plain checks: a secret value must not be concatenated.
   local level = ns.Util.num(ns.Util.call(UnitLevel, "player"))
-  local class = ns.Util.str(ns.Util.call(UnitClass, "player"))
-  if frame.subtitle then
-    frame.subtitle:SetText((class or "") .. (level and (" " .. level) or ""))
-  end
+  local class, classToken = ns.Util.call(UnitClass, "player")
+  ns.UI.SetTitle(ns.Util.str(class), level, db.classAccent and ns.Util.str(classToken) or nil)
   ns.UI.SetFlashEnabled(db.flashChanges)
-  ns.UI.Render(ns.Data.Collect(), db.collapsed, db.showHeaders)
+  ns.UI.Render(ns.Data.Collect(), db.collapsed, layoutOptions())
 end
 
 function ns.RequestRefresh()
@@ -611,6 +657,7 @@ events:SetScript("OnEvent", function(self, event, arg1, arg2, ...)
         db[k] = type(v) == "table" and {} or v
       end
     end
+    applyLayoutDefaults()
     ns.ErrorLog.Install(db)
     ns.Flights.Init(db)
     ns.ItemLevel.Init(db)
@@ -841,6 +888,7 @@ SlashCmdList.ISISTATS = function(msg)
     db.errors = errors
     db.chatHistory = chatHistory
     db.flights, db.flightNames, db.lastFlightMaster, db.flightStats = flights, flightNames, master, stats
+    applyLayoutDefaults()
     ns.ErrorLog.Install(db)
     ns.Flights.Init(db)
     ns.ChatHistory.Setup(db)

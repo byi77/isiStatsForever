@@ -137,6 +137,9 @@ function Options.Sync()
   if panel.flash then
     panel.flash:SetChecked(ns.GetFlashChanges())
   end
+  for key, cb in pairs(panel.layout or {}) do
+    cb:SetChecked(ns.GetLayout(key))
+  end
   if panel.lock then
     panel.lock:SetChecked(ns.IsLocked())
   end
@@ -219,6 +222,26 @@ local function build()
     ns.SetFlashChanges(checked)
   end)
   y = y - ROW_H - 4
+
+  -- Layout switches (Core.lua LAYOUT_KEYS), two per line.
+  panel.layout = {}
+  local layoutBoxes = {
+    { "tiles", L.OPT_TILES },
+    { "combineRows", L.OPT_COMBINE },
+    { "classAccent", L.OPT_CLASS_ACCENT },
+    { "modernFont", L.OPT_FONT },
+    { "spacious", L.OPT_SPACIOUS },
+  }
+  for i, spec in ipairs(layoutBoxes) do
+    local key = spec[1]
+    local col = (i - 1) % 2
+    panel.layout[key] = checkbox(content, 16 + col * COL_W, y, spec[2], function(checked)
+      ns.SetLayout(key, checked)
+    end)
+    if col == 1 or i == #layoutBoxes then
+      y = y - ROW_H - 4
+    end
+  end
 
   panel.lock = checkbox(content, 16, y, L.OPT_LOCK, function(checked)
     ns.SetLocked(checked)

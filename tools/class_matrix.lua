@@ -195,6 +195,12 @@ local function setupFor(token, spec, gearOverride, skillsOverride)
     GetRangedCritChance = function()
       return 4
     end
+    GetCritChance = function()
+      return 5
+    end
+    GetSpellHitModifier = function()
+      return 1
+    end
     GetSpellBonusDamage = function()
       return 150
     end
@@ -266,8 +272,13 @@ for _, token in ipairs(ORDER) do
     check(by.spell and by.spell[L.SPELL_DAMAGE], token .. ": spell damage")
     check(not by.melee and not by.ranged, token .. ": no melee/ranged rows by default")
   end
-  check(by.skills and by.skills[L.DEFENSE], token .. ": defense (current / max) below the weapon skills")
-  check(not (by.defense and by.defense[L.DEFENSE]), token .. ": defense not twice")
+  check(by.defense and by.defense[L.DEFENSE], token .. ": defense (current / max) in the defense section")
+  check(not (by.skills and by.skills[L.DEFENSE]), token .. ": defense not twice")
+  -- Crit and hit are on by default (user decision 2026-11-28).
+  local own = spec.attack == "melee" and by.melee or spec.attack == "ranged" and by.ranged or by.spell
+  local critLabel = spec.attack == "spell" and L.SPELL_CRIT or L.CRIT
+  local hitLabel = spec.attack == "spell" and L.SPELL_HIT or L.HIT
+  check(own and own[critLabel] and own[hitLabel], token .. ": crit and hit on by default")
 
   -- equipped weapon skills (and only those), with the vs.-target tooltip
   local equipped = {}

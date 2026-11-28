@@ -38,6 +38,8 @@ function Data.GetCatalog()
       warn[#warn + 1] = { id = id, label = L["WARN_" .. warning.key:upper() .. "_OPT"] }
     end
   end
+  -- Same order as the window: status, level, attributes, offense, weapon
+  -- skills, defense, then gear and session (collapsed by default).
   return {
     { key = "buffs", title = L.BUFF_SECTION, rows = buffs },
     {
@@ -52,35 +54,6 @@ function Data.GetCatalog()
         { id = "xp_next", label = L.XP_OPT },
         { id = "xp_time", label = L.XP_TIME },
         { id = "xp_eta", label = L.XP_ETA_OPT },
-        { id = "xp_rate", label = L.XP_RATE },
-        { id = "xp_kills", label = L.XP_KILLS_OPT },
-      },
-    },
-    {
-      key = "session",
-      title = L.SESSION_SECTION,
-      rows = {
-        { id = "session_time", label = L.SESSION_TIME },
-        { id = "session_xp", label = L.SESSION_XP },
-        { id = "session_gold", label = L.SESSION_GOLD },
-        { id = "session_gold_rate", label = L.SESSION_GOLD_RATE },
-        { id = "session_kills", label = L.SESSION_KILLS },
-        { id = "session_deaths", label = L.SESSION_DEATHS },
-      },
-    },
-    {
-      key = "travel",
-      title = L.TRAVEL_SECTION,
-      rows = {
-        { id = "hearth", label = L.HEARTH },
-      },
-    },
-    {
-      key = "gear",
-      title = L.GEAR_SECTION,
-      rows = {
-        { id = "gear_durability", label = L.GEAR_DURABILITY },
-        { id = "gear_ilvl", label = L.GEAR_ILVL },
       },
     },
     {
@@ -133,9 +106,20 @@ function Data.GetCatalog()
       },
     },
     {
+      key = "skills",
+      title = L.WEAPON_SKILLS,
+      rows = {
+        { id = "w_equipped", label = L.SKILLS_EQUIPPED },
+        { id = "w_other", label = L.SKILLS_OTHER },
+        { id = "w_vs", label = L.OPT_W_VS },
+        { id = "w_vs_none", label = L.OPT_W_VS_NONE },
+      },
+    },
+    {
       key = "defense",
       title = L.DEFENSE_SECTION,
       rows = {
+        { id = "d_def", label = L.DEFENSE },
         { id = "d_missed", label = L.MISSED_BY },
         { id = "d_critred", label = L.CRIT_REDUCTION },
         { id = "d_armor", label = L.ARMOR },
@@ -144,17 +128,6 @@ function Data.GetCatalog()
         { id = "d_parry", label = L.PARRY },
         { id = "d_block", label = L.BLOCK },
         { id = "d_blockval", label = L.BLOCK_VALUE },
-      },
-    },
-    {
-      key = "skills",
-      title = L.WEAPON_SKILLS,
-      rows = {
-        { id = "w_equipped", label = L.SKILLS_EQUIPPED },
-        { id = "w_other", label = L.SKILLS_OTHER },
-        { id = "w_vs", label = L.OPT_W_VS },
-        { id = "w_vs_none", label = L.OPT_W_VS_NONE },
-        { id = "d_def", label = L.DEFENSE },
       },
     },
     {
@@ -168,22 +141,66 @@ function Data.GetCatalog()
         { id = "res6", label = resist(6) },
       },
     },
+    {
+      key = "gear",
+      title = L.GEAR_SECTION,
+      rows = {
+        { id = "gear_durability", label = L.GEAR_DURABILITY },
+        { id = "gear_ilvl", label = L.GEAR_ILVL },
+      },
+    },
+    {
+      key = "session",
+      title = L.SESSION_SECTION,
+      rows = {
+        { id = "session_time", label = L.SESSION_TIME },
+        { id = "session_xp", label = L.SESSION_XP },
+        { id = "session_gold", label = L.SESSION_GOLD },
+        { id = "session_gold_rate", label = L.SESSION_GOLD_RATE },
+        { id = "session_kills", label = L.SESSION_KILLS },
+        { id = "session_deaths", label = L.SESSION_DEATHS },
+        { id = "xp_rate", label = L.XP_RATE },
+        { id = "xp_kills", label = L.XP_KILLS_OPT },
+        { id = "hearth", label = L.HEARTH },
+      },
+    },
   }
 end
 
 -- Class defaults: main stat, the class's attack value and weapon damage
--- (spell damage for casters), defense and the skills of the equipped weapons. Everything else starts off.
+-- (spell damage for casters), crit and hit (user decision 2026-11-28), defense
+-- and the skills of the equipped weapons. Everything else starts off.
 local CLASS_DEFAULTS = {
-  WARRIOR = { "stat1", "m_ap", "m_dmg" },
-  PALADIN = { "stat1", "m_ap", "m_dmg" },
-  ROGUE = { "stat2", "m_ap", "m_dmg" },
-  HUNTER = { "stat2", "r_ap", "r_dmg" },
-  SHAMAN = { "stat4", "s_dmg" },
-  DRUID = { "stat4", "s_dmg" },
-  PRIEST = { "stat4", "s_dmg" },
-  MAGE = { "stat4", "s_dmg" },
-  WARLOCK = { "stat4", "s_dmg" },
+  WARRIOR = { "stat1", "m_ap", "m_dmg", "m_crit", "m_hit" },
+  PALADIN = { "stat1", "m_ap", "m_dmg", "m_crit", "m_hit" },
+  ROGUE = { "stat2", "m_ap", "m_dmg", "m_crit", "m_hit" },
+  HUNTER = { "stat2", "r_ap", "r_dmg", "r_crit", "r_hit" },
+  SHAMAN = { "stat4", "s_dmg", "s_crit", "s_hit" },
+  DRUID = { "stat4", "s_dmg", "s_crit", "s_hit" },
+  PRIEST = { "stat4", "s_dmg", "s_crit", "s_hit" },
+  MAGE = { "stat4", "s_dmg", "s_crit", "s_hit" },
+  WARLOCK = { "stat4", "s_dmg", "s_crit", "s_hit" },
 }
+
+-- Key value tiles under the level bar (main stat, power, DPS or spell crit).
+-- Their rows are shown as tiles even when switched off as rows, and only once.
+local CLASS_TILES = {
+  WARRIOR = { "stat1", "m_ap", "m_dps" },
+  PALADIN = { "stat1", "m_ap", "m_dps" },
+  ROGUE = { "stat2", "m_ap", "m_dps" },
+  HUNTER = { "stat2", "r_ap", "r_dps" },
+  SHAMAN = { "stat4", "s_dmg", "s_crit" },
+  DRUID = { "stat4", "s_dmg", "s_crit" },
+  PRIEST = { "stat4", "s_dmg", "s_crit" },
+  MAGE = { "stat4", "s_dmg", "s_crit" },
+  WARLOCK = { "stat4", "s_dmg", "s_crit" },
+}
+
+function Data.GetTileIds()
+  local _, classToken = call(UnitClass, "player")
+  classToken = str(classToken)
+  return classToken and CLASS_TILES[classToken] or { "stat1", "m_ap", "m_dps" }
+end
 local COMMON_DEFAULTS = {
   "warn_fishing",
   "warn_fishing_combat",

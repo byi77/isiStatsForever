@@ -25,21 +25,20 @@
 - **Damage meter reset**: Blizzard's damage meter starts empty in every group you join.
 - **Chat history**: Up / Down in the chat input step through your sent lines, also after a restart.
 - **Leveling**: XP to the next level in thousands, time on this level and the estimated time to the next level.
-- **Weapon skills** of every learned weapon type as *current / max*. Skills below the cap are yellow, equipped weapons are highlighted.
+- **Weapon skills** of every learned weapon type as *current / max*. Skills below the cap are yellow, equipped weapons have a dot.
 - **Vs. your target**: behind every weapon skill how many of your auto attacks don't hit fully (no damage or only glancing), calculated from the game's own values with your weapon skill, hit and expertise. Hover a skill for the split. Ranged weapons show the miss chance.
-- **Defense** with the chance to be missed and crit reduction vs. an attacker of your level, plus armor reduction vs. your level and level +3.
+- **Defense**: the defense skill as *current / max*, the chance to be missed and crit reduction vs. an attacker of your level, armor reduction vs. your level and level +3, and your resistances in one colored row.
 - **Melee**: attack power, damage, speed, DPS, crit, hit, miss chance vs. a boss (level +3).
 - **Ranged** (with a ranged weapon) and **spell** values (for mana users): spell damage per school, healing, spell crit, spell hit, mana per 5.
-- **Resistances**.
 - **In combat** the values stay visible: live where the game allows it, otherwise the last value greyed out.
 
 ### Your stats, your choice
 
-Options → AddOns → isiStatsForever: switch every single value on or off, saved per character. Out of the box each class sees its main stat, its attack value and damage (melee AP + weapon damage, ranged AP + ranged damage, or spell damage), defense and the skills of the equipped weapons with their value against your target.
+Options → AddOns → isiStatsForever: switch every single value on or off, saved per character. Out of the box each class sees its main stat, its attack value and damage (melee AP + weapon damage, ranged AP + ranged damage, or spell damage), crit and hit, defense and the skills of the equipped weapons with their value against your target.
 
 ### Window
 
-Rounded, compact window that floats freely (open from the start) or docks to the character frame - your choice in the settings. Resize grip in the bottom-right corner, adjustable background opacity, optional section headers, values fade in when they change. English and German.
+Modern, compact window that floats freely (open from the start) or docks to the character frame - your choice in the settings. Buffs and warnings as colored pills at the top, the level bar, your key values as tiles (main stat, power, DPS or spell crit), then everything that belongs together in one section: attributes, offense, weapon skills, defense, gear and session. Collapsible headers keep a short summary while collapsed, related values share a row (Crit · Hit, Dodge · Parry), and a font with even digits keeps the numbers lined up. Class color in the title bar, resize grip, adjustable background opacity, taller rows on request; values fade in when they change. Every part is switchable. English and German.
 
 ### Commands
 

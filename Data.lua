@@ -33,15 +33,32 @@ local scanClassicWeaponSkills = K.scanClassicWeaponSkills
 -- Collects the shown values as sections of rows (see Catalog.lua for the ids).
 -- ---------------------------------------------------------------- sections
 
-local function enabled(id)
+-- Rows shown as key value tiles (Catalog.lua: Data.GetTileIds) are collected
+-- even when switched off as rows; they then carry `tileOnly` and the window
+-- shows them only as a tile.
+local tileForced = {}
+
+local function rowEnabled(id)
   return ns.IsRowEnabled == nil or ns.IsRowEnabled(id)
+end
+
+local function enabled(id)
+  return tileForced[id] or rowEnabled(id)
 end
 
 local function addRow(rows, id, label, value, color, tip, labelColor)
   if value == nil or not enabled(id) then
     return
   end
-  rows[#rows + 1] = { key = id, label = label, value = value, color = color, tip = tip, labelColor = labelColor }
+  rows[#rows + 1] = {
+    key = id,
+    label = label,
+    value = value,
+    color = color,
+    tip = tip,
+    labelColor = labelColor,
+    tileOnly = not rowEnabled(id) or nil,
+  }
 end
 
 -- Warnings at the very top; only shown while something is wrong.
@@ -61,8 +78,9 @@ local function warningSection()
 end
 
 -- XP still needed for the next level, in thousands ("12.4k"), with a
--- progress bar for the current level. Hidden at the maximum level.
-local function xpSection(level)
+-- progress bar for the current level. Hidden at the maximum level. XP per hour
+-- and kills to the next level go to `sessionRows` (shown with the session).
+local function xpSection(level, sessionRows)
   local atMax = call(IsPlayerAtEffectiveMaxLevel) == true
   local maxLevel = num(call(GetMaxPlayerLevel))
   if atMax or (level and maxLevel and level >= maxLevel) then
@@ -108,7 +126,7 @@ local function xpSection(level)
   end
   if enabled("xp_rate") then
     local perSecond = LevelTime and LevelTime.Rate()
-    rows[#rows + 1] = {
+    sessionRows[#sessionRows + 1] = {
       key = "xp_rate",
       label = L.XP_RATE,
       value = perSecond and string.format("%.1fk", perSecond * 3600 / 1000) or "-",
@@ -118,7 +136,7 @@ local function xpSection(level)
   end
   if enabled("xp_kills") then
     local kills, average = ns.Session.KillsToLevel(remaining)
-    rows[#rows + 1] = {
+    sessionRows[#sessionRows + 1] = {
       key = "xp_kills",
       label = level and string.format(L.XP_KILLS_FMT, level + 1) or L.XP_KILLS_OPT,
       value = kills and ("~" .. kills) or "-",
@@ -129,13 +147,17 @@ local function xpSection(level)
   return { key = "xp", title = L.XP_SECTION, rows = rows }
 end
 
--- Since the login: time, XP, gold won or spent, kills that gave XP.
-local function sessionSection()
+-- Since the login: time, XP, gold won or spent, kills that gave XP; then
+-- the rows in `extra` (XP per hour, kills to the next level, hearthstone).
+local function sessionSection(extra)
   local v = ns.Session.Values()
-  if not v then
-    return nil
-  end
   local rows = {}
+  if not v then
+    for _, row in ipairs(extra) do
+      rows[#rows + 1] = row
+    end
+    return { key = "session", title = L.SESSION_SECTION, rows = rows }
+  end
   if enabled("session_time") then
     rows[#rows + 1] =
       { key = "session_time", label = L.SESSION_TIME, value = ns.LevelTime.Format(v.seconds), tip = L.SESSION_TIP }
@@ -182,6 +204,9 @@ local function sessionSection()
   end
   if enabled("session_kills") then
     rows[#rows + 1] = { key = "session_kills", label = L.SESSION_KILLS, value = tostring(v.kills), tip = L.SESSION_TIP }
+  end
+  for _, row in ipairs(extra) do
+    rows[#rows + 1] = row
   end
   return { key = "session", title = L.SESSION_SECTION, rows = rows }
 end
@@ -250,7 +275,7 @@ end
 -- Hearthstone: cooldown left and where it is bound. Hidden without one in the bags.
 local HEARTHSTONE = 6948
 
-local function travelSection()
+local function hearthRow()
   if not enabled("hearth") then
     return nil
   end
@@ -273,17 +298,11 @@ local function travelSection()
   end
   local place = str(call(GetBindLocation))
   return {
-    key = "travel",
-    title = L.TRAVEL_SECTION,
-    rows = {
-      {
-        key = "hearth",
-        label = L.HEARTH,
-        value = value,
-        color = color,
-        tip = place and string.format(L.HEARTH_TIP_FMT, place) or nil,
-      },
-    },
+    key = "hearth",
+    label = L.HEARTH,
+    value = value,
+    color = color,
+    tip = place and string.format(L.HEARTH_TIP_FMT, place) or nil,
   }
 end
 
@@ -501,56 +520,6 @@ local function spellSection()
   return { key = "spell", title = L.SPELL, rows = rows }
 end
 
-local function defenseSection(level, skills)
-  local rows = {}
-
-  -- The defense skill itself is listed with the weapon skills (current / max);
-  -- here only the values derived from it.
-  local def = skills[SKILL.DEFENSE]
-  local attackerSkill = level and level * 5
-  if def then
-    local total = def.rank + def.mod
-    local tip = attackerSkill and string.format(L.DEFENSE_TIP, attackerSkill) or nil
-    if attackerSkill then
-      local diff = total - attackerSkill
-      addRow(rows, "d_missed", L.MISSED_BY, pct(math.max(0, 5 + diff * 0.04)), nil, tip)
-      if diff > 0 then
-        addRow(rows, "d_critred", L.CRIT_REDUCTION, pct(diff * 0.04), "good", tip)
-      end
-    end
-  end
-
-  local _, rawArmor = call(UnitArmor, "player")
-  local armor = num(rawArmor)
-  if not armor and isSecret(rawArmor) then
-    addRow(rows, "d_armor", L.ARMOR, show(rawArmor, "%d"))
-  end
-  if armor then
-    addRow(rows, "d_armor", L.ARMOR, tostring(armor))
-    if level then
-      local dr = armorReduction(armor, level)
-      local drBoss = armorReduction(armor, level + 3)
-      local tip = string.format(L.ARMOR_DR_TIP, level, dr, level + 3, drBoss)
-      addRow(rows, "d_armordr", L.ARMOR_DR, string.format("%.1f%%", dr), nil, tip)
-    end
-  end
-
-  addRow(rows, "d_dodge", L.DODGE, show(call(GetDodgeChance), "%.2f%%"))
-  local rawParry = call(GetParryChance)
-  if positive("parry", rawParry) then
-    addRow(rows, "d_parry", L.PARRY, show(rawParry, "%.2f%%"))
-  end
-  if hasShield() then
-    addRow(rows, "d_block", L.BLOCK, show(call(GetBlockChance), "%.2f%%"))
-    local rawBlockValue = call(GetShieldBlock)
-    if positive("blockValue", rawBlockValue) then
-      addRow(rows, "d_blockval", L.BLOCK_VALUE, show(rawBlockValue, "%d"))
-    end
-  end
-
-  return { key = "defense", title = L.DEFENSE_SECTION, rows = rows }
-end
-
 -- ---------------------------------------------------------------- vs. target
 
 local RAID_BOSS_LEVEL = 63
@@ -630,9 +599,12 @@ local function skillRow(key, label, s, opts)
     key = key,
     partial = opts.partial,
     label = label,
-    labelColor = opts.equipped and "accent" or nil,
+    labelColor = opts.equipped and "heading" or nil,
+    marker = opts.equipped or nil, -- dot before the name: weapon in hand
+    indent = opts.weapon or nil, -- names line up behind the dots
     value = max and string.format("%d / %d", s.rank, max) or tostring(s.rank),
     color = (max and s.rank < max) and "warn" or nil,
+    barColor = (max and s.rank < max) and "warn" or "good",
     bonus = s.mod ~= 0 and signed(s.mod) or nil,
     pct = opts.pct,
     pctColor = opts.pctColor,
@@ -715,8 +687,7 @@ end
 
 local function weaponSkillSection(skills, classicList, level, hit, expertise)
   local showEquipped, showOther = enabled("w_equipped"), enabled("w_other")
-  local showDefense = enabled("d_def") and skills[SKILL.DEFENSE] ~= nil
-  if not showEquipped and not showOther and not showDefense then
+  if not showEquipped and not showOther then
     return nil
   end
   local rows = {}
@@ -796,21 +767,65 @@ local function weaponSkillSection(skills, classicList, level, hit, expertise)
     end
   end
 
-  if not found and (showEquipped or showOther) then
+  if not found then
     rows[#rows + 1] = { label = L.NONE_KNOWN, value = "", labelColor = "dim" }
-  end
-
-  -- Defense below the weapons, as current / max like the game's skill panel.
-  if showDefense then
-    rows[#rows + 1] = skillRow("d_def", L.DEFENSE, skills[SKILL.DEFENSE], {
-      extraTip = level and ("\n" .. string.format(L.DEFENSE_TIP, level * 5)) or nil,
-    })
   end
   return { key = "skills", title = L.WEAPON_SKILLS, rows = rows }
 end
 
-local function resistanceSection()
+local function defenseSection(level, skills)
   local rows = {}
+
+  -- The defense skill first, as current / max like the game's skill panel,
+  -- then the values derived from it.
+  local def = skills[SKILL.DEFENSE]
+  local attackerSkill = level and level * 5
+  if def and enabled("d_def") then
+    rows[1] = skillRow("d_def", L.DEFENSE, def, {
+      extraTip = level and ("\n" .. string.format(L.DEFENSE_TIP, level * 5)) or nil,
+    })
+  end
+  if def then
+    local total = def.rank + def.mod
+    local tip = attackerSkill and string.format(L.DEFENSE_TIP, attackerSkill) or nil
+    if attackerSkill then
+      local diff = total - attackerSkill
+      addRow(rows, "d_missed", L.MISSED_BY, pct(math.max(0, 5 + diff * 0.04)), nil, tip)
+      if diff > 0 then
+        addRow(rows, "d_critred", L.CRIT_REDUCTION, pct(diff * 0.04), "good", tip)
+      end
+    end
+  end
+
+  local _, rawArmor = call(UnitArmor, "player")
+  local armor = num(rawArmor)
+  if not armor and isSecret(rawArmor) then
+    addRow(rows, "d_armor", L.ARMOR, show(rawArmor, "%d"))
+  end
+  if armor then
+    addRow(rows, "d_armor", L.ARMOR, tostring(armor))
+    if level then
+      local dr = armorReduction(armor, level)
+      local drBoss = armorReduction(armor, level + 3)
+      local tip = string.format(L.ARMOR_DR_TIP, level, dr, level + 3, drBoss)
+      addRow(rows, "d_armordr", L.ARMOR_DR, string.format("%.1f%%", dr), nil, tip)
+    end
+  end
+
+  addRow(rows, "d_dodge", L.DODGE, show(call(GetDodgeChance), "%.2f%%"))
+  local rawParry = call(GetParryChance)
+  if positive("parry", rawParry) then
+    addRow(rows, "d_parry", L.PARRY, show(rawParry, "%.2f%%"))
+  end
+  if hasShield() then
+    addRow(rows, "d_block", L.BLOCK, show(call(GetBlockChance), "%.2f%%"))
+    local rawBlockValue = call(GetShieldBlock)
+    if positive("blockValue", rawBlockValue) then
+      addRow(rows, "d_blockval", L.BLOCK_VALUE, show(rawBlockValue, "%d"))
+    end
+  end
+
+  -- Resistances below (one line in the window when rows are combined).
   for i = 2, 6 do
     local _, rawTotal = call(UnitResistance, "player", i)
     local total = num(rawTotal)
@@ -821,7 +836,8 @@ local function resistanceSection()
       addRow(rows, "res" .. i, name, show(rawTotal, "%d"))
     end
   end
-  return { key = "resist", title = L.RESISTANCES, rows = rows }
+
+  return { key = "defense", title = L.DEFENSE_SECTION, rows = rows }
 end
 
 -- ---------------------------------------------------------------- public
@@ -886,6 +902,12 @@ function Data.Prime()
 end
 
 function Data.Collect()
+  tileForced = {}
+  if ns.GetTiles and ns.GetTiles() then
+    for _, id in ipairs(Data.GetTileIds()) do
+      tileForced[id] = true
+    end
+  end
   local level = num(call(UnitLevel, "player"))
   local hit, lastHit = readHit()
   local expertise = readExpertise()
@@ -926,19 +948,20 @@ function Data.Collect()
       sections[#sections + 1] = section
     end
   end
+  -- Status, level, attributes, offense, weapon skills, defense, gear, session.
+  local sessionExtra = {}
   push(ns.Buffs.Section())
   push(warningSection())
-  push(xpSection(level))
-  push(sessionSection())
-  push(travelSection())
-  push(gearSection())
+  push(xpSection(level, sessionExtra))
   push(baseSection())
   push(meleeSection(level, skills, hit))
   push(rangedSection(hit))
   push(spellSection())
-  push(defenseSection(level, skills))
   push(weaponSkillSection(skills, classicList, level, lastHit, expertise))
-  push(resistanceSection())
+  push(defenseSection(level, skills))
+  push(gearSection())
+  sessionExtra[#sessionExtra + 1] = hearthRow()
+  push(sessionSection(sessionExtra))
 
   if #sections == 0 then
     sections[1] =

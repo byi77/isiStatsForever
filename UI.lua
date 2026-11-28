@@ -20,18 +20,36 @@ local C = {
   bad = { 1, 0.42, 0.38 },
   dim = { 0.44, 0.51, 0.62 },
   close = { 1, 0.35, 0.35 },
-  bar = { 0.30, 0.62, 1.0, 0.65 },
-  barTrack = { 1, 1, 1, 0.05 },
+  bar = { 0.30, 0.62, 1.0, 0.85 },
+  barTrack = { 1, 1, 1, 0.06 },
   shadow = { 0, 0, 0 },
+  tile = { 0.105, 0.115, 0.145, 0.95 },
+  chip = { 1, 1, 1, 0.06 }, -- neutral pill
+  alertBg = { 0.043, 0.047, 0.060, 0.82 },
+  -- Resistance schools in the combined row (fire, nature, frost, shadow, arcane).
+  resFire = { 1, 0.55, 0.30 },
+  resNature = { 0.50, 0.85, 0.45 },
+  resFrost = { 0.50, 0.78, 1 },
+  resShadow = { 0.72, 0.56, 1 },
+  resArcane = { 0.90, 0.88, 1 },
 }
+local CHIP_ALPHA = 0.16 -- tint of a colored pill
 ns.Colors = C
 
 local WIDTH = 270
 local PAD = 8
 local TITLE_H = 22
-local HEADER_H = 18
+local HEADER_H = 20
 local ROW_H = 15
+local ROW_H_SPACIOUS = 18
 local SECTION_GAP = 4
+local TEXT_X = 6 -- text inset inside a row
+local INDENT = 10 -- label inset behind the "equipped" dot
+local TILE_H = 34
+local TILE_GAP = 6
+local PILL_H = 16
+local PILL_GAP = 4
+local PILL_PAD = 7
 local WHITE = "Interface\\Buttons\\WHITE8X8"
 local GRIP_SIZE = 14
 
@@ -39,9 +57,11 @@ local GRIP_SIZE = 14
 -- [label ........ ] [not a full hit] [bonus] [current / max]
 local COL_VALUE = 64
 local COL_BONUS = 26
-local COL_PCT = 52
+local COL_PCT = 34 -- the percentage sits in a pill of this width
+local PCT_PILL_H = 13
 local COL_GAP = 4
-local BAR_HEIGHT = 2
+local BAR_HEIGHT = 3
+local BAR_ROOM = 3 -- extra row height for a row with a bar
 local MIN_SCALE, MAX_SCALE = 0.5, 2
 
 -- Rounded window (from isiLive's modern design): quarter-circle corner
@@ -51,6 +71,10 @@ local MEDIA = "Interface\\AddOns\\isiStatsForever\\media\\"
 local CORNER_DISC = MEDIA .. "corner_disc"
 local CORNER_RING = MEDIA .. "corner_ring6"
 local CORNER_SHADOW = MEDIA .. "corner_shadow"
+-- Roboto (SIL OFL 1.1, media/fonts/OFL.txt): all digits the same width, so the
+-- numbers line up. Falls back to the game fonts when it cannot be loaded.
+local FONT_REGULAR = MEDIA .. "fonts\\Roboto-Regular.ttf"
+local FONT_MEDIUM = MEDIA .. "fonts\\Roboto-Medium.ttf"
 local RADIUS = 6 -- corner_ring6 is drawn for this radius
 local SHADOW_SIZE = 7
 local SHADOW_ALPHA = 0.2
@@ -69,6 +93,7 @@ local UI = {}
 ns.UI = UI
 
 local frame, rows, rowCount = nil, {}, 0
+local titleLine -- surface under the title band (class color)
 local bgAlpha = 1 -- background opacity factor (0..1); text is never faded
 local surfaces = {} -- painted background pieces, repainted on opacity changes
 local flashEnabled = true
@@ -215,6 +240,100 @@ local function dropShadow()
   end
 end
 
+-- ---------------------------------------------------------------- fonts
+
+-- Font objects per role. "modern": the shipped Roboto; otherwise (or when the
+-- file cannot be loaded) the game's own font objects.
+local GAME_FONTS = {
+  row = "GameFontHighlightSmall",
+  header = "GameFontNormalSmall",
+  pill = "GameFontHighlightSmall",
+  tileLabel = "GameFontHighlightSmall",
+  tileValue = "GameFontHighlightLarge",
+}
+local MODERN_SPECS = {
+  row = { FONT_REGULAR, 11.5 },
+  header = { FONT_MEDIUM, 10 },
+  pill = { FONT_MEDIUM, 10.5 },
+  tileLabel = { FONT_REGULAR, 10 },
+  tileValue = { FONT_MEDIUM, 16 },
+}
+local modernFonts -- role -> font object, false when the font did not load
+local fonts = GAME_FONTS
+
+local function loadModernFonts()
+  if modernFonts ~= nil then
+    return modernFonts
+  end
+  modernFonts = false
+  if type(CreateFont) ~= "function" then
+    return false
+  end
+  local made = {}
+  for role, spec in pairs(MODERN_SPECS) do
+    local font = CreateFont("IsiStatsFont_" .. role)
+    if not font then
+      return false
+    end
+    -- SetFont returns false when the file cannot be read.
+    if font:SetFont(spec[1], spec[2], "") == false or not font:GetFont() then
+      return false -- the file is missing: keep the game fonts
+    end
+    font:SetShadowOffset(1, -1)
+    font:SetShadowColor(0, 0, 0, 0.75)
+    made[role] = font
+  end
+  modernFonts = made
+  return made
+end
+
+local function useFonts(modern)
+  fonts = modern and loadModernFonts() or GAME_FONTS
+end
+
+-- ---------------------------------------------------------------- boxes
+
+-- Rounded box on `owner` (any frame): quarter-circle corners plus three
+-- rectangles, one color. Pills, tiles, the level badge, alert backings.
+local function newBox(owner, layer, sublevel, r)
+  local box = { parts = {} }
+  for corner, coords in pairs(CORNER_COORDS) do
+    local tex = owner:CreateTexture(nil, layer, nil, sublevel)
+    tex:SetTexture(CORNER_DISC)
+    tex:SetTexCoord(coords[1], coords[2], coords[3], coords[4])
+    tex:SetSize(r, r)
+    tex:SetPoint(corner, owner, corner, 0, 0)
+    box.parts[#box.parts + 1] = { tex = tex, corner = true }
+  end
+  local function rect(p1, x1, y1, p2, x2, y2, height)
+    local tex = owner:CreateTexture(nil, layer, nil, sublevel)
+    tex:SetPoint(p1, owner, p1, x1, y1)
+    tex:SetPoint(p2, owner, p2, x2, y2)
+    if height then
+      tex:SetHeight(height)
+    end
+    box.parts[#box.parts + 1] = { tex = tex }
+  end
+  rect("TOPLEFT", r, 0, "TOPRIGHT", -r, 0, r)
+  rect("BOTTOMLEFT", r, 0, "BOTTOMRIGHT", -r, 0, r)
+  rect("TOPLEFT", 0, -r, "BOTTOMRIGHT", 0, r)
+  function box.SetColor(_, c, alpha)
+    local a = alpha or c[4] or 1
+    for _, part in ipairs(box.parts) do
+      if part.corner then
+        part.tex:SetVertexColor(c[1], c[2], c[3], a)
+      else
+        part.tex:SetColorTexture(c[1], c[2], c[3], a)
+      end
+    end
+  end
+  return box
+end
+
+local function hex(c)
+  return string.format("%02x%02x%02x", c[1] * 255, c[2] * 255, c[3] * 255)
+end
+
 -- ---------------------------------------------------------------- rows
 
 local function showTip(owner)
@@ -226,6 +345,10 @@ local function showTip(owner)
   GameTooltip:AddLine(data.label or "", 1, 1, 1)
   GameTooltip:AddLine(data.tip, C.label[1], C.label[2], C.label[3], true)
   GameTooltip:Show()
+end
+
+local function hideTip()
+  GameTooltip:Hide()
 end
 
 local function flash(row)
@@ -265,6 +388,24 @@ local function maybeFlash(row, data)
   end
 end
 
+-- Section icons (game icons, cropped) in the headers.
+local SECTION_ICONS = {
+  base = "Interface\\Icons\\Spell_Nature_Strength",
+  melee = "Interface\\Icons\\Ability_MeleeDamage",
+  ranged = "Interface\\Icons\\Ability_Marksmanship",
+  spell = "Interface\\Icons\\Spell_Fire_FlameBolt",
+  skills = "Interface\\Icons\\INV_Sword_04",
+  defense = "Interface\\Icons\\Ability_Defend",
+  gear = "Interface\\Icons\\INV_Chest_Chain",
+  session = "Interface\\Icons\\INV_Misc_PocketWatch_01",
+  xp = "Interface\\Icons\\Spell_Holy_HolyBolt",
+  buffs = "Interface\\Icons\\Spell_Holy_WordFortitude",
+  warn = "Interface\\Icons\\Ability_Warrior_Rampage",
+}
+local ICON_SIZE = 12
+local CHEVRON = "Interface\\ChatFrame\\ChatFrameExpandArrow" -- points right
+local CHEVRON_SIZE = 10
+
 local function acquireRow(index)
   local row = rows[index]
   if row then
@@ -278,34 +419,54 @@ local function acquireRow(index)
   row.hl = row:CreateTexture(nil, "HIGHLIGHT")
   row.hl:SetAllPoints()
   row.hl:SetColorTexture(C.hover[1], C.hover[2], C.hover[3], C.hover[4])
+  -- Header parts: hairline on top, chevron, section icon.
+  row.line = row:CreateTexture(nil, "BORDER")
+  row.line:SetPoint("TOPLEFT", 0, 0)
+  row.line:SetPoint("TOPRIGHT", 0, 0)
+  row.line:SetHeight(1)
+  row.line:SetColorTexture(C.border[1], C.border[2], C.border[3], C.border[4])
+  row.chev = row:CreateTexture(nil, "ARTWORK")
+  row.chev:SetTexture(CHEVRON)
+  row.chev:SetSize(CHEVRON_SIZE, CHEVRON_SIZE)
+  row.chev:SetPoint("LEFT", TEXT_X - 2, -1)
+  row.icon = row:CreateTexture(nil, "ARTWORK")
+  row.icon:SetSize(ICON_SIZE, ICON_SIZE)
+  row.icon:SetPoint("LEFT", row.chev, "RIGHT", 3, 0)
+  row.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+  -- "Equipped" dot before a weapon name.
+  row.dot = CreateFrame("Frame", nil, row)
+  row.dot:SetSize(5, 5)
+  row.dotBox = newBox(row.dot, "ARTWORK", 0, 2.5)
+  row.dotBox:SetColor(C.accent, 1)
   row.label = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-  row.label:SetPoint("LEFT", 6, 0)
   row.label:SetJustifyH("LEFT")
   row.label:SetWordWrap(false)
   row.value = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-  row.value:SetPoint("RIGHT", -6, 0)
   row.value:SetJustifyH("RIGHT")
   row.value:SetWordWrap(false)
   row.bonus = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
   row.bonus:SetJustifyH("RIGHT")
   row.bonus:SetWordWrap(false)
-  row.pct = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-  row.pct:SetJustifyH("RIGHT")
+  -- The percentage vs. the target sits in a small pill (own frame, so the
+  -- pill is drawn below its text).
+  row.pctPill = CreateFrame("Frame", nil, row)
+  row.pctPill:SetSize(COL_PCT, PCT_PILL_H)
+  row.pctBox = newBox(row.pctPill, "BACKGROUND", 0, 6)
+  row.pct = row.pctPill:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  row.pct:SetAllPoints()
+  row.pct:SetJustifyH("CENTER")
   row.pct:SetWordWrap(false)
   row.track = row:CreateTexture(nil, "ARTWORK")
-  row.track:SetPoint("BOTTOMLEFT", 6, 0)
-  row.track:SetPoint("BOTTOMRIGHT", -6, 0)
+  row.track:SetPoint("BOTTOMLEFT", TEXT_X, 1)
+  row.track:SetPoint("BOTTOMRIGHT", -TEXT_X, 1)
   row.track:SetHeight(BAR_HEIGHT)
   row.track:SetColorTexture(C.barTrack[1], C.barTrack[2], C.barTrack[3], C.barTrack[4])
   row.bar = row:CreateTexture(nil, "ARTWORK", nil, 1)
-  row.bar:SetPoint("BOTTOMLEFT", 6, 0)
+  row.bar:SetPoint("BOTTOMLEFT", TEXT_X, 1)
   row.bar:SetHeight(BAR_HEIGHT)
-  row.bar:SetColorTexture(C.bar[1], C.bar[2], C.bar[3], C.bar[4])
   row:RegisterForClicks("LeftButtonUp")
   row:SetScript("OnEnter", showTip)
-  row:SetScript("OnLeave", function()
-    GameTooltip:Hide()
-  end)
+  row:SetScript("OnLeave", hideTip)
   row:SetScript("OnClick", function(self)
     if self.sectionKey then
       ns.ToggleSection(self.sectionKey)
@@ -316,39 +477,41 @@ local function acquireRow(index)
 end
 
 -- Places value (and for skill rows bonus and percent columns) and the label.
-local function anchorColumns(row, columns)
+-- yOff lifts the text in rows with a bar; indent leaves room for the dot.
+local function anchorColumns(row, columns, yOff, labelX)
   row.value:ClearAllPoints()
   row.label:ClearAllPoints()
-  row.label:SetPoint("LEFT", 6, 0)
-  row.value:SetPoint("RIGHT", -6, 0)
+  row.label:SetPoint("LEFT", labelX, yOff)
+  row.value:SetPoint("RIGHT", -TEXT_X, yOff)
   if columns then
     row.value:SetWidth(COL_VALUE)
     row.bonus:ClearAllPoints()
     row.bonus:SetPoint("RIGHT", row.value, "LEFT", -COL_GAP, 0)
     row.bonus:SetWidth(COL_BONUS)
-    row.pct:ClearAllPoints()
-    row.pct:SetPoint("RIGHT", row.bonus, "LEFT", -COL_GAP, 0)
-    row.pct:SetWidth(COL_PCT)
-    row.label:SetPoint("RIGHT", row.pct, "LEFT", -COL_GAP, 0)
+    row.pctPill:ClearAllPoints()
+    row.pctPill:SetPoint("RIGHT", row.bonus, "LEFT", -COL_GAP, 0)
+    row.label:SetPoint("RIGHT", row.pctPill, "LEFT", -COL_GAP, 0)
     row.bonus:Show()
-    row.pct:Show()
+    row.pctPill:Show()
   else
     row.value:SetWidth(0)
-    row.label:SetPoint("RIGHT", row.value, "LEFT", -6, 0)
+    row.label:SetPoint("RIGHT", row.value, "LEFT", -TEXT_X, 0)
     row.bonus:Hide()
-    row.pct:Hide()
+    row.pctPill:Hide()
   end
 end
 
-local function layoutProgress(row, progress)
+local function layoutProgress(row, progress, colorKey)
   if not progress then
     row.track:Hide()
     row.bar:Hide()
     return
   end
-  local width = WIDTH - 2 * PAD - 12
+  local width = WIDTH - 2 * PAD - 2 * TEXT_X
+  local c = C[colorKey or "bar"] or C.bar
+  row.bar:SetColorTexture(c[1], c[2], c[3], colorKey == "dim" and 0.5 or 0.85)
   row.track:Show()
-  row.bar:SetWidth(math.max(1, width * progress))
+  row.bar:SetWidth(math.max(1, width * math.max(0, math.min(1, progress))))
   row.bar:Show()
 end
 
@@ -366,83 +529,454 @@ local function placeRow(row, height, y, font)
   if row.font ~= font then
     row.label:SetFontObject(font)
     row.value:SetFontObject(font)
+    row.bonus:SetFontObject(font)
+    row.pct:SetFontObject(font)
     row.font = font
   end
 end
 
-local function layoutHeader(row, section, collapsed, y)
-  placeRow(row, HEADER_H, y, "GameFontNormalSmall")
-  row.bg:SetVertexColor(rgba(C.sectionBg, bgAlpha))
+local function hideHeaderParts(row)
+  row.line:Hide()
+  row.chev:Hide()
+  row.icon:Hide()
+end
+
+-- Up to three values of a collapsed section, joined (string.format: a value
+-- may be secret and must not be concatenated).
+local SUMMARY_MAX = 3
+
+local function summary(sectionRows)
+  local text
+  for i = 1, math.min(SUMMARY_MAX, #sectionRows) do
+    local v = sectionRows[i].value
+    if v ~= nil and v ~= "" then
+      text = text and string.format("%s  |cff%s·|r  %s", text, hex(C.dim), v) or v
+    end
+  end
+  return text or ""
+end
+
+local function layoutHeader(row, section, sectionRows, collapsed, y, first)
+  placeRow(row, HEADER_H, y, fonts.header)
+  row.bg:SetVertexColor(0, 0, 0, 0)
+  if first then
+    row.line:Hide()
+  else
+    row.line:Show()
+  end
+  row.chev:Show()
+  if row.chev.SetRotation then
+    row.chev:SetRotation(collapsed and 0 or -math.pi / 2)
+  end
+  row.chev:SetVertexColor(C.dim[1], C.dim[2], C.dim[3])
+  local icon = SECTION_ICONS[section.key]
+  local labelX = TEXT_X - 2 + CHEVRON_SIZE + 4
+  if icon then
+    row.icon:SetTexture(icon)
+    row.icon:SetAlpha(0.85)
+    row.icon:Show()
+    labelX = labelX + ICON_SIZE + 4
+  else
+    row.icon:Hide()
+  end
+  row.dot:Hide()
+  anchorColumns(row, false, -1, labelX)
   row.label:SetText(string.upper(section.title))
   setColor(row.label, "section")
-  row.value:SetText(collapsed and "+" or "-")
-  setColor(row.value, "dim")
-  anchorColumns(row, false)
+  row.value:SetText(collapsed and summary(sectionRows) or "")
+  setColor(row.value, "label")
   layoutProgress(row, nil)
   row.sectionKey = section.key
   row.data = nil
   row:Show()
 end
 
-local function layoutRow(row, data, alt, y)
-  placeRow(row, ROW_H, y, "GameFontHighlightSmall")
+local function layoutRow(row, data, alt, y, rowH)
+  local barred = data.progress ~= nil
+  placeRow(row, rowH + (barred and BAR_ROOM or 0), y, fonts.row)
+  hideHeaderParts(row)
   row.alt = alt
   if alt then
     row.bg:SetVertexColor(rgba(C.alt, bgAlpha))
   else
     row.bg:SetVertexColor(0, 0, 0, 0)
   end
+  local labelX = TEXT_X + (data.indent and INDENT or 0)
+  local yOff = barred and math.floor(BAR_ROOM / 2 + 0.5) or 0
+  if data.marker and not data.stale then
+    row.dot:ClearAllPoints()
+    row.dot:SetPoint("LEFT", row, "LEFT", TEXT_X + 1, yOff)
+    row.dot:Show()
+  else
+    row.dot:Hide()
+  end
   row.label:SetText(data.label or "")
   setColor(row.label, data.labelColor, "label")
   row.value:SetText(data.value or "")
   setColor(row.value, data.color, "value")
-  anchorColumns(row, data.columns)
+  anchorColumns(row, data.columns, yOff, labelX)
   if data.columns then
     row.bonus:SetText(data.bonus or "")
-    setColor(row.bonus, data.stale and "dim" or nil, "value")
+    setColor(row.bonus, data.stale and "dim" or nil, "label")
     row.pct:SetText(data.pct or "")
-    setColor(row.pct, data.stale and "dim" or data.pctColor, "value")
+    local pctKey = data.stale and "dim" or data.pctColor
+    setColor(row.pct, pctKey, "label")
+    if data.pct and data.pct ~= "" and not data.stale then
+      local tint = data.pctColor and C[data.pctColor]
+      row.pctBox:SetColor(tint or C.chip, (tint and CHIP_ALPHA or C.chip[4]) * bgAlpha)
+    else
+      row.pctBox:SetColor(C.chip, 0)
+    end
   end
-  layoutProgress(row, data.progress)
+  layoutProgress(row, data.progress, data.stale and "dim" or data.barColor)
   row.sectionKey = nil
   row.data = data
   row:Show()
   maybeFlash(row, data)
 end
 
--- showHeaders false: no section headers and no gaps; nothing can be
--- collapsed, every section shows its rows and the row striping runs on
--- across sections as one continuous list.
-function UI.Render(sections, collapsedMap, showHeaders)
-  if not frame then
-    return
+-- ---------------------------------------------------------------- pills
+
+-- Buffs and warnings as small colored pills that wrap, at the top.
+local PILL_SECTIONS = { buffs = true, warn = true }
+local pills, pillCount = {}, 0
+
+local function acquirePill(index)
+  local pill = pills[index]
+  if pill then
+    return pill
   end
-  rowCount = 0
-  local y = -TITLE_H - 6
-  local stripe = 0
-  for si, section in ipairs(sections) do
-    if si > 1 and showHeaders then
-      y = y - SECTION_GAP
+  pill = CreateFrame("Button", nil, frame)
+  pill:SetHeight(PILL_H)
+  pill.box = newBox(pill, "BACKGROUND", 0, 6)
+  pill.value = pill:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  pill.value:SetPoint("CENTER", 0, 0)
+  pill.value:SetWordWrap(false)
+  pill:SetScript("OnEnter", showTip)
+  pill:SetScript("OnLeave", hideTip)
+  pills[index] = pill
+  return pill
+end
+
+-- Lays the rows of the pill sections out from y; returns the new y.
+local function layoutPills(pillRows, y)
+  local left, right = PAD + TEXT_X, WIDTH - PAD - TEXT_X
+  local x = left
+  for _, data in ipairs(pillRows) do
+    pillCount = pillCount + 1
+    local pill = acquirePill(pillCount)
+    if pill.font ~= fonts.pill then
+      pill.value:SetFontObject(fonts.pill)
+      pill.font = fonts.pill
     end
-    local collapsed = showHeaders and collapsedMap and collapsedMap[section.key]
-    if showHeaders then
-      rowCount = rowCount + 1
-      layoutHeader(acquireRow(rowCount), section, collapsed, y)
-      y = y - HEADER_H - 1
+    -- The value only when it is plain (a secret cannot be joined or measured).
+    local value = data.value
+    if value ~= nil and not isSecret(value) and value ~= "" and value ~= "!" then
+      pill.value:SetText(data.label .. "  " .. value)
+    else
+      pill.value:SetText(data.label or "")
     end
-    if not collapsed then
-      for ri, data in ipairs(section.rows) do
-        rowCount = rowCount + 1
-        stripe = showHeaders and ri or (stripe + 1)
-        layoutRow(acquireRow(rowCount), data, stripe % 2 == 0, y)
-        y = y - ROW_H
+    local key = data.stale and "dim" or data.labelColor or data.color or "label"
+    setColor(pill.value, key, "label")
+    local c = C[key] or C.label
+    pill.box:SetColor(c, (key == "label" and C.chip[4] or CHIP_ALPHA) * bgAlpha)
+    local width = math.floor((pill.value:GetStringWidth() or 40) + 2 * PILL_PAD + 0.5)
+    width = math.min(width, right - left)
+    if x > left and x + width > right then
+      x = left
+      y = y - PILL_H - PILL_GAP
+    end
+    pill:SetWidth(width)
+    pill:ClearAllPoints()
+    pill:SetPoint("TOPLEFT", frame, "TOPLEFT", x, y)
+    pill.data = data
+    pill:Show()
+    x = x + width + PILL_GAP
+  end
+  if #pillRows > 0 then
+    y = y - PILL_H - PILL_GAP - 2
+  end
+  return y
+end
+
+-- ---------------------------------------------------------------- tiles
+
+local tiles = {}
+
+local function acquireTile(index)
+  local tile = tiles[index]
+  if tile then
+    return tile
+  end
+  tile = CreateFrame("Button", nil, frame)
+  tile:SetHeight(TILE_H)
+  tile.box = newBox(tile, "BACKGROUND", 0, 5)
+  tile.label = tile:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  tile.label:SetPoint("TOPLEFT", 7, -5)
+  tile.label:SetPoint("TOPRIGHT", -5, -5)
+  tile.label:SetJustifyH("LEFT")
+  tile.label:SetWordWrap(false)
+  tile.value = tile:CreateFontString(nil, "OVERLAY", "GameFontHighlightLarge")
+  tile.value:SetPoint("BOTTOMLEFT", 7, 4)
+  tile.value:SetPoint("BOTTOMRIGHT", -5, 4)
+  tile.value:SetJustifyH("LEFT")
+  tile.value:SetWordWrap(false)
+  tile:SetScript("OnEnter", showTip)
+  tile:SetScript("OnLeave", hideTip)
+  tiles[index] = tile
+  return tile
+end
+
+local function layoutTiles(tileRows, y)
+  local n = #tileRows
+  for i = n + 1, #tiles do
+    tiles[i]:Hide()
+  end
+  if n == 0 then
+    return y
+  end
+  local width = (WIDTH - 2 * PAD - (n - 1) * TILE_GAP) / n
+  for i, data in ipairs(tileRows) do
+    local tile = acquireTile(i)
+    if tile.font ~= fonts.tileValue then
+      tile.label:SetFontObject(fonts.tileLabel)
+      tile.value:SetFontObject(fonts.tileValue)
+      tile.font = fonts.tileValue
+    end
+    tile.box:SetColor(C.tile, C.tile[4] * bgAlpha)
+    tile.label:SetText(data.label or "")
+    setColor(tile.label, "dim")
+    tile.value:SetText(data.value or "")
+    setColor(tile.value, data.color, "value")
+    tile:SetWidth(width)
+    tile:ClearAllPoints()
+    tile:SetPoint("TOPLEFT", frame, "TOPLEFT", PAD + (i - 1) * (width + TILE_GAP), y)
+    tile.data = data
+    tile:Show()
+    maybeFlash(tile, data)
+  end
+  return y - TILE_H - 8
+end
+
+-- ---------------------------------------------------------------- combined rows
+
+-- Related values share a row ("Crit · Hit"); the second one keeps its own
+-- color, set into the text. Only when both rows are there.
+local PAIRS = {
+  { "m_dmg", "m_speed" },
+  { "m_crit", "m_hit" },
+  { "r_dmg", "r_speed" },
+  { "r_crit", "r_hit" },
+  { "s_crit", "s_hit" },
+  { "d_armor", "d_armordr" },
+  { "d_dodge", "d_parry" },
+  { "d_block", "d_blockval" },
+}
+local RESIST_KEYS = { "res2", "res3", "res4", "res5", "res6" }
+local RESIST_COLORS =
+  { res2 = "resFire", res3 = "resNature", res4 = "resFrost", res5 = "resShadow", res6 = "resArcane" }
+
+-- string.format, not "..": a value may be secret.
+local function colored(value, key)
+  local c = key and C[key]
+  if not c then
+    return value
+  end
+  return string.format("|cff%s%s|r", hex(c), value)
+end
+
+local function joinTips(parts)
+  local lines = {}
+  for _, row in ipairs(parts) do
+    if row.tip then
+      lines[#lines + 1] = (row.label or "") .. ":\n" .. row.tip
+    end
+  end
+  return #lines > 0 and table.concat(lines, "\n\n") or nil
+end
+
+local function merged(key, label, value, parts, tip)
+  local stale = false
+  for _, row in ipairs(parts) do
+    stale = stale or row.stale or false
+  end
+  return {
+    key = key,
+    label = label,
+    value = value,
+    labelColor = stale and "dim" or parts[1].labelColor,
+    tip = tip or joinTips(parts),
+    stale = stale or nil,
+  }
+end
+
+local function mergePair(a, b)
+  local value = string.format("%s  |cff%s·|r  %s", colored(a.value, a.color), hex(C.dim), colored(b.value, b.color))
+  return merged(a.key .. "+" .. b.key, a.label .. " · " .. b.label, value, { a, b })
+end
+
+local function mergeResist(parts)
+  local value, names = nil, {}
+  for _, row in ipairs(parts) do
+    local key = (row.stale or row.color == "dim") and "dim" or RESIST_COLORS[row.key]
+    local part = colored(row.value, key)
+    value = value and string.format("%s |cff%s·|r %s", value, hex(C.dim), part) or part
+    names[#names + 1] = colored(row.label or "", RESIST_COLORS[row.key])
+  end
+  return merged("resist", L.RESISTANCES, value, parts, table.concat(names, "  ·  "))
+end
+
+local function combineRows(sectionRows)
+  local byKey = {}
+  for _, row in ipairs(sectionRows) do
+    if row.key then
+      byKey[row.key] = row
+    end
+  end
+  local replace, drop = {}, {}
+  for _, pair in ipairs(PAIRS) do
+    local a, b = byKey[pair[1]], byKey[pair[2]]
+    if a and b and not a.columns and not b.columns then
+      replace[a] = mergePair(a, b)
+      drop[b] = true
+    end
+  end
+  local resist = {}
+  for _, key in ipairs(RESIST_KEYS) do
+    resist[#resist + 1] = byKey[key]
+  end
+  if #resist >= 2 then
+    replace[resist[1]] = mergeResist(resist)
+    for i = 2, #resist do
+      drop[resist[i]] = true
+    end
+  end
+  local out = {}
+  for _, row in ipairs(sectionRows) do
+    if not drop[row] then
+      out[#out + 1] = replace[row] or row
+    end
+  end
+  return out
+end
+
+-- ---------------------------------------------------------------- render
+
+-- The rows of one section as the list shows them: without the tile rows,
+-- combined when switched on.
+local function listRows(section, tileKeys, combine)
+  local out = {}
+  for _, row in ipairs(section.rows) do
+    if not row.tileOnly and not (row.key and tileKeys[row.key]) then
+      out[#out + 1] = row
+    end
+  end
+  return combine and combineRows(out) or out
+end
+
+-- The tile rows in the order of `ids`, from wherever they were collected.
+local function pickTiles(sections, ids)
+  local found = {}
+  for _, section in ipairs(sections) do
+    for _, row in ipairs(section.rows) do
+      if row.key then
+        found[row.key] = row
       end
     end
   end
+  local out, keys = {}, {}
+  for _, id in ipairs(ids or {}) do
+    if found[id] then
+      out[#out + 1] = found[id]
+      keys[id] = true
+    end
+  end
+  return out, keys
+end
+
+-- Sections without a header: the status pills, the level bar and the tiles
+-- form the top block.
+local TOP_SECTIONS = { buffs = true, warn = true, xp = true }
+
+-- opts (Core.lua layoutOptions): headers, tileIds, combineRows, spacious,
+-- modernFont; a plain boolean is read as `headers` (older callers).
+-- Without headers there are no gaps and nothing can be collapsed; the row
+-- striping runs on across sections as one continuous list.
+function UI.Render(sections, collapsedMap, opts)
+  if not frame then
+    return
+  end
+  if type(opts) ~= "table" then
+    opts = { headers = opts }
+  end
+  useFonts(opts.modernFont)
+  local showHeaders = opts.headers
+  local rowH = opts.spacious and ROW_H_SPACIOUS or ROW_H
+  local tileRows, tileKeys = pickTiles(sections, opts.tileIds)
+
+  rowCount, pillCount = 0, 0
+  local y = -TITLE_H - 6
+  local stripe = 0
+  local tilesDone, firstHeader = false, true
+  local pillRows = {}
+
+  local function flushPills()
+    if #pillRows > 0 then
+      y = layoutPills(pillRows, y)
+      pillRows = {}
+    end
+  end
+  local function placeTiles()
+    if not tilesDone then
+      tilesDone = true
+      flushPills()
+      y = layoutTiles(tileRows, y)
+    end
+  end
+
+  for _, section in ipairs(sections) do
+    local sectionRows = listRows(section, tileKeys, opts.combineRows)
+    if PILL_SECTIONS[section.key] then
+      for _, data in ipairs(sectionRows) do
+        pillRows[#pillRows + 1] = data
+      end
+    elseif #sectionRows > 0 then
+      flushPills()
+      local top = TOP_SECTIONS[section.key]
+      if not top then
+        placeTiles()
+      end
+      local headed = showHeaders and not top
+      local collapsed = headed and collapsedMap and collapsedMap[section.key]
+      if headed then
+        if not firstHeader then
+          y = y - SECTION_GAP
+        end
+        rowCount = rowCount + 1
+        layoutHeader(acquireRow(rowCount), section, sectionRows, collapsed, y, firstHeader and tilesDone)
+        firstHeader = false
+        y = y - HEADER_H
+      end
+      if not collapsed then
+        for ri, data in ipairs(sectionRows) do
+          rowCount = rowCount + 1
+          stripe = headed and ri or (stripe + 1)
+          local row = acquireRow(rowCount)
+          layoutRow(row, data, stripe % 2 == 0, y, rowH)
+          y = y - row.placedH
+        end
+      end
+    end
+  end
+  flushPills()
+  placeTiles()
   for i = rowCount + 1, #rows do
     rows[i]:Hide()
   end
-  -- Bottom margin leaves room for the resize grip.
+  for i = pillCount + 1, #pills do
+    pills[i]:Hide()
+  end
+  -- Bottom margin leaves room for the version text and the resize grip.
   frame:SetHeight(-y + GRIP_SIZE + 2)
 end
 
@@ -454,7 +988,10 @@ end
 -- the others by key. An alert plays the warning sound once when it appears,
 -- unless its caller does the sound.
 local ALERT_FIRST = { fishing = 1, tracking = 2 }
-local ALERT_LINE_H = 26
+local ALERT_LINE_H = 32
+local ALERT_BOX_H = 28
+local ALERT_PAD = 16
+local ALERT_STRIPE = 3
 local ALERT_GAP = 4
 local ALERT_FALLBACK_Y = -156
 local alerts, alertTexts, alertColors = nil, {}, {}
@@ -472,11 +1009,35 @@ local function createAlerts()
   alerts.lines = {}
 end
 
+-- One alert: a dark rounded card with a colored stripe on the left and the
+-- text in the same color. SetText / GetText as on a font string.
 local function alertLine(index)
   local line = alerts.lines[index]
   if not line then
-    line = alerts:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
+    line = CreateFrame("Frame", nil, alerts)
+    line:SetHeight(ALERT_BOX_H)
     line:SetPoint("BOTTOM", alerts, "BOTTOM", 0, (index - 1) * ALERT_LINE_H)
+    line:EnableMouse(false)
+    line.box = newBox(line, "BACKGROUND", 0, 6)
+    line.box:SetColor(C.alertBg)
+    line.stripe = line:CreateTexture(nil, "ARTWORK")
+    line.stripe:SetPoint("TOPLEFT", 3, -6)
+    line.stripe:SetPoint("BOTTOMLEFT", 3, 6)
+    line.stripe:SetWidth(ALERT_STRIPE)
+    line.text = line:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
+    line.text:SetPoint("CENTER", ALERT_STRIPE, 0)
+    function line.SetText(self, text)
+      self.text:SetText(text)
+      if text == nil or text == "" then
+        self:Hide()
+        return
+      end
+      self:SetWidth(math.floor((self.text:GetStringWidth() or 200) + 2 * ALERT_PAD + ALERT_STRIPE + 0.5))
+      self:Show()
+    end
+    function line.GetText(self)
+      return self.text:GetText()
+    end
     alerts.lines[index] = line
   end
   return line
@@ -517,7 +1078,9 @@ function UI.SetAlert(key, text, silent, color)
   table.sort(keys, alertBefore)
   for i, name in ipairs(keys) do
     local line = alertLine(i)
-    setColor(line, alertColors[name], "bad")
+    setColor(line.text, alertColors[name], "bad")
+    local c = C[alertColors[name] or "bad"] or C.bad
+    line.stripe:SetColorTexture(c[1], c[2], c[3], 0.9)
     line:SetText(alertTexts[name])
   end
   for i = #keys + 1, #alerts.lines do
@@ -831,21 +1394,32 @@ function UI.Create()
   bar:SetPoint("TOPLEFT", 0, 0)
   bar:SetPoint("TOPRIGHT", 0, 0)
   bar:SetHeight(TITLE_H)
+  -- Line under the title band: the class color (UI.SetTitle) or a hairline.
   local line = bar:CreateTexture(nil, "BORDER")
   line:SetPoint("BOTTOMLEFT", 1, 0)
   line:SetPoint("BOTTOMRIGHT", -1, 0)
   line:SetHeight(1)
-  addSurface(line, "rect", C.border)
+  titleLine = { texture = line, kind = "rect", color = C.border }
+  addSurface(line, "rect", C.border, titleLine)
 
   local title = bar:CreateFontString(nil, "OVERLAY", "GameFontNormal")
   title:SetPoint("LEFT", 9, 0)
   title:SetText("isi|cff1e90ffStats|r|cff8a96a8Forever|r")
   setColor(title, "heading")
 
-  local level = bar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-  level:SetPoint("LEFT", title, "RIGHT", 6, 0)
-  setColor(level, "dim")
-  frame.subtitle = level
+  -- Class name, then the level in a small badge.
+  local class = bar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  class:SetPoint("LEFT", title, "RIGHT", 6, 0)
+  setColor(class, "dim")
+  frame.subtitle = class
+  local badge = CreateFrame("Frame", nil, bar)
+  badge:SetSize(22, 13)
+  badge:SetPoint("LEFT", class, "RIGHT", 5, 0)
+  badge.box = newBox(badge, "BACKGROUND", 0, 6)
+  badge.text = badge:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  badge.text:SetPoint("CENTER", 0, 0)
+  badge:Hide()
+  frame.levelBadge = badge
 
   bar:RegisterForDrag("LeftButton")
   bar:RegisterForClicks("RightButtonUp")
@@ -917,7 +1491,8 @@ function UI.Create()
   return frame
 end
 
--- Background opacity 0..1: window, shadow, border, title bar and row tints.
+-- Background opacity 0..1: window, shadow, border, title bar and row tints;
+-- pills, tiles and pill backgrounds follow with the next refresh.
 function UI.SetBackgroundAlpha(a)
   bgAlpha = math.max(0, math.min(1, a or 1))
   if not frame then
@@ -927,14 +1502,44 @@ function UI.SetBackgroundAlpha(a)
     paint(surface)
   end
   for _, row in ipairs(rows) do
-    if row:IsShown() then
-      if row.sectionKey then
-        row.bg:SetVertexColor(rgba(C.sectionBg, bgAlpha))
-      elseif row.alt then
-        row.bg:SetVertexColor(rgba(C.alt, bgAlpha))
-      end
+    if row:IsShown() and not row.sectionKey and row.alt then
+      row.bg:SetVertexColor(rgba(C.alt, bgAlpha))
     end
   end
+  if ns.RequestRefresh then
+    ns.RequestRefresh()
+  end
+end
+
+-- Title bar: class name and level badge; classToken (or nil) colors the class
+-- name, the badge and the line under the title band.
+function UI.SetTitle(className, level, classToken)
+  if not frame then
+    return
+  end
+  local colors = type(RAID_CLASS_COLORS) == "table" and classToken and RAID_CLASS_COLORS[classToken]
+  local c = colors and type(colors.r) == "number" and { colors.r, colors.g, colors.b } or nil
+  frame.subtitle:SetText(className or "")
+  if c then
+    frame.subtitle:SetTextColor(c[1], c[2], c[3])
+  else
+    setColor(frame.subtitle, "label")
+  end
+  local badge = frame.levelBadge
+  if level then
+    badge.text:SetText(tostring(level))
+    badge.box:SetColor(c or C.dim, 0.2)
+    if c then
+      badge.text:SetTextColor(c[1] * 0.5 + 0.5, c[2] * 0.5 + 0.5, c[3] * 0.5 + 0.5)
+    else
+      setColor(badge.text, "label")
+    end
+    badge:Show()
+  else
+    badge:Hide()
+  end
+  titleLine.color = c and { c[1], c[2], c[3], 0.7 } or C.border
+  paint(titleLine)
 end
 
 function UI.GetFrame()

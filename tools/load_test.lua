@@ -19,6 +19,13 @@ do
 end
 assert(ns.UI.GetFrame():IsShown(), "fresh install: own window, open")
 assert(ns.UI.GetFrame().version, "version text in the title bar")
+-- Layout 1: headers on, gear and session collapsed (with their summary).
+assert(IsiStatsDB.showHeaders == true and IsiStatsDB.layout == 1, "fresh install: headers on, layout 1")
+assert(IsiStatsDB.collapsed.gear and IsiStatsDB.collapsed.session, "fresh install: gear and session collapsed")
+assert(
+  IsiStatsDB.tiles and IsiStatsDB.combineRows and IsiStatsDB.modernFont,
+  "fresh install: tiles, combined rows, font"
+)
 C_AddOns = {
   GetAddOnMetadata = function(name, key)
     return name == "isiStatsForever" and key == "Version" and "1.2.3" or nil
@@ -61,7 +68,11 @@ end
 for _, id in ipairs({ "stat4", "s_dmg", "r_ap", "w_other", "m_dps" }) do
   check(not ns.IsRowEnabled(id), "default off: " .. id)
 end
-check(IsiStatsDB.showHeaders == false, "headers hidden by default")
+check(IsiStatsDB.showHeaders == false, "headers switch saved")
+check(IsiStatsDB.layout == 1 and IsiStatsDB.collapsed.gear, "reset: layout defaults again")
+for _, id in ipairs({ "m_crit", "m_hit" }) do
+  check(ns.IsRowEnabled(id), "default on: " .. id)
+end
 check(IsiStatsDB.alpha == 55, "alpha saved")
 check(IsiStatsDB.scale == 1, "scale reset to 1")
 
@@ -127,23 +138,22 @@ CreateFrame = function(...)
       fs.SetText = function(_, text)
         line.text = text
       end
-      local show, hide = self.Show, self.Hide
-      if #alertLines == 1 then
-        self.Show = function(me)
-          show(me)
-          alertVisible = true
-        end
-        self.Hide = function(me)
-          hide(me)
-          alertVisible = false
-        end
-      end
     end
     return fs
   end
-  frame.SetPoint = function(_, point, relative, relativePoint)
+  -- The alert container is the frame anchored to the raid warnings.
+  frame.SetPoint = function(self, point, relative, relativePoint)
     if relative and relative == RaidWarningFrame then
       alertAnchor = point .. ">" .. relativePoint
+      local show, hide = self.Show, self.Hide
+      self.Show = function(me)
+        show(me)
+        alertVisible = true
+      end
+      self.Hide = function(me)
+        hide(me)
+        alertVisible = false
+      end
     end
   end
   return frame
@@ -169,7 +179,6 @@ local function twoSeconds()
 end
 check(ns.UI.GetAlert("fishing") == nil, "pole outside combat: no screen text")
 fireCore("PLAYER_REGEN_DISABLED")
-CreateFrame = createFrame
 check(ns.UI.GetAlert("fishing") == ns.L.WARN_FISHING_COMBAT and played == 8959, "text with sound when combat starts")
 check(alertVisible and alertLines[1].text == ns.L.WARN_FISHING_COMBAT, "fishing text drawn")
 check(alertAnchor == "BOTTOM>TOP", "screen texts sit above the raid warnings")
@@ -196,6 +205,9 @@ check(soundCount == 2, "second text: its own sound")
 ns.UI.SetAlert("tracking", "Radar")
 check(soundCount == 2, "same text again: no sound")
 check(alertLines[1].text == ns.L.WARN_FISHING_COMBAT and alertLines[2].text == "Radar", "both texts stacked")
+-- Each alert line is its own frame (a card behind the text): record them
+-- until two exist, then the plain CreateFrame again.
+CreateFrame = createFrame
 
 local poleInfo = C_Item
 C_Item = {
@@ -2613,6 +2625,89 @@ end
 -- Debug output is kept for reading from the SavedVariables file.
 SlashCmdList.ISISTATS("debug")
 check(type(IsiStatsDB.lastDebug) == "table" and #IsiStatsDB.lastDebug.lines > 3, "debug dump saved")
+
+-- New layout (0.15.0): section order, defense with the defense skill and the
+-- resistances, XP rate and hearthstone with the session, key value tiles.
+do
+  local saved = { UnitResistance, UnitXP, UnitXPMax, C_Item, C_Container }
+  UnitResistance = function()
+    return 0, 10
+  end
+  UnitXP = function()
+    return 500
+  end
+  UnitXPMax = function()
+    return 2000
+  end
+  C_Item = {
+    GetItemCount = function()
+      return 1
+    end,
+  }
+  C_Container = {
+    GetItemCooldown = function()
+      return 0, 0
+    end,
+  }
+  ns.ResetRows()
+  ns.SetRowEnabled("res3", true)
+  ns.SetRowEnabled("xp_rate", true)
+  ns.SetRowEnabled("hearth", true)
+  ns.SetRowEnabled("gear_durability", true)
+  local order, byKey = {}, {}
+  for _, s in ipairs(ns.Data.Collect()) do
+    order[#order + 1] = s.key
+    byKey[s.key] = s
+  end
+  local pos = {}
+  for i, key in ipairs(order) do
+    pos[key] = i
+  end
+  local want = { "base", "melee", "skills", "defense" }
+  for i = 2, #want do
+    check(
+      pos[want[i - 1]] and pos[want[i]] and pos[want[i - 1]] < pos[want[i]],
+      "order: " .. want[i - 1] .. " before " .. want[i]
+    )
+  end
+  check(byKey.resist == nil and byKey.travel == nil, "no own resistance or travel section")
+  local function keysOf(section)
+    local keys = {}
+    for _, r in ipairs(section and section.rows or {}) do
+      if r.key then
+        keys[r.key] = r
+      end
+    end
+    return keys
+  end
+  local defense, skills, session = keysOf(byKey.defense), keysOf(byKey.skills), keysOf(byKey.session)
+  check(byKey.defense and byKey.defense.rows[1].key == "d_def", "defense skill first in the defense section")
+  check(not skills.d_def, "defense skill no longer with the weapons")
+  check(defense.res3 ~= nil, "resistances in the defense section")
+  check(session.hearth ~= nil, "hearthstone with the session")
+  check(session.xp_rate ~= nil and not keysOf(byKey.xp).xp_rate, "XP per hour with the session")
+  -- m_dps is off as a row but a warrior tile: collected, marked tile only.
+  local melee = keysOf(byKey.melee)
+  check(melee.m_dps and melee.m_dps.tileOnly, "tile value collected as tile only")
+  check(melee.m_ap and not melee.m_ap.tileOnly, "row that is on is a normal row")
+  ns.SetLayout("tiles", false)
+  check(not keysOf(ns.Data.Collect()[pos.melee]).m_dps, "tiles off: no tile-only rows")
+  -- Every layout switch draws without an error, on and off.
+  ns.Show()
+  for _, key in ipairs({ "tiles", "combineRows", "spacious", "classAccent", "modernFont" }) do
+    ns.SetLayout(key, false)
+    check(ns.GetLayout(key) == false, "layout off: " .. key)
+    ns.SetLayout(key, true)
+    check(ns.GetLayout(key) == true, "layout on: " .. key)
+  end
+  ns.SetLayout("spacious", false)
+  ns.SetShowHeaders(true)
+  ns.ToggleSection("defense")
+  check(IsiStatsDB.collapsed.defense == true, "section collapses")
+  ns.ToggleSection("defense")
+  ns.ResetRows()
+  UnitResistance, UnitXP, UnitXPMax, C_Item, C_Container = saved[1], saved[2], saved[3], saved[4], saved[5]
+end
 
 -- Lock
 SlashCmdList.ISISTATS("lock")

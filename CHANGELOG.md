@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Changed: new window look. Buffs and warnings are small colored pills at the top, then the level bar, then key values as tiles (main stat, attack power or spell damage, DPS or spell crit by class). Section headers have a chevron, a small icon and a hairline instead of a filled band; a collapsed section shows its first values in the header. Progress bars are thicker and colored by state (yellow below the maximum, green at it). The equipped weapon has a dot before its name, the value vs. your target sits in a small pill. The class name and level badge in the title bar are in the class color.
+- Changed: values sorted by what belongs together: attributes, melee / ranged / spell, weapon skills, defense (now with the defense skill and the resistances), gear, session (now with XP per hour, kills to the next level and the hearthstone).
+- Added: related values share a row (Damage · Speed, Crit · Hit, Armor · Reduction, Dodge · Parry, Block · Block value), resistances in one colored row; switchable.
+- Added: settings for tiles, combined rows, class color, taller rows and the font.
+- Added: the window uses Roboto (SIL Open Font License, `media/fonts`), all digits the same width so numbers line up; switchable back to the game font.
+- Changed: crit and hit are on by default for every class (melee, ranged or spell). This changes the rows for everyone who never touched them.
+- Changed: section headers are on, gear and session start collapsed - once for every install, also where the headers were switched off.
+- Changed: screen warnings sit on a dark rounded card with a colored stripe.
+
 ## 0.14.0 - 2026-11-28
 
 - Added: `/isistats perf` shows the addon's CPU share of the game (as Blizzard's addon list computes it), its share of all addons and its memory.
