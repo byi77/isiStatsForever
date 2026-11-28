@@ -16,10 +16,10 @@
 - **Gathering tracking warning**: a text stays on screen while you have herbalism or mining and Find Herbs / Find Minerals is off, with a warning sound when it appears.
 - **Class and gear warnings**: lasting screen warnings for low soul shards, low ammo, Cheetah / Pack aspect in combat, an unhappy or missing pet, missing Battle Shout, Defensive Stance without a shield, missing poisons, imbues and self buffs, low reagents and broken gear.
 - **Flight times**: every whole flight you take is measured and saved on your own install. The flight map tooltip shows the time of each flight point (or a ~ estimate from saved stretches), and during the flight a bar shows start -> destination with the time left (counting up when the time is not known yet).
-- **More warnings**: almost full bags, unspent talent points, and in combat a quiet yellow hint while an equipped weapon skill can still rise.
+- **More warnings**: almost full bags, unspent talent points, and briefly at the start of a fight a quiet yellow hint when an equipped weapon skill is more than 10 below its maximum.
 - **XP per hour, kills to the next level, session values** (time, XP, gold, kills since the login): optional rows.
 - **Professions** at their rank's maximum, time to the maximum weapon skill, gold per hour, hearthstone cooldown, repair costs (automatic repair optional), time per level.
-- **Gear durability**, level-up gains in the chat, a hint for a weapon to train in the bags, deaths and repair costs per session, flight statistics.
+- **Gear durability**, level-up gains in the chat, a short hint for a weapon to train in the bags (each weapon only once per character), deaths and repair costs per session, flight statistics.
 - **Combat banner**: a big text in the middle of the screen when combat starts and ends.
 - **Damage meter reset**: Blizzard's damage meter starts empty in every group you join.
 - **Chat history**: Up / Down in the chat input step through your sent lines, also after a restart.

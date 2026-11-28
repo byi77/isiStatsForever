@@ -36,7 +36,9 @@ class defaults - `Data.lua` collects the sections - `CombatCache.lua` last value
 - Screen alerts: `UI.SetAlert(key, text or nil)`, texts that stay while their cause lasts (buff
   "runs out soon": 10 s), with the
   warning sound once when one appears. Exception fishing pole: sound every 2 s while in combat
-  (user decisions 2026-11-22; no fading notices). `RaidNotice_AddMessage` is a deprecation shim that is nil
+  (user decisions 2026-11-22). Brief ones via the `notice` / `renotice` fields in `Warnings.LIST`
+  (2026-11-27: skillup 5 s once per fight, bags 5 s). The bag weapon hint must never nag: each
+  weapon once per character, ever (`IsiStatsCharDB.bagHinted[skill line]`). `RaidNotice_AddMessage` is a deprecation shim that is nil
   unless cvar `loadDeprecationFallbacks` is set. Before using a classic global, check that
   Blizzard's source defines it outside `Blizzard_Deprecated*`.
 - Minimap tracking: `C_Minimap.GetTrackingInfo(i)` (`spellID`, `active`), event
