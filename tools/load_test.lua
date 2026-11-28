@@ -2709,6 +2709,54 @@ do
   UnitResistance, UnitXP, UnitXPMax, C_Item, C_Container = saved[1], saved[2], saved[3], saved[4], saved[5]
 end
 
+-- Level 60: no XP rows, gear, resistances and the miss chance vs. a boss
+-- on by default; the defense tooltip adds the raid boss.
+do
+  local saved = { IsPlayerAtEffectiveMaxLevel, UnitResistance, UnitXP, UnitXPMax }
+  UnitXP = function()
+    return 500
+  end
+  UnitXPMax = function()
+    return 2000
+  end
+  UnitResistance = function()
+    return 0, 10
+  end
+  IsPlayerAtEffectiveMaxLevel = function()
+    return false
+  end
+  ns.ResetRows()
+  check(not ns.IsRowEnabled("gear_ilvl") and not ns.IsRowEnabled("res2"), "below 60: gear and resistances off")
+  IsPlayerAtEffectiveMaxLevel = function()
+    return true
+  end
+  ns.ResetRows()
+  for _, id in ipairs({ "gear_durability", "gear_ilvl", "res2", "res6", "m_miss" }) do
+    check(ns.IsRowEnabled(id), "level 60 default on: " .. id)
+  end
+  ns.SetRowEnabled("session_xp", true)
+  ns.SetRowEnabled("session_kills", true)
+  ns.SetRowEnabled("xp_rate", true)
+  ns.SetRowEnabled("d_missed", true)
+  local keys, byKey = {}, {}
+  for _, s in ipairs(ns.Data.Collect()) do
+    byKey[s.key] = s
+    for _, r in ipairs(s.rows) do
+      if r.key then
+        keys[r.key] = r
+      end
+    end
+  end
+  check(byKey.xp == nil and not keys.xp_rate, "level 60: no XP rows")
+  check(not keys.session_xp and not keys.session_kills, "level 60: no session XP or XP kills")
+  check(
+    keys.d_missed and keys.d_missed.tip and keys.d_missed.tip:find("315", 1, true),
+    "level 60: raid boss in the defense tooltip"
+  )
+  IsPlayerAtEffectiveMaxLevel, UnitResistance, UnitXP, UnitXPMax = saved[1], saved[2], saved[3], saved[4]
+  ns.ResetRows()
+end
+
 -- Lock
 SlashCmdList.ISISTATS("lock")
 check(IsiStatsDB.locked == true and ns.IsLocked(), "lock")

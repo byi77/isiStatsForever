@@ -215,6 +215,10 @@ Layout 1 (user decision 2026-11-28, mockup in the chat):
 - Font: Roboto (SIL OFL 1.1, `media/fonts/OFL.txt`), digits all the same width; `CreateFont`
   objects per role with the game fonts as fallback (`modernFont` off or file not loadable).
 - Rounded pieces (pills, tiles, badge, alert cards) via `newBox` from the corner textures.
+- Level 60 (user request 2026-11-28, `Data.AtMaxLevel`): no XP rows, no session XP / XP kills;
+  defaults add `MAX_LEVEL_DEFAULTS` (durability, item level, resistances) and `m_miss` for classes
+  with melee AP; the defense tooltip adds the raid boss (attack skill 315). `rowDefaults` is built
+  again on `PLAYER_LEVEL_UP` and 1 s later (UnitLevel lags behind the event).
 
 ## Releases and commits
 

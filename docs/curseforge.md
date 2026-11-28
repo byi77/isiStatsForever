@@ -34,7 +34,7 @@
 
 ### Your stats, your choice
 
-Options → AddOns → isiStatsForever: switch every single value on or off, saved per character. Out of the box each class sees its main stat, its attack value and damage (melee AP + weapon damage, ranged AP + ranged damage, or spell damage), crit and hit, defense and the skills of the equipped weapons with their value against your target.
+Options → AddOns → isiStatsForever: switch every single value on or off, saved per character. Out of the box each class sees its main stat, its attack value and damage (melee AP + weapon damage, ranged AP + ranged damage, or spell damage), crit and hit, defense and the skills of the equipped weapons with their value against your target. At level 60 the XP rows step aside and gear, resistances and the miss chance vs. a raid boss come in.
 
 ### Window
 

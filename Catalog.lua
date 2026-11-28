@@ -214,6 +214,8 @@ local COMMON_DEFAULTS = {
   "w_vs_none",
 }
 
+local MAX_LEVEL_DEFAULTS = { "gear_durability", "gear_ilvl", "res2", "res3", "res4", "res5", "res6" }
+
 function Data.GetDefaults()
   local defaults = {}
   local _, classToken = call(UnitClass, "player")
@@ -224,6 +226,16 @@ function Data.GetDefaults()
   end
   for _, id in ipairs(COMMON_DEFAULTS) do
     defaults[id] = true
+  end
+  -- Level 60: gear and resistances matter (raids), melee classes see the
+  -- miss chance vs. a raid boss. Rows nobody touched follow the level.
+  if Data.AtMaxLevel() then
+    for _, id in ipairs(MAX_LEVEL_DEFAULTS) do
+      defaults[id] = true
+    end
+    if defaults.m_ap then
+      defaults.m_miss = true
+    end
   end
   for _, warning in ipairs(ns.Warnings.LIST) do
     defaults[ns.Warnings.OptionId(warning)] = true

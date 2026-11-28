@@ -746,6 +746,13 @@ events:SetScript("OnEvent", function(self, event, arg1, arg2, ...)
       ns.LevelTime.OnTimePlayed(arg1, arg2)
     elseif event == "PLAYER_LEVEL_UP" then
       ns.LevelTime.OnLevelUp(arg1, arg2, ...)
+      -- Defaults depend on the level (60): build them again once the game
+      -- reports the new level (UnitLevel lags behind this event).
+      rowDefaults = nil
+      C_Timer.After(1, function()
+        rowDefaults = nil
+        ns.RequestRefresh()
+      end)
     elseif event == "PLAYER_XP_UPDATE" then
       ns.LevelTime.OnXPUpdate()
     end

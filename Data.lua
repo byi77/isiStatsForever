@@ -31,6 +31,17 @@ local isDualWielding = K.isDualWielding
 local scanClassicWeaponSkills = K.scanClassicWeaponSkills
 
 -- Collects the shown values as sections of rows (see Catalog.lua for the ids).
+
+-- At the maximum level (60): no XP rows; gear, resistances and the values
+-- vs. a raid boss matter instead (defaults in Catalog.lua).
+function Data.AtMaxLevel(level)
+  if call(IsPlayerAtEffectiveMaxLevel) == true then
+    return true
+  end
+  level = level or num(call(UnitLevel, "player"))
+  local maxLevel = num(call(GetMaxPlayerLevel))
+  return level ~= nil and maxLevel ~= nil and level >= maxLevel
+end
 -- ---------------------------------------------------------------- sections
 
 -- Rows shown as key value tiles (Catalog.lua: Data.GetTileIds) are collected
@@ -81,9 +92,7 @@ end
 -- progress bar for the current level. Hidden at the maximum level. XP per hour
 -- and kills to the next level go to `sessionRows` (shown with the session).
 local function xpSection(level, sessionRows)
-  local atMax = call(IsPlayerAtEffectiveMaxLevel) == true
-  local maxLevel = num(call(GetMaxPlayerLevel))
-  if atMax or (level and maxLevel and level >= maxLevel) then
+  if Data.AtMaxLevel(level) then
     return nil
   end
   local current, needed = num(call(UnitXP, "player")), num(call(UnitXPMax, "player"))
@@ -149,7 +158,7 @@ end
 
 -- Since the login: time, XP, gold won or spent, kills that gave XP; then
 -- the rows in `extra` (XP per hour, kills to the next level, hearthstone).
-local function sessionSection(extra)
+local function sessionSection(extra, atMax)
   local v = ns.Session.Values()
   local rows = {}
   if not v then
@@ -162,7 +171,8 @@ local function sessionSection(extra)
     rows[#rows + 1] =
       { key = "session_time", label = L.SESSION_TIME, value = ns.LevelTime.Format(v.seconds), tip = L.SESSION_TIP }
   end
-  if enabled("session_xp") then
+  -- At the maximum level there is no XP, and only kills with XP are counted.
+  if enabled("session_xp") and not atMax then
     rows[#rows + 1] = {
       key = "session_xp",
       label = L.SESSION_XP,
@@ -202,7 +212,7 @@ local function sessionSection(extra)
       tip = string.format(L.SESSION_DEATHS_TIP_FMT, ns.Session.FormatMoney(v.repairs, true)) .. "\n" .. L.SESSION_TIP,
     }
   end
-  if enabled("session_kills") then
+  if enabled("session_kills") and not atMax then
     rows[#rows + 1] = { key = "session_kills", label = L.SESSION_KILLS, value = tostring(v.kills), tip = L.SESSION_TIP }
   end
   for _, row in ipairs(extra) do
@@ -788,6 +798,14 @@ local function defenseSection(level, skills)
   if def then
     local total = def.rank + def.mod
     local tip = attackerSkill and string.format(L.DEFENSE_TIP, attackerSkill) or nil
+    -- At the maximum level the raid boss (attack skill 315) is the attacker that counts.
+    if tip and Data.AtMaxLevel(level) then
+      local bossSkill = RAID_BOSS_LEVEL * 5
+      local bossDiff = total - bossSkill
+      tip = tip
+        .. "\n"
+        .. string.format(L.DEFENSE_BOSS_FMT, bossSkill, math.max(0, 5 + bossDiff * 0.04), signedPct(bossDiff * 0.04))
+    end
     if attackerSkill then
       local diff = total - attackerSkill
       addRow(rows, "d_missed", L.MISSED_BY, pct(math.max(0, 5 + diff * 0.04)), nil, tip)
@@ -961,7 +979,7 @@ function Data.Collect()
   push(defenseSection(level, skills))
   push(gearSection())
   sessionExtra[#sessionExtra + 1] = hearthRow()
-  push(sessionSection(sessionExtra))
+  push(sessionSection(sessionExtra, Data.AtMaxLevel(level)))
 
   if #sections == 0 then
     sections[1] =
